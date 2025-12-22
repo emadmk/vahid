@@ -47,7 +47,7 @@ router.get('/settings', async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-};
+});
 
 // لیست صراف‌ها برای ثبت‌نام
 router.get('/sarafis', async (req, res, next) => {
