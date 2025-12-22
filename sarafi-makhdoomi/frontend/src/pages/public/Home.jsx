@@ -44,7 +44,7 @@ const Home = () => {
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
                 <span className="text-white">صرافی</span>
                 <br />
-                <span className="text-gold-gradient">حاج عباس مخدومی</span>
+                <span className="text-gold-gradient">گلدن 2026</span>
               </h1>
               <p className="text-dark-300 text-lg md:text-xl mb-8 leading-8">
                 با بیش از سال‌ها تجربه در زمینه خرید و فروش ارز،
@@ -105,7 +105,7 @@ const Home = () => {
             <span className="text-gold-gradient">چرا ما را انتخاب کنید؟</span>
           </h2>
           <p className="text-dark-400 text-center mb-12 max-w-2xl mx-auto">
-            با صرافی حاج عباس مخدومی، تجربه‌ای متفاوت از خرید و فروش ارز داشته باشید
+            با صرافی گلدن 2026، تجربه‌ای متفاوت از خرید و فروش ارز داشته باشید
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

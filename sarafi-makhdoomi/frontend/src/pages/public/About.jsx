@@ -14,7 +14,7 @@ const About = () => {
     <div className="container mx-auto px-4 py-12">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-gold-gradient mb-4">درباره ما</h1>
-        <p className="text-dark-400">با صرافی حاج عباس مخدومی بیشتر آشنا شوید</p>
+        <p className="text-dark-400">با صرافی گلدن 2026 بیشتر آشنا شوید</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -27,9 +27,9 @@ const About = () => {
         </div>
 
         <div>
-          <h2 className="text-2xl font-bold text-white mb-6">صرافی حاج عباس مخدومی</h2>
+          <h2 className="text-2xl font-bold text-white mb-6">صرافی گلدن 2026</h2>
           <p className="text-dark-300 leading-8 mb-6">
-            صرافی حاج عباس مخدومی با سال‌ها تجربه در زمینه خرید و فروش ارز،
+            صرافی گلدن 2026 با سال‌ها تجربه در زمینه خرید و فروش ارز،
             آماده ارائه بهترین خدمات به مشتریان گرامی است.
             ما با تکیه بر اصول صداقت، امانت‌داری و سرعت در ارائه خدمات،
             تلاش می‌کنیم تا بهترین تجربه را برای شما رقم بزنیم.

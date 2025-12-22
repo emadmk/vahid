@@ -36,8 +36,7 @@ const MainLayout = () => {
                 <span className="text-dark-900 font-bold text-xl">ص</span>
               </div>
               <div>
-                <h1 className="text-gold-500 font-bold text-lg">صرافی حاج عباس</h1>
-                <p className="text-dark-400 text-xs">مخدومی</p>
+                <h1 className="text-gold-500 font-bold text-lg">صرافی گلدن 2026</h1>
               </div>
             </Link>
 
@@ -143,7 +142,7 @@ const MainLayout = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {/* درباره ما */}
             <div>
-              <h3 className="text-gold-500 font-bold text-lg mb-4">صرافی حاج عباس مخدومی</h3>
+              <h3 className="text-gold-500 font-bold text-lg mb-4">صرافی گلدن 2026</h3>
               <p className="text-dark-400 text-sm leading-7">
                 با بیش از سال‌ها تجربه در زمینه خرید و فروش ارز، آماده ارائه بهترین خدمات به شما هستیم.
               </p>
@@ -192,7 +191,7 @@ const MainLayout = () => {
           </div>
 
           <div className="border-t border-dark-800 mt-8 pt-8 text-center text-dark-500 text-sm">
-            <p>© {new Date().getFullYear()} صرافی حاج عباس مخدومی - تمامی حقوق محفوظ است</p>
+            <p>© {new Date().getFullYear()} صرافی گلدن 2026 - تمامی حقوق محفوظ است</p>
           </div>
         </div>
       </footer>

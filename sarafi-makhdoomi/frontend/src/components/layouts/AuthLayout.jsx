@@ -12,7 +12,7 @@ const AuthLayout = () => {
               <span className="text-dark-900 font-bold text-2xl">ص</span>
             </div>
           </Link>
-          <h1 className="text-center text-gold-500 font-bold text-2xl mb-2">صرافی حاج عباس مخدومی</h1>
+          <h1 className="text-center text-gold-500 font-bold text-2xl mb-2">صرافی گلدن 2026</h1>
           <p className="text-center text-dark-400 text-sm mb-8">خرید و فروش ارز با بهترین نرخ</p>
 
           {/* فرم */}
@@ -35,7 +35,7 @@ const AuthLayout = () => {
           </div>
           <h2 className="text-3xl font-bold text-white mb-4">به صرافی ما خوش آمدید</h2>
           <p className="text-dark-300 text-lg leading-8 max-w-md">
-            با ثبت‌نام در صرافی حاج عباس مخدومی، از امکان خرید و فروش ارز با بهترین نرخ بهره‌مند شوید.
+            با ثبت‌نام در صرافی گلدن 2026، از امکان خرید و فروش ارز با بهترین نرخ بهره‌مند شوید.
           </p>
 
           <div className="mt-12 grid grid-cols-3 gap-8">

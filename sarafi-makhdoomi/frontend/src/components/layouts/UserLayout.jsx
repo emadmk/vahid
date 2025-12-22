@@ -65,7 +65,7 @@ const UserLayout = () => {
               </div>
               <div>
                 <h1 className="text-gold-500 font-bold">پنل کاربری</h1>
-                <p className="text-dark-500 text-xs">صرافی مخدومی</p>
+                <p className="text-dark-500 text-xs">صرافی گلدن 2026</p>
               </div>
             </Link>
           </div>
@@ -119,7 +119,7 @@ const UserLayout = () => {
           </button>
 
           <div className="flex-1 lg:hidden text-center">
-            <span className="text-gold-500 font-bold">صرافی مخدومی</span>
+            <span className="text-gold-500 font-bold">صرافی گلدن 2026</span>
           </div>
 
           <div className="flex items-center gap-4">

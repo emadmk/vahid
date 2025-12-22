@@ -39,7 +39,7 @@ const AdminLayout = () => {
               </div>
               <div>
                 <h1 className="text-gold-500 font-bold">پنل ادمین</h1>
-                <p className="text-dark-500 text-xs">صرافی مخدومی</p>
+                <p className="text-dark-500 text-xs">صرافی گلدن 2026</p>
               </div>
             </Link>
           </div>

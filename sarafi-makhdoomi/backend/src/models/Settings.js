@@ -4,7 +4,7 @@ const settingsSchema = new mongoose.Schema({
   // اطلاعات سایت
   siteName: {
     type: String,
-    default: 'صرافی حاج عباس مخدومی'
+    default: 'صرافی گلدن 2026'
   },
   siteDescription: String,
   siteLogo: String,

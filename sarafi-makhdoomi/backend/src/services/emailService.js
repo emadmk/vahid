@@ -16,7 +16,7 @@ class EmailService {
   async sendEmail(to, subject, html) {
     try {
       const mailOptions = {
-        from: `صرافی حاج عباس مخدومی <${process.env.EMAIL_USER}>`,
+        from: `صرافی گلدن 2026 <${process.env.EMAIL_USER}>`,
         to,
         subject,
         html
@@ -34,7 +34,7 @@ class EmailService {
     const html = `
       <div dir="rtl" style="font-family: Tahoma, Arial; padding: 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; border-radius: 10px;">
         <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #d4af37;">صرافی حاج عباس مخدومی</h1>
+          <h1 style="color: #d4af37;">صرافی گلدن 2026</h1>
         </div>
         <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; text-align: center;">
           <h2 style="color: #d4af37;">کد تایید شما</h2>
@@ -47,14 +47,14 @@ class EmailService {
       </div>
     `;
 
-    return this.sendEmail(email, 'کد تایید - صرافی حاج عباس مخدومی', html);
+    return this.sendEmail(email, 'کد تایید - صرافی گلدن 2026', html);
   }
 
   async sendWelcome(email, name) {
     const html = `
       <div dir="rtl" style="font-family: Tahoma, Arial; padding: 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; border-radius: 10px;">
         <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #d4af37;">صرافی حاج عباس مخدومی</h1>
+          <h1 style="color: #d4af37;">صرافی گلدن 2026</h1>
         </div>
         <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
           <h2 style="color: #d4af37;">خوش آمدید ${name} عزیز!</h2>
@@ -64,14 +64,14 @@ class EmailService {
       </div>
     `;
 
-    return this.sendEmail(email, 'خوش آمدید - صرافی حاج عباس مخدومی', html);
+    return this.sendEmail(email, 'خوش آمدید - صرافی گلدن 2026', html);
   }
 
   async sendApproval(email, name) {
     const html = `
       <div dir="rtl" style="font-family: Tahoma, Arial; padding: 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; border-radius: 10px;">
         <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #d4af37;">صرافی حاج عباس مخدومی</h1>
+          <h1 style="color: #d4af37;">صرافی گلدن 2026</h1>
         </div>
         <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
           <h2 style="color: #4CAF50;">حساب شما تایید شد!</h2>
@@ -81,14 +81,14 @@ class EmailService {
       </div>
     `;
 
-    return this.sendEmail(email, 'تایید حساب - صرافی حاج عباس مخدومی', html);
+    return this.sendEmail(email, 'تایید حساب - صرافی گلدن 2026', html);
   }
 
   async sendRejection(email, name, reason) {
     const html = `
       <div dir="rtl" style="font-family: Tahoma, Arial; padding: 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; border-radius: 10px;">
         <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #d4af37;">صرافی حاج عباس مخدومی</h1>
+          <h1 style="color: #d4af37;">صرافی گلدن 2026</h1>
         </div>
         <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
           <h2 style="color: #f44336;">متاسفانه درخواست شما رد شد</h2>
@@ -99,7 +99,7 @@ class EmailService {
       </div>
     `;
 
-    return this.sendEmail(email, 'رد درخواست - صرافی حاج عباس مخدومی', html);
+    return this.sendEmail(email, 'رد درخواست - صرافی گلدن 2026', html);
   }
 
   async sendRequestNotification(email, name, requestType, status, details = {}) {
@@ -117,7 +117,7 @@ class EmailService {
     const html = `
       <div dir="rtl" style="font-family: Tahoma, Arial; padding: 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; border-radius: 10px;">
         <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #d4af37;">صرافی حاج عباس مخدومی</h1>
+          <h1 style="color: #d4af37;">صرافی گلدن 2026</h1>
         </div>
         <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
           <h2 style="color: #d4af37;">وضعیت درخواست ${typeText}</h2>
@@ -129,7 +129,7 @@ class EmailService {
       </div>
     `;
 
-    return this.sendEmail(email, `وضعیت درخواست ${typeText} - صرافی حاج عباس مخدومی`, html);
+    return this.sendEmail(email, `وضعیت درخواست ${typeText} - صرافی گلدن 2026`, html);
   }
 }
 

@@ -1,7 +1,7 @@
 {
   "name": "sarafi-makhdoomi-backend",
   "version": "1.0.0",
-  "description": "صرافی حاج عباس مخدومی - سرور",
+  "description": "صرافی گلدن 2026 - سرور",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
