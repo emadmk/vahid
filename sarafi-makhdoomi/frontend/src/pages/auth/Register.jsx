@@ -150,21 +150,27 @@ const Register = () => {
           </div>
         </div>
 
-        {role === 'user' && sarafis.length > 0 && (
+        {role === 'user' && (
           <div>
             <label className="block text-dark-400 text-sm mb-2">انتخاب صراف</label>
-            <select
-              className="input-dark"
-              {...register('selectedSarafi', { required: role === 'user' ? 'انتخاب صراف الزامی است' : false })}
-            >
-              <option value="">انتخاب کنید...</option>
-              {sarafis.map((sarafi) => (
-                <option key={sarafi._id} value={sarafi._id}>
-                  {sarafi.firstName} {sarafi.lastName}
-                  {sarafi.sarafiInfo?.businessName && ` - ${sarafi.sarafiInfo.businessName}`}
-                </option>
-              ))}
-            </select>
+            {sarafis.length > 0 ? (
+              <select
+                className="input-dark"
+                {...register('selectedSarafi', { required: role === 'user' ? 'انتخاب صراف الزامی است' : false })}
+              >
+                <option value="">انتخاب کنید...</option>
+                {sarafis.map((sarafi) => (
+                  <option key={sarafi._id} value={sarafi._id}>
+                    {sarafi.firstName} {sarafi.lastName}
+                    {sarafi.sarafiInfo?.businessName && ` - ${sarafi.sarafiInfo.businessName}`}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="bg-dark-800 border border-dark-600 rounded-lg p-3 text-dark-400 text-sm">
+                در حال حاضر صرافی فعال وجود ندارد. لطفا بعدا تلاش کنید.
+              </div>
+            )}
             {errors.selectedSarafi && (
               <p className="text-red-400 text-xs mt-1">{errors.selectedSarafi.message}</p>
             )}

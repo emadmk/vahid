@@ -95,7 +95,7 @@ const VerifyEmail = () => {
       </p>
 
       <form onSubmit={handleSubmit}>
-        <div className="flex justify-center gap-3 mb-8 direction-ltr" onPaste={handlePaste}>
+        <div className="flex justify-center gap-3 mb-8" dir="ltr" onPaste={handlePaste}>
           {otp.map((digit, index) => (
             <input
               key={index}
@@ -107,6 +107,7 @@ const VerifyEmail = () => {
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               className="w-12 h-14 text-center text-2xl font-bold bg-dark-800 border border-dark-600 rounded-lg text-white focus:border-gold-500 focus:outline-none"
+              style={{ direction: 'ltr' }}
             />
           ))}
         </div>

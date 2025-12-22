@@ -251,7 +251,7 @@ const Profile = () => {
             </div>
           ) : (
             <a
-              href="https://t.me/YOUR_BOT_USERNAME"
+              href="https://t.me/sarafi2026bot"
               target="_blank"
               rel="noopener noreferrer"
               className="btn-gold inline-flex items-center gap-2"
