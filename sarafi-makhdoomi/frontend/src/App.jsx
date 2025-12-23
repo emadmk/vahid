@@ -51,6 +51,10 @@ import AdminSarafis from './pages/admin/Sarafis';
 import AdminRequests from './pages/admin/Requests';
 import AdminCurrencies from './pages/admin/Currencies';
 import AdminSettings from './pages/admin/Settings';
+import AdminTrades from './pages/admin/Trades';
+import AdminWallets from './pages/admin/Wallets';
+import AdminCustomerTiers from './pages/admin/CustomerTiers';
+import AdminCommissions from './pages/admin/Commissions';
 
 // کامپوننت محافظ روت
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -171,6 +175,10 @@ function App() {
           }
         >
           <Route index element={<AdminDashboard />} />
+          <Route path="trades" element={<AdminTrades />} />
+          <Route path="wallets" element={<AdminWallets />} />
+          <Route path="customer-tiers" element={<AdminCustomerTiers />} />
+          <Route path="commissions" element={<AdminCommissions />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="sarafis" element={<AdminSarafis />} />
           <Route path="requests" element={<AdminRequests />} />

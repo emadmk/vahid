@@ -92,7 +92,30 @@ export const adminAPI = {
 
   // تنظیمات
   getSettings: () => api.get('/admin/settings'),
-  updateSettings: (data) => api.put('/admin/settings', data)
+  updateSettings: (data) => api.put('/admin/settings', data),
+
+  // معاملات
+  getTrades: (params) => api.get('/admin/trades', { params }),
+  getTradeStats: () => api.get('/admin/trades/stats'),
+
+  // کیف پول‌ها
+  getWallets: (params) => api.get('/admin/wallets', { params }),
+  getWalletStats: () => api.get('/admin/wallets/stats'),
+  getWalletTransactions: (id) => api.get(`/admin/wallets/${id}/transactions`),
+
+  // رده‌بندی مشتریان
+  getCustomerTiers: () => api.get('/admin/customer-tiers'),
+  getCustomerTierStats: () => api.get('/admin/customer-tiers/stats'),
+  createCustomerTier: (data) => api.post('/admin/customer-tiers', data),
+  updateCustomerTier: (id, data) => api.put(`/admin/customer-tiers/${id}`, data),
+  deleteCustomerTier: (id) => api.delete(`/admin/customer-tiers/${id}`),
+
+  // کارمزد
+  getCommissions: () => api.get('/admin/commissions'),
+  getCommissionStats: () => api.get('/admin/commissions/stats'),
+  createCommission: (data) => api.post('/admin/commissions', data),
+  updateCommission: (id, data) => api.put(`/admin/commissions/${id}`, data),
+  deleteCommission: (id) => api.delete(`/admin/commissions/${id}`)
 };
 
 // صراف

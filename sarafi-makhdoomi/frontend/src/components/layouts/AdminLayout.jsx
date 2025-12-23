@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
   FaHome, FaUsers, FaExchangeAlt, FaCoins, FaCog, FaSignOutAlt,
-  FaBars, FaTimes, FaBell, FaUserTie
+  FaBars, FaTimes, FaBell, FaUserTie, FaWallet, FaMedal, FaPercent
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
 
@@ -14,10 +14,14 @@ const AdminLayout = () => {
 
   const menuItems = [
     { path: '/admin', label: 'داشبورد', icon: FaHome },
+    { path: '/admin/trades', label: 'معاملات', icon: FaExchangeAlt },
+    { path: '/admin/wallets', label: 'کیف پول‌ها', icon: FaWallet },
     { path: '/admin/users', label: 'کاربران', icon: FaUsers },
     { path: '/admin/sarafis', label: 'صراف‌ها', icon: FaUserTie },
-    { path: '/admin/requests', label: 'درخواست‌ها', icon: FaExchangeAlt },
+    { path: '/admin/customer-tiers', label: 'رده‌بندی مشتریان', icon: FaMedal },
+    { path: '/admin/commissions', label: 'کارمزد', icon: FaPercent },
     { path: '/admin/currencies', label: 'ارزها', icon: FaCoins },
+    { path: '/admin/requests', label: 'درخواست‌ها (قدیم)', icon: FaExchangeAlt },
     { path: '/admin/settings', label: 'تنظیمات', icon: FaCog }
   ];
 
