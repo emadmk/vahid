@@ -669,7 +669,7 @@ const seedDatabase = async () => {
       user: user1._id,
       title: 'معامله تکمیل شد',
       message: 'معامله خرید 1000 دلار با موفقیت تکمیل شد',
-      type: 'success',
+      type: 'request_completed',
       isRead: false
     });
 
@@ -677,7 +677,7 @@ const seedDatabase = async () => {
       user: user2._id,
       title: 'در انتظار وصول ریال',
       message: 'معامله فروش 500 یورو در انتظار وصول ریال است',
-      type: 'info',
+      type: 'system',
       isRead: false
     });
 
@@ -685,7 +685,7 @@ const seedDatabase = async () => {
       user: sarafi1._id,
       title: 'درخواست جدید',
       message: 'یک درخواست خرید جدید از مشتری دریافت شد',
-      type: 'info',
+      type: 'request_new',
       isRead: true
     });
 
@@ -693,7 +693,7 @@ const seedDatabase = async () => {
       user: admin._id,
       title: 'گزارش روزانه',
       message: '4 معامله جدید امروز ثبت شد',
-      type: 'info',
+      type: 'admin',
       isRead: false
     });
     console.log('   ✓ 4 اعلان ایجاد شد');
