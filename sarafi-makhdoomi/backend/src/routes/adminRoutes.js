@@ -24,6 +24,9 @@ const { protect, authorize } = require('../middlewares/auth');
 const Wallet = require('../models/Wallet');
 const WalletTransaction = require('../models/WalletTransaction');
 const walletService = require('../services/walletService');
+const Trade = require('../models/Trade');
+const CustomerTier = require('../models/CustomerTier');
+const User = require('../models/User');
 
 // همه روت‌ها نیاز به ادمین دارند
 router.use(protect, authorize('admin'));
@@ -225,6 +228,177 @@ router.post('/wallets/credit/decrease', async (req, res) => {
       message: `سقف اعتبار ${amount.toLocaleString()} ریال کاهش یافت`,
       data: result
     });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ========== مدیریت معاملات ==========
+
+// دریافت همه معاملات
+router.get('/trades', async (req, res) => {
+  try {
+    const { status, type, sarafi, search, page = 1, limit = 20 } = req.query;
+    const query = {};
+
+    if (status) query.status = status;
+    if (type) query.type = type;
+    if (sarafi) query.sarafi = sarafi;
+
+    const skip = (page - 1) * limit;
+
+    let trades = await Trade.find(query)
+      .populate('customer', 'firstName lastName phone')
+      .populate('sarafi', 'firstName lastName phone sarafiName')
+      .populate('currency', 'code name nameFa')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // فیلتر جستجو
+    if (search) {
+      trades = trades.filter(t =>
+        t.tradeNumber?.includes(search) ||
+        t.customer?.firstName?.includes(search) ||
+        t.customer?.lastName?.includes(search) ||
+        t.customer?.phone?.includes(search)
+      );
+    }
+
+    const total = await Trade.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: trades,
+      total,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// آمار معاملات
+router.get('/trades/stats', async (req, res) => {
+  try {
+    const stats = await Trade.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$totalAmount' }
+        }
+      }
+    ]);
+
+    const result = {
+      total: 0,
+      pending: 0,
+      processing: 0,
+      completed: 0,
+      cancelled: 0,
+      totalVolume: 0
+    };
+
+    stats.forEach(s => {
+      result.total += s.count;
+      result.totalVolume += s.totalAmount || 0;
+      if (s._id === 'pending') result.pending = s.count;
+      if (s._id === 'processing' || s._id === 'approved' || s._id === 'awaiting_currency' || s._id === 'awaiting_rial') {
+        result.processing += s.count;
+      }
+      if (s._id === 'completed') result.completed = s.count;
+      if (s._id === 'cancelled') result.cancelled = s.count;
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ========== مدیریت دسته‌بندی مشتریان ==========
+
+// دریافت همه دسته‌بندی‌ها
+router.get('/customer-tiers', async (req, res) => {
+  try {
+    const tiers = await CustomerTier.find({ isActive: true }).sort({ displayOrder: 1 });
+    res.json({ success: true, data: tiers });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// آمار دسته‌بندی مشتریان
+router.get('/customer-tiers/stats', async (req, res) => {
+  try {
+    // شمارش کاربران در هر سطح
+    const userStats = await User.aggregate([
+      { $match: { role: 'customer' } },
+      {
+        $group: {
+          _id: '$scoring.tier',
+          count: { $sum: 1 },
+          avgScore: { $avg: '$scoring.score' }
+        }
+      }
+    ]);
+
+    const tiers = await CustomerTier.find({ isActive: true }).sort({ displayOrder: 1 });
+
+    const result = {
+      tiers: tiers.map(tier => {
+        const stat = userStats.find(s => s._id === tier.code) || { count: 0, avgScore: 0 };
+        return {
+          code: tier.code,
+          name: tier.name,
+          color: tier.color,
+          userCount: stat.count,
+          avgScore: Math.round(stat.avgScore || 0)
+        };
+      }),
+      totalCustomers: userStats.reduce((sum, s) => sum + s.count, 0)
+    };
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ایجاد یا به‌روزرسانی دسته‌بندی
+router.post('/customer-tiers', async (req, res) => {
+  try {
+    const tierData = req.body;
+    const tier = await CustomerTier.findOneAndUpdate(
+      { code: tierData.code },
+      tierData,
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, data: tier });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// حذف دسته‌بندی
+router.delete('/customer-tiers/:code', async (req, res) => {
+  try {
+    await CustomerTier.findOneAndUpdate(
+      { code: req.params.code },
+      { isActive: false }
+    );
+    res.json({ success: true, message: 'دسته‌بندی غیرفعال شد' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// مقداردهی اولیه دسته‌بندی‌ها
+router.post('/customer-tiers/init', async (req, res) => {
+  try {
+    await CustomerTier.initDefaultTiers();
+    res.json({ success: true, message: 'دسته‌بندی‌های پیش‌فرض ایجاد شدند' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
