@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   FaTelegram, FaCog, FaPlay, FaCheck, FaTimes,
-  FaSync, FaClock, FaDollarSign, FaCoins, FaKey, FaPhone
+  FaSync, FaClock, FaDollarSign, FaCoins
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -11,8 +11,6 @@ const RateScraper = () => {
   const [settings, setSettings] = useState({
     enabled: false,
     intervalMinutes: 5,
-    telegramApiId: '',
-    telegramApiHash: '',
     dollarChannel: 'dollar_tehran3bze',
     goldChannel: 'abshdh',
     conversionRates: {
@@ -25,19 +23,11 @@ const RateScraper = () => {
     buySpread: 0.5,
     sellSpread: 0.5,
     lastRun: null,
-    lastError: null,
-    telegramSession: ''
+    lastError: null
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
-
-  // احراز هویت تلگرام
-  const [authStep, setAuthStep] = useState(0); // 0: not started, 1: waiting code, 2: done
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [phoneCodeHash, setPhoneCodeHash] = useState('');
-  const [verifyCode, setVerifyCode] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
 
   // تست کانال
   const [testResult, setTestResult] = useState(null);
@@ -52,9 +42,6 @@ const RateScraper = () => {
       const res = await api.get('/admin/rate-scraper/settings');
       if (res.data.success) {
         setSettings(prev => ({ ...prev, ...res.data.data }));
-        if (res.data.data.telegramSession) {
-          setAuthStep(2);
-        }
       }
     } catch (e) {
       console.error(e);
@@ -92,62 +79,6 @@ const RateScraper = () => {
     }
   };
 
-  const handleStartAuth = async () => {
-    if (!settings.telegramApiId || !settings.telegramApiHash || !phoneNumber) {
-      toast.error('همه فیلدها را پر کنید');
-      return;
-    }
-
-    setAuthLoading(true);
-    try {
-      const res = await api.post('/admin/rate-scraper/auth/start', {
-        apiId: settings.telegramApiId,
-        apiHash: settings.telegramApiHash,
-        phoneNumber
-      });
-
-      if (res.data.success) {
-        setPhoneCodeHash(res.data.phoneCodeHash);
-        setAuthStep(1);
-        toast.success('کد تایید به تلگرام شما ارسال شد');
-      } else {
-        toast.error(res.data.error || 'خطا');
-      }
-    } catch (e) {
-      toast.error(e.response?.data?.message || 'خطا');
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async () => {
-    if (!verifyCode) {
-      toast.error('کد را وارد کنید');
-      return;
-    }
-
-    setAuthLoading(true);
-    try {
-      const res = await api.post('/admin/rate-scraper/auth/verify', {
-        phoneNumber,
-        phoneCodeHash,
-        code: verifyCode
-      });
-
-      if (res.data.success) {
-        setAuthStep(2);
-        toast.success('لاگین موفق به تلگرام');
-        fetchSettings();
-      } else {
-        toast.error(res.data.error || 'کد نادرست');
-      }
-    } catch (e) {
-      toast.error(e.response?.data?.message || 'خطا');
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
   const handleTestChannel = async (channel, type) => {
     setTestLoading(true);
     setTestResult(null);
@@ -164,6 +95,7 @@ const RateScraper = () => {
           dollarRate: res.data.data.parsedDollarRate,
           goldRate: res.data.data.parsedGoldRate
         });
+        toast.success('کانال با موفقیت خوانده شد');
       } else {
         toast.error(res.data.message || 'خطا');
       }
@@ -189,7 +121,7 @@ const RateScraper = () => {
         <div className="flex gap-3">
           <button
             onClick={handleRun}
-            disabled={running || authStep !== 2}
+            disabled={running}
             className="btn-gold flex items-center gap-2"
           >
             {running ? <FaSync className="animate-spin" /> : <FaPlay />}
@@ -204,6 +136,15 @@ const RateScraper = () => {
             ذخیره تنظیمات
           </button>
         </div>
+      </div>
+
+      {/* راهنما */}
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
+        <p className="text-blue-400">
+          <FaTelegram className="inline ml-2" />
+          این سیستم نرخ‌ها را از کانال‌های عمومی تلگرام می‌خواند و به‌صورت خودکار در سیستم به‌روزرسانی می‌کند.
+          نیازی به API یا لاگین تلگرام نیست!
+        </p>
       </div>
 
       {/* وضعیت */}
@@ -261,104 +202,6 @@ const RateScraper = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* تنظیمات API تلگرام */}
-        <div className="card-dark">
-          <div className="flex items-center gap-2 mb-4">
-            <FaTelegram className="text-blue-400 text-xl" />
-            <h3 className="text-white font-bold">احراز هویت تلگرام</h3>
-            {authStep === 2 && (
-              <span className="badge badge-success mr-auto">متصل</span>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div className="bg-dark-700/50 rounded-lg p-4 text-sm text-dark-300">
-              <p className="mb-2">برای دریافت API ID و API Hash:</p>
-              <ol className="list-decimal mr-4 space-y-1">
-                <li>به <a href="https://my.telegram.org" target="_blank" rel="noopener" className="text-blue-400 hover:underline">my.telegram.org</a> بروید</li>
-                <li>با شماره تلگرام خود لاگین کنید</li>
-                <li>روی "API development tools" کلیک کنید</li>
-                <li>یک اپ بسازید و API ID و Hash را کپی کنید</li>
-              </ol>
-            </div>
-
-            <div>
-              <label className="block text-dark-400 text-sm mb-2">API ID</label>
-              <input
-                type="text"
-                className="input-dark"
-                placeholder="12345678"
-                value={settings.telegramApiId}
-                onChange={(e) => setSettings({ ...settings, telegramApiId: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className="block text-dark-400 text-sm mb-2">API Hash</label>
-              <input
-                type="text"
-                className="input-dark"
-                placeholder="abcdef1234567890..."
-                value={settings.telegramApiHash}
-                onChange={(e) => setSettings({ ...settings, telegramApiHash: e.target.value })}
-              />
-            </div>
-
-            {authStep === 0 && (
-              <>
-                <div>
-                  <label className="block text-dark-400 text-sm mb-2">شماره تلفن (با +98)</label>
-                  <input
-                    type="text"
-                    className="input-dark"
-                    placeholder="+989123456789"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                  />
-                </div>
-                <button
-                  onClick={handleStartAuth}
-                  disabled={authLoading}
-                  className="btn-primary w-full flex items-center justify-center gap-2"
-                >
-                  {authLoading ? <FaSync className="animate-spin" /> : <FaPhone />}
-                  ارسال کد تایید
-                </button>
-              </>
-            )}
-
-            {authStep === 1 && (
-              <>
-                <div>
-                  <label className="block text-dark-400 text-sm mb-2">کد تایید تلگرام</label>
-                  <input
-                    type="text"
-                    className="input-dark"
-                    placeholder="12345"
-                    value={verifyCode}
-                    onChange={(e) => setVerifyCode(e.target.value)}
-                  />
-                </div>
-                <button
-                  onClick={handleVerifyCode}
-                  disabled={authLoading}
-                  className="btn-primary w-full flex items-center justify-center gap-2"
-                >
-                  {authLoading ? <FaSync className="animate-spin" /> : <FaKey />}
-                  تایید کد
-                </button>
-              </>
-            )}
-
-            {authStep === 2 && (
-              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-green-400 text-center">
-                <FaCheck className="inline ml-2" />
-                به تلگرام متصل هستید
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* تنظیمات کانال‌ها */}
         <div className="card-dark">
           <div className="flex items-center gap-2 mb-4">
@@ -408,10 +251,10 @@ const RateScraper = () => {
                 />
                 <button
                   onClick={() => handleTestChannel(settings.dollarChannel, 'dollar')}
-                  disabled={testLoading || authStep !== 2}
+                  disabled={testLoading}
                   className="btn-outline px-4"
                 >
-                  تست
+                  {testLoading ? <FaSync className="animate-spin" /> : 'تست'}
                 </button>
               </div>
             </div>
@@ -431,10 +274,10 @@ const RateScraper = () => {
                 />
                 <button
                   onClick={() => handleTestChannel(settings.goldChannel, 'gold')}
-                  disabled={testLoading || authStep !== 2}
+                  disabled={testLoading}
                   className="btn-outline px-4"
                 >
-                  تست
+                  {testLoading ? <FaSync className="animate-spin" /> : 'تست'}
                 </button>
               </div>
             </div>
@@ -467,78 +310,82 @@ const RateScraper = () => {
         </div>
 
         {/* ضرایب تبدیل */}
-        <div className="card-dark lg:col-span-2">
+        <div className="card-dark">
           <h3 className="text-white font-bold mb-4">ضرایب تبدیل دلار به سایر ارزها</h3>
           <p className="text-dark-400 text-sm mb-4">
-            این ضرایب برای محاسبه نرخ سایر ارزها بر اساس نرخ دلار استفاده می‌شوند.
-            مثلاً اگر ضریب یورو 0.92 باشد، یعنی هر 1 دلار = 0.92 یورو
+            نرخ سایر ارزها بر اساس نرخ دلار و این ضرایب محاسبه می‌شوند.
           </p>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div>
-              <label className="block text-dark-400 text-sm mb-2">یورو (EUR)</label>
-              <input
-                type="number"
-                className="input-dark"
-                step="0.01"
-                value={settings.conversionRates?.usdToEur || 0.92}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  conversionRates: { ...settings.conversionRates, usdToEur: parseFloat(e.target.value) }
-                })}
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-dark-400 text-sm mb-2">یورو (EUR)</label>
+                <input
+                  type="number"
+                  className="input-dark"
+                  step="0.01"
+                  value={settings.conversionRates?.usdToEur || 0.92}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    conversionRates: { ...settings.conversionRates, usdToEur: parseFloat(e.target.value) }
+                  })}
+                />
+              </div>
+              <div>
+                <label className="block text-dark-400 text-sm mb-2">پوند (GBP)</label>
+                <input
+                  type="number"
+                  className="input-dark"
+                  step="0.01"
+                  value={settings.conversionRates?.usdToGbp || 0.79}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    conversionRates: { ...settings.conversionRates, usdToGbp: parseFloat(e.target.value) }
+                  })}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-dark-400 text-sm mb-2">پوند (GBP)</label>
-              <input
-                type="number"
-                className="input-dark"
-                step="0.01"
-                value={settings.conversionRates?.usdToGbp || 0.79}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  conversionRates: { ...settings.conversionRates, usdToGbp: parseFloat(e.target.value) }
-                })}
-              />
-            </div>
-            <div>
-              <label className="block text-dark-400 text-sm mb-2">درهم (AED)</label>
-              <input
-                type="number"
-                className="input-dark"
-                step="0.01"
-                value={settings.conversionRates?.usdToAed || 3.67}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  conversionRates: { ...settings.conversionRates, usdToAed: parseFloat(e.target.value) }
-                })}
-              />
-            </div>
-            <div>
-              <label className="block text-dark-400 text-sm mb-2">دلار کانادا (CAD)</label>
-              <input
-                type="number"
-                className="input-dark"
-                step="0.01"
-                value={settings.conversionRates?.usdToCad || 1.36}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  conversionRates: { ...settings.conversionRates, usdToCad: parseFloat(e.target.value) }
-                })}
-              />
-            </div>
-            <div>
-              <label className="block text-dark-400 text-sm mb-2">لیر ترکیه (TRY)</label>
-              <input
-                type="number"
-                className="input-dark"
-                step="0.1"
-                value={settings.conversionRates?.usdToTry || 32.5}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  conversionRates: { ...settings.conversionRates, usdToTry: parseFloat(e.target.value) }
-                })}
-              />
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-dark-400 text-sm mb-2">درهم (AED)</label>
+                <input
+                  type="number"
+                  className="input-dark"
+                  step="0.01"
+                  value={settings.conversionRates?.usdToAed || 3.67}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    conversionRates: { ...settings.conversionRates, usdToAed: parseFloat(e.target.value) }
+                  })}
+                />
+              </div>
+              <div>
+                <label className="block text-dark-400 text-sm mb-2">دلار کانادا</label>
+                <input
+                  type="number"
+                  className="input-dark"
+                  step="0.01"
+                  value={settings.conversionRates?.usdToCad || 1.36}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    conversionRates: { ...settings.conversionRates, usdToCad: parseFloat(e.target.value) }
+                  })}
+                />
+              </div>
+              <div>
+                <label className="block text-dark-400 text-sm mb-2">لیر ترکیه</label>
+                <input
+                  type="number"
+                  className="input-dark"
+                  step="0.1"
+                  value={settings.conversionRates?.usdToTry || 32.5}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    conversionRates: { ...settings.conversionRates, usdToTry: parseFloat(e.target.value) }
+                  })}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -549,31 +396,39 @@ const RateScraper = () => {
             <h3 className="text-white font-bold mb-4">نتیجه تست کانال: @{testResult.channel}</h3>
 
             <div className="bg-dark-700/50 rounded-lg p-4 mb-4">
-              <p className="text-dark-400 text-sm mb-2">پیام:</p>
+              <p className="text-dark-400 text-sm mb-2">آخرین پیام:</p>
               <p className="text-white whitespace-pre-wrap text-sm">{testResult.message}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+              <div className={`rounded-lg p-4 ${testResult.dollarRate ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
                 <p className="text-dark-400 text-sm mb-2">نرخ دلار استخراج شده:</p>
                 {testResult.dollarRate ? (
-                  <p className="text-green-400">
-                    خرید: {testResult.dollarRate.buyRate?.toLocaleString()} -
-                    فروش: {testResult.dollarRate.sellRate?.toLocaleString()}
-                  </p>
+                  <div>
+                    <p className="text-green-400 text-lg font-bold">
+                      خرید: {testResult.dollarRate.buyRate?.toLocaleString()} تومان
+                    </p>
+                    <p className="text-green-400 text-lg font-bold">
+                      فروش: {testResult.dollarRate.sellRate?.toLocaleString()} تومان
+                    </p>
+                  </div>
                 ) : (
-                  <p className="text-red-400">استخراج نشد</p>
+                  <p className="text-red-400">استخراج نشد - فرمت پیام با الگوها مطابقت ندارد</p>
                 )}
               </div>
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+              <div className={`rounded-lg p-4 ${testResult.goldRate ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
                 <p className="text-dark-400 text-sm mb-2">نرخ طلا استخراج شده:</p>
                 {testResult.goldRate ? (
-                  <p className="text-yellow-400">
-                    خرید: {testResult.goldRate.buyRate?.toLocaleString()} -
-                    فروش: {testResult.goldRate.sellRate?.toLocaleString()}
-                  </p>
+                  <div>
+                    <p className="text-yellow-400 text-lg font-bold">
+                      خرید: {testResult.goldRate.buyRate?.toLocaleString()} تومان
+                    </p>
+                    <p className="text-yellow-400 text-lg font-bold">
+                      فروش: {testResult.goldRate.sellRate?.toLocaleString()} تومان
+                    </p>
+                  </div>
                 ) : (
-                  <p className="text-red-400">استخراج نشد</p>
+                  <p className="text-red-400">استخراج نشد - فرمت پیام با الگوها مطابقت ندارد</p>
                 )}
               </div>
             </div>

@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const Settings = require('../models/Settings');
-const rateScraperService = require('../services/rateScraperService');
+// استفاده از روش ساده (بدون نیاز به API تلگرام)
+const rateScraperService = require('../services/rateScraperServiceSimple');
 
 let currentJob = null;
 
