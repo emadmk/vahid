@@ -58,21 +58,26 @@ class TgjuScraperService {
       const html = response.data;
       const rates = {};
 
-      // الگوی regex برای استخراج هر سطر که شامل data-market-row و data-price باشه
-      // چون این دو اتریبیوت پشت سر هم نیستن، باید کل سطر رو پیدا کنیم
-      const rowRegex = /<tr[^>]*data-market-row="([^"]+)"[^>]*data-price="([^"]+)"[^>]*>/g;
-      let match;
+      // پیدا کردن همه خطوطی که شامل data-market-row و data-price هستن
+      const lines = html.split('\n');
 
-      while ((match = rowRegex.exec(html)) !== null) {
-        const marketRow = match[1];
-        const priceStr = match[2];
+      for (const line of lines) {
+        // استخراج data-market-row
+        const rowMatch = line.match(/data-market-row="([^"]+)"/);
+        // استخراج data-price
+        const priceMatch = line.match(/data-price="([^"]+)"/);
 
-        // حذف کاما از قیمت
-        const price = parseInt(priceStr.replace(/,/g, ''));
+        if (rowMatch && priceMatch) {
+          const marketRow = rowMatch[1];
+          const priceStr = priceMatch[1];
 
-        if (this.currencyMapping[marketRow] && !isNaN(price) && price > 0) {
-          rates[this.currencyMapping[marketRow]] = price;
-          console.log(`  📊 ${marketRow} -> ${this.currencyMapping[marketRow]}: ${price.toLocaleString()}`);
+          // حذف کاما از قیمت
+          const price = parseInt(priceStr.replace(/,/g, ''));
+
+          if (this.currencyMapping[marketRow] && !isNaN(price) && price > 0) {
+            rates[this.currencyMapping[marketRow]] = price;
+            console.log(`  📊 ${marketRow} -> ${this.currencyMapping[marketRow]}: ${price.toLocaleString()}`);
+          }
         }
       }
 
