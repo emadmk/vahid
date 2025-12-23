@@ -160,12 +160,49 @@ class TgjuScraperService {
   }
 
   /**
-   * دریافت نرخ‌های کریپتو
+   * دریافت نرخ‌های کریپتو - ساختار متفاوت از ارز و طلا
+   * در صفحه کریپتو: data-market-p="crypto-bitcoin-irr">118,176,118,800</div>
    */
   async fetchCryptoRates() {
     console.log('🔄 در حال دریافت نرخ‌های کریپتو از TGJU...');
     const html = await this.fetchPage(this.urls.crypto);
-    const rates = this.parseRates(html, this.cryptoMapping);
+    const rates = {};
+
+    if (!html) {
+      console.log('  ⚠️ صفحه کریپتو دریافت نشد');
+      return rates;
+    }
+
+    // نگاشت کریپتو برای صفحه crypto
+    const cryptoIrrMapping = {
+      'crypto-bitcoin-irr': 'BTC',
+      'crypto-ethereum-irr': 'ETH',
+      'crypto-tether-irr': 'USDT',
+      'crypto-binance-coin-irr': 'BNB',
+      'crypto-ripple-irr': 'XRP',
+      'crypto-cardano-irr': 'ADA',
+      'crypto-dogecoin-irr': 'DOGE',
+      'crypto-solana-irr': 'SOL',
+      'crypto-polkadot-new-irr': 'DOT',
+      'crypto-litecoin-irr': 'LTC'
+    };
+
+    // الگو: data-market-p="crypto-bitcoin-irr" >118,176,118,800</div>
+    for (const [dataKey, code] of Object.entries(cryptoIrrMapping)) {
+      // جستجوی الگو با regex
+      const regex = new RegExp(`data-market-p="${dataKey}"[^>]*>([\\d,]+)<`, 'i');
+      const match = html.match(regex);
+
+      if (match && match[1]) {
+        const priceStr = match[1].replace(/,/g, '');
+        const price = parseInt(priceStr);
+
+        if (!isNaN(price) && price > 0) {
+          rates[code] = price;
+        }
+      }
+    }
+
     console.log(`  ✅ ${Object.keys(rates).length} نرخ کریپتو دریافت شد`);
     return rates;
   }
