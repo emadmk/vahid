@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FaChevronDown, FaCheck } from 'react-icons/fa';
 
 const Select = ({
@@ -10,7 +11,21 @@ const Select = ({
   disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const selectRef = useRef(null);
+  const buttonRef = useRef(null);
+
+  // محاسبه موقعیت dropdown
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  }, [isOpen]);
 
   // بستن منو با کلیک بیرون
   useEffect(() => {
@@ -30,10 +45,50 @@ const Select = ({
     setIsOpen(false);
   };
 
+  // رندر dropdown با Portal برای جلوگیری از مشکلات z-index
+  const renderDropdown = () => {
+    if (!isOpen) return null;
+
+    return createPortal(
+      <div
+        className="fixed py-1 bg-dark-800 border border-dark-600 rounded-lg shadow-2xl max-h-60 overflow-y-auto"
+        style={{
+          top: dropdownPosition.top,
+          left: dropdownPosition.left,
+          width: dropdownPosition.width,
+          zIndex: 99999
+        }}
+      >
+        {options.map((option, index) => (
+          <button
+            key={option.value ?? index}
+            type="button"
+            onClick={() => handleSelect(option.value)}
+            className={`
+              w-full flex items-center justify-between px-4 py-2.5
+              text-right transition-colors duration-150
+              ${option.value === value
+                ? 'bg-gold-500/20 text-gold-500'
+                : 'text-white hover:bg-dark-700'
+              }
+            `}
+          >
+            <span>{option.label}</span>
+            {option.value === value && (
+              <FaCheck className="text-gold-500 text-xs" />
+            )}
+          </button>
+        ))}
+      </div>,
+      document.body
+    );
+  };
+
   return (
     <div ref={selectRef} className={`relative ${className}`}>
       {/* دکمه انتخاب */}
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
@@ -55,31 +110,8 @@ const Select = ({
         />
       </button>
 
-      {/* منوی آپشن‌ها */}
-      {isOpen && (
-        <div className="absolute z-50 w-full mt-1 py-1 bg-dark-800 border border-dark-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-          {options.map((option, index) => (
-            <button
-              key={option.value || index}
-              type="button"
-              onClick={() => handleSelect(option.value)}
-              className={`
-                w-full flex items-center justify-between px-4 py-2.5
-                text-right transition-colors duration-150
-                ${option.value === value
-                  ? 'bg-gold-500/20 text-gold-500'
-                  : 'text-white hover:bg-dark-700'
-                }
-              `}
-            >
-              <span>{option.label}</span>
-              {option.value === value && (
-                <FaCheck className="text-gold-500 text-xs" />
-              )}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* منوی آپشن‌ها - با Portal */}
+      {renderDropdown()}
     </div>
   );
 };
