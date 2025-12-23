@@ -18,6 +18,11 @@ const adminRoutes = require('./routes/adminRoutes');
 const sarafiRoutes = require('./routes/sarafiRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const publicRoutes = require('./routes/publicRoutes');
+// روت‌های جدید سیستم معاملات
+const walletRoutes = require('./routes/walletRoutes');
+const tradeRoutes = require('./routes/tradeRoutes');
+const marketRoutes = require('./routes/marketRoutes');
+const scoringRoutes = require('./routes/scoringRoutes');
 
 const app = express();
 
@@ -55,6 +60,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/sarafi', sarafiRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/public', publicRoutes);
+// روت‌های جدید سیستم معاملات
+app.use('/api/wallets', walletRoutes);
+app.use('/api/trades', tradeRoutes);
+app.use('/api/market', marketRoutes);
+app.use('/api/scoring', scoringRoutes);
 
 // روت سلامت
 app.get('/api/health', (req, res) => {
@@ -85,6 +95,12 @@ const server = app.listen(PORT, async () => {
 
   // ایجاد ادمین پیش‌فرض
   await initializeAdmin();
+
+  // ایجاد دسته‌بندی‌های مشتریان
+  await initializeCustomerTiers();
+
+  // ایجاد قوانین کارمزد پیش‌فرض
+  await initializeCommissionRules();
 });
 
 // ایجاد ارزهای پیش‌فرض
@@ -127,6 +143,20 @@ async function initializeAdmin() {
     });
     console.log('✅ ادمین پیش‌فرض ایجاد شد: admin@sarafi.com / Admin@123456');
   }
+}
+
+// ایجاد دسته‌بندی‌های مشتریان
+async function initializeCustomerTiers() {
+  const CustomerTier = require('./models/CustomerTier');
+  await CustomerTier.initDefaultTiers();
+  console.log('✅ دسته‌بندی‌های مشتریان ایجاد شد');
+}
+
+// ایجاد قوانین کارمزد پیش‌فرض
+async function initializeCommissionRules() {
+  const commissionService = require('./services/commissionService');
+  await commissionService.initDefaultRules();
+  console.log('✅ قوانین کارمزد پیش‌فرض ایجاد شد');
 }
 
 // مدیریت خطاهای پردازش نشده

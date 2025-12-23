@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const emailService = require('../services/emailService');
+const walletService = require('../services/walletService');
 
 // ثبت‌نام
 exports.register = async (req, res, next) => {
@@ -68,6 +69,15 @@ exports.verifyEmail = async (req, res, next) => {
     user.emailOtp = undefined;
     user.emailOtpExpire = undefined;
     await user.save();
+
+    // ایجاد کیف پول‌ها برای کاربران عادی
+    if (user.role === 'user') {
+      try {
+        await walletService.createWalletsForUser(user._id, user.selectedSarafi);
+      } catch (walletError) {
+        console.error('خطا در ایجاد کیف پول:', walletError);
+      }
+    }
 
     // ارسال ایمیل خوش‌آمدگویی
     await emailService.sendWelcome(user.email, user.firstName);

@@ -128,6 +128,103 @@ const userSchema = new mongoose.Schema({
   // آخرین فعالیت
   lastActivity: Date,
 
+  // ========== فیلدهای جدید سیستم امتیازدهی ==========
+
+  // امتیاز کاربر
+  score: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  // امتیاز منفی (بلک‌پوینت)
+  blackPoints: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  // دسته‌بندی مشتری
+  tier: {
+    type: String,
+    enum: ['A', 'B', 'C', 'new'],
+    default: 'new'
+  },
+
+  // تعداد لغوها
+  cancellationCount: {
+    type: Number,
+    default: 0
+  },
+
+  // ========== وضعیت تعلیق ==========
+
+  suspension: {
+    isSuspended: {
+      type: Boolean,
+      default: false
+    },
+    suspendedAt: Date,
+    suspendedUntil: Date,
+    reason: String,
+    suspendedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  },
+
+  // ========== اطلاعات مالی مشتری ==========
+
+  financialInfo: {
+    // حجم کل معاملات (به ریال)
+    totalTradeVolume: {
+      type: Number,
+      default: 0
+    },
+    // تعداد معاملات موفق
+    successfulTrades: {
+      type: Number,
+      default: 0
+    },
+    // آخرین معامله
+    lastTradeDate: Date,
+    // میانگین حجم معاملات
+    averageTradeVolume: {
+      type: Number,
+      default: 0
+    }
+  },
+
+  // ========== اطلاعات اضافی صراف ==========
+
+  sarafiStats: {
+    // امتیاز صراف (1 امتیاز به ازای هر 10 میلیارد ریال)
+    score: {
+      type: Number,
+      default: 0
+    },
+    // تعداد مشتریان فعال
+    activeCustomers: {
+      type: Number,
+      default: 0
+    },
+    // حجم کل معاملات
+    totalVolume: {
+      type: Number,
+      default: 0
+    },
+    // نرخ موفقیت معاملات
+    successRate: {
+      type: Number,
+      default: 100
+    },
+    // میانگین زمان پاسخگویی (به دقیقه)
+    avgResponseTime: {
+      type: Number,
+      default: 0
+    }
+  },
+
   createdAt: {
     type: Date,
     default: Date.now
@@ -176,6 +273,111 @@ userSchema.methods.generateOtp = function(type = 'email') {
 userSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
 });
+
+// بررسی تعلیق
+userSchema.virtual('isCurrentlySuspended').get(function() {
+  if (!this.suspension?.isSuspended) return false;
+  if (!this.suspension.suspendedUntil) return true;
+  return new Date() < this.suspension.suspendedUntil;
+});
+
+// متد به‌روزرسانی دسته بر اساس امتیاز
+userSchema.methods.updateTier = async function() {
+  let newTier = 'new';
+
+  if (this.score >= 1000) {
+    newTier = 'A';
+  } else if (this.score >= 500) {
+    newTier = 'B';
+  } else if (this.score >= 100) {
+    newTier = 'C';
+  }
+
+  if (this.tier !== newTier) {
+    this.tier = newTier;
+    await this.save();
+  }
+
+  return newTier;
+};
+
+// متد اضافه کردن امتیاز
+userSchema.methods.addScore = async function(points) {
+  this.score += points;
+  await this.updateTier();
+  return this.score;
+};
+
+// متد کم کردن امتیاز و اضافه کردن بلک‌پوینت (برای لغو)
+userSchema.methods.applyCancellationPenalty = async function() {
+  // کم کردن 100 امتیاز
+  this.score = Math.max(0, this.score - 100);
+  // اضافه کردن 1 بلک‌پوینت
+  this.blackPoints += 1;
+  // افزایش تعداد لغوها
+  this.cancellationCount += 1;
+
+  await this.updateTier();
+  return {
+    newScore: this.score,
+    blackPoints: this.blackPoints,
+    tier: this.tier
+  };
+};
+
+// متد تعلیق کاربر
+userSchema.methods.suspend = async function(reason, duration, suspendedBy) {
+  this.suspension = {
+    isSuspended: true,
+    suspendedAt: new Date(),
+    suspendedUntil: duration ? new Date(Date.now() + duration) : null,
+    reason,
+    suspendedBy
+  };
+  await this.save();
+};
+
+// متد رفع تعلیق
+userSchema.methods.unsuspend = async function() {
+  this.suspension = {
+    isSuspended: false,
+    suspendedAt: null,
+    suspendedUntil: null,
+    reason: null,
+    suspendedBy: null
+  };
+  await this.save();
+};
+
+// متد به‌روزرسانی آمار مالی
+userSchema.methods.updateFinancialStats = async function(tradeAmount) {
+  const stats = this.financialInfo;
+  stats.totalTradeVolume += tradeAmount;
+  stats.successfulTrades += 1;
+  stats.lastTradeDate = new Date();
+  stats.averageTradeVolume = stats.totalTradeVolume / stats.successfulTrades;
+
+  // محاسبه امتیاز جدید (1 امتیاز به ازای هر 100 میلیون ریال)
+  const newPoints = Math.floor(tradeAmount / 100000000);
+  if (newPoints > 0) {
+    await this.addScore(newPoints);
+  }
+
+  await this.save();
+};
+
+// متد به‌روزرسانی آمار صراف
+userSchema.methods.updateSarafiStats = async function(tradeAmount) {
+  if (this.role !== 'sarafi') return;
+
+  const stats = this.sarafiStats;
+  stats.totalVolume += tradeAmount;
+
+  // محاسبه امتیاز صراف (1 امتیاز به ازای هر 10 میلیارد ریال)
+  stats.score = Math.floor(stats.totalVolume / 10000000000);
+
+  await this.save();
+};
 
 userSchema.set('toJSON', { virtuals: true });
 userSchema.set('toObject', { virtuals: true });
