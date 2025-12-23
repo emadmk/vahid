@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import {
   FaHome, FaUsers, FaExchangeAlt, FaGlobe, FaUser, FaSignOutAlt,
-  FaBars, FaTimes, FaBell
+  FaBars, FaTimes, FaBell, FaCalculator, FaCoins, FaMoneyBillWave, FaStore
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
 import { notificationAPI } from '../../services/api';
@@ -16,9 +16,12 @@ const SarafiLayout = () => {
 
   const menuItems = [
     { path: '/sarafi', label: 'داشبورد', icon: FaHome },
-    { path: '/sarafi/requests', label: 'درخواست‌ها', icon: FaExchangeAlt },
+    { path: '/sarafi/trades', label: 'معاملات', icon: FaExchangeAlt },
+    { path: '/sarafi/accountant', label: 'حسابداری', icon: FaCalculator },
+    { path: '/sarafi/currency-collection', label: 'وصول ارزی', icon: FaCoins },
+    { path: '/sarafi/rial-collection', label: 'وصول ریالی', icon: FaMoneyBillWave },
     { path: '/sarafi/customers', label: 'مشتریان', icon: FaUsers },
-    { path: '/sarafi/public-requests', label: 'درخواست‌های عمومی', icon: FaGlobe },
+    { path: '/sarafi/requests', label: 'درخواست‌ها (قدیم)', icon: FaGlobe },
     { path: '/sarafi/profile', label: 'پروفایل', icon: FaUser }
   ];
 

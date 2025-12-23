@@ -28,6 +28,10 @@ import UserRequests from './pages/user/Requests';
 import NewRequest from './pages/user/NewRequest';
 import UserProfile from './pages/user/Profile';
 import PublicRequests from './pages/user/PublicRequests';
+import UserWallet from './pages/user/Wallet';
+import UserScore from './pages/user/Score';
+import UserMarket from './pages/user/Market';
+import UserTrades from './pages/user/Trades';
 
 // صفحات صراف
 import SarafiDashboard from './pages/sarafi/Dashboard';
@@ -35,6 +39,10 @@ import SarafiRequests from './pages/sarafi/Requests';
 import SarafiCustomers from './pages/sarafi/Customers';
 import SarafiPublicRequests from './pages/sarafi/PublicRequests';
 import SarafiProfile from './pages/sarafi/Profile';
+import SarafiTrades from './pages/sarafi/Trades';
+import SarafiAccountant from './pages/sarafi/Accountant';
+import SarafiCurrencyCollection from './pages/sarafi/CurrencyCollection';
+import SarafiRialCollection from './pages/sarafi/RialCollection';
 
 // صفحات ادمین
 import AdminDashboard from './pages/admin/Dashboard';
@@ -123,6 +131,10 @@ function App() {
           }
         >
           <Route index element={<UserDashboard />} />
+          <Route path="wallet" element={<UserWallet />} />
+          <Route path="trades" element={<UserTrades />} />
+          <Route path="market" element={<UserMarket />} />
+          <Route path="score" element={<UserScore />} />
           <Route path="requests" element={<UserRequests />} />
           <Route path="new-request" element={<NewRequest />} />
           <Route path="public-requests" element={<PublicRequests />} />
@@ -139,6 +151,10 @@ function App() {
           }
         >
           <Route index element={<SarafiDashboard />} />
+          <Route path="trades" element={<SarafiTrades />} />
+          <Route path="accountant" element={<SarafiAccountant />} />
+          <Route path="currency-collection" element={<SarafiCurrencyCollection />} />
+          <Route path="rial-collection" element={<SarafiRialCollection />} />
           <Route path="requests" element={<SarafiRequests />} />
           <Route path="customers" element={<SarafiCustomers />} />
           <Route path="public-requests" element={<SarafiPublicRequests />} />
