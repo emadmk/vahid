@@ -161,16 +161,19 @@ const settingsSchema = new mongoose.Schema({
       type: Number,
       default: 5
     },
-    // ارزهای فعال برای به‌روزرسانی
+    // ارزهای فعال برای به‌روزرسانی (همه ارزهایی که TGJU برمیگرداند)
     activeCurrencies: {
       type: [String],
       default: [
-        // ارزها
-        'USD', 'EUR', 'GBP', 'AED', 'TRY', 'CAD',
+        // ارزها - همه ۲۳ ارز TGJU
+        'USD', 'EUR', 'GBP', 'AED', 'TRY', 'CAD', 'AUD', 'CHF', 'CNY', 'JPY',
+        'SAR', 'KWD', 'QAR', 'OMR', 'BHD', 'RUB', 'INR', 'PKR', 'AFN', 'IQD',
+        'AZN', 'GEL', 'TMT',
         // طلا و سکه
-        'GOLD_18K', 'GOLD_24K', 'COIN_EMAMI', 'COIN_BAHAR', 'COIN_NIM', 'COIN_ROB', 'COIN_GERAMI',
+        'GOLD_18K', 'GOLD_24K', 'GOLD_750', 'MESGHAL',
+        'COIN_EMAMI', 'COIN_BAHAR', 'COIN_NIM', 'COIN_ROB', 'COIN_GERAMI',
         // نقره
-        'SILVER_999',
+        'SILVER_999', 'SILVER_925', 'GOLD_OUNCE', 'SILVER_OUNCE',
         // کریپتو
         'USDT', 'BTC', 'ETH'
       ]

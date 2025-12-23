@@ -135,8 +135,29 @@ async function seedCurrencies() {
     grouped.crypto.forEach(c => console.log(`   ${c.icon} ${c.code} - ${c.nameFa}`));
 
     console.log('\n═══════════════════════════════════════');
+
+    // به‌روزرسانی Settings برای فعال کردن همه ارزها
+    console.log('\n🔧 به‌روزرسانی تنظیمات اسکرپر...');
+    const settingsCollection = db.collection('settings');
+
+    const allCurrencyCodes = currencies.map(c => c.code);
+
+    await settingsCollection.updateOne(
+      {},
+      {
+        $set: {
+          'rateScraperSettings.activeCurrencies': allCurrencyCodes,
+          'rateScraperSettings.source': 'tgju',
+          'rateScraperSettings.enabled': true
+        }
+      },
+      { upsert: true }
+    );
+    console.log(`✅ تنظیمات به‌روز شد - ${allCurrencyCodes.length} ارز فعال شد`);
+
+    console.log('\n═══════════════════════════════════════');
     console.log('✅ عملیات با موفقیت انجام شد!');
-    console.log('💡 حالا از پنل ادمین اسکرپر را اجرا کنید تا قیمت‌ها به‌روز شوند.');
+    console.log('💡 حالا pm2 restart sarafi-backend بزنید و اسکرپر را اجرا کنید.');
 
   } catch (error) {
     console.error('❌ خطا:', error.message);
