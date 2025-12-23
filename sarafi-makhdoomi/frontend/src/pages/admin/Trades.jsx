@@ -4,6 +4,7 @@ import {
   FaCheck, FaTimes, FaDownload, FaChartLine
 } from 'react-icons/fa';
 import api from '../../services/api';
+import Select from '../../components/ui/Select';
 
 const statusLabels = {
   pending: { label: 'در انتظار', color: 'bg-yellow-500/20 text-yellow-500' },
@@ -115,29 +116,33 @@ const AdminTrades = () => {
               className="input-field w-full pr-10"
             />
           </div>
-          <select
+          <Select
             value={filter.status}
             onChange={(e) => setFilter({ ...filter, status: e.target.value })}
-            className="input-field w-auto"
-          >
-            <option value="">همه وضعیت‌ها</option>
-            <option value="pending">در انتظار</option>
-            <option value="approved">تایید شده</option>
-            <option value="processing">در حال پردازش</option>
-            <option value="awaiting_currency">انتظار وصول ارز</option>
-            <option value="awaiting_rial">انتظار وصول ریال</option>
-            <option value="completed">تکمیل شده</option>
-            <option value="cancelled">لغو شده</option>
-          </select>
-          <select
+            className="w-44"
+            placeholder="همه وضعیت‌ها"
+            options={[
+              { value: '', label: 'همه وضعیت‌ها' },
+              { value: 'pending', label: 'در انتظار' },
+              { value: 'approved', label: 'تایید شده' },
+              { value: 'processing', label: 'در حال پردازش' },
+              { value: 'awaiting_currency', label: 'انتظار وصول ارز' },
+              { value: 'awaiting_rial', label: 'انتظار وصول ریال' },
+              { value: 'completed', label: 'تکمیل شده' },
+              { value: 'cancelled', label: 'لغو شده' }
+            ]}
+          />
+          <Select
             value={filter.type}
             onChange={(e) => setFilter({ ...filter, type: e.target.value })}
-            className="input-field w-auto"
-          >
-            <option value="">همه انواع</option>
-            <option value="buy">خرید</option>
-            <option value="sell">فروش</option>
-          </select>
+            className="w-32"
+            placeholder="همه انواع"
+            options={[
+              { value: '', label: 'همه انواع' },
+              { value: 'buy', label: 'خرید' },
+              { value: 'sell', label: 'فروش' }
+            ]}
+          />
         </div>
       </div>
 

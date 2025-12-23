@@ -4,6 +4,7 @@ import {
   FaMoneyBillWave, FaCreditCard, FaHistory, FaTimes
 } from 'react-icons/fa';
 import api from '../../services/api';
+import Select from '../../components/ui/Select';
 
 const AdminWallets = () => {
   const [wallets, setWallets] = useState([]);
@@ -131,15 +132,17 @@ const AdminWallets = () => {
               className="input-field w-full pr-10"
             />
           </div>
-          <select
+          <Select
             value={filter.type}
             onChange={(e) => setFilter({ ...filter, type: e.target.value })}
-            className="input-field w-auto"
-          >
-            <option value="">همه انواع</option>
-            <option value="cash">کیف پول نقدی</option>
-            <option value="credit">کیف پول اعتباری</option>
-          </select>
+            className="w-48"
+            placeholder="همه انواع"
+            options={[
+              { value: '', label: 'همه انواع' },
+              { value: 'cash', label: 'کیف پول نقدی' },
+              { value: 'credit', label: 'کیف پول اعتباری' }
+            ]}
+          />
         </div>
       </div>
 

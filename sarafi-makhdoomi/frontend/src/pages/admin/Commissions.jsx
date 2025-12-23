@@ -5,6 +5,7 @@ import {
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import Select from '../../components/ui/Select';
 
 const AdminCommissions = () => {
   const [rules, setRules] = useState([]);
@@ -309,19 +310,22 @@ const AdminCommissions = () => {
           </div>
           <div>
             <label className="block text-dark-400 text-sm mb-1">ارز</label>
-            <select className="input-field w-full">
-              <option value="">انتخاب ارز</option>
-              {currencies.map(c => (
-                <option key={c._id} value={c._id}>{c.nameFa}</option>
-              ))}
-            </select>
+            <Select
+              placeholder="انتخاب ارز"
+              options={[
+                { value: '', label: 'انتخاب ارز' },
+                ...currencies.map(c => ({ value: c._id, label: c.nameFa }))
+              ]}
+            />
           </div>
           <div>
             <label className="block text-dark-400 text-sm mb-1">نوع معامله</label>
-            <select className="input-field w-full">
-              <option value="buy">خرید</option>
-              <option value="sell">فروش</option>
-            </select>
+            <Select
+              options={[
+                { value: 'buy', label: 'خرید' },
+                { value: 'sell', label: 'فروش' }
+              ]}
+            />
           </div>
         </div>
         <div className="mt-4 p-4 bg-gold/10 rounded-lg text-center">
@@ -359,41 +363,40 @@ const AdminCommissions = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-dark-400 text-sm mb-1">نوع کارمزد</label>
-                  <select
+                  <Select
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="input-field w-full"
-                  >
-                    <option value="percentage">درصدی (پلکانی)</option>
-                    <option value="flat">ثابت</option>
-                  </select>
+                    options={[
+                      { value: 'percentage', label: 'درصدی (پلکانی)' },
+                      { value: 'flat', label: 'ثابت' }
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className="block text-dark-400 text-sm mb-1">ارز</label>
-                  <select
+                  <Select
                     value={formData.currency}
                     onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    className="input-field w-full"
-                  >
-                    <option value="">همه ارزها</option>
-                    {currencies.map(c => (
-                      <option key={c._id} value={c._id}>{c.nameFa}</option>
-                    ))}
-                  </select>
+                    placeholder="همه ارزها"
+                    options={[
+                      { value: '', label: 'همه ارزها' },
+                      ...currencies.map(c => ({ value: c._id, label: c.nameFa }))
+                    ]}
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="block text-dark-400 text-sm mb-1">نوع معامله</label>
-                <select
+                <Select
                   value={formData.tradeType}
                   onChange={(e) => setFormData({ ...formData, tradeType: e.target.value })}
-                  className="input-field w-full"
-                >
-                  <option value="both">همه معاملات</option>
-                  <option value="buy">فقط خرید</option>
-                  <option value="sell">فقط فروش</option>
-                </select>
+                  options={[
+                    { value: 'both', label: 'همه معاملات' },
+                    { value: 'buy', label: 'فقط خرید' },
+                    { value: 'sell', label: 'فقط فروش' }
+                  ]}
+                />
               </div>
 
               {formData.type === 'percentage' && (
