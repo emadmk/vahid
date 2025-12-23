@@ -444,7 +444,7 @@ const seedDatabase = async () => {
     // ========== 8. معاملات ==========
     console.log('🔄 ایجاد معاملات...');
     const trade1 = await Trade.create({
-      tradeNumber: 'TRD-20241201-001',
+      tradeNumber: Trade.generateTradeNumber(),
       customer: user1._id,
       sarafi: sarafi1._id,
       currency: usd._id,
@@ -452,11 +452,11 @@ const seedDatabase = async () => {
       amount: 1000,
       rate: 625000,
       totalAmount: 625000000,
+      netAmount: 622500000,
       status: 'completed',
       sarafiDecision: {
         decision: 'instant',
-        decidedAt: new Date(),
-        decidedBy: sarafi1._id
+        decidedAt: new Date()
       },
       currencyCollection: {
         status: 'collected',
@@ -470,13 +470,19 @@ const seedDatabase = async () => {
       },
       commission: {
         rate: 0.4,
-        amount: 2500000
+        amount: 2500000,
+        type: 'percentage'
       },
-      paymentMethod: 'cash'
+      paymentMethod: 'cash_wallet',
+      paymentDetails: {
+        cashAmount: 625000000,
+        creditAmount: 0
+      },
+      completedAt: new Date()
     });
 
     const trade2 = await Trade.create({
-      tradeNumber: 'TRD-20241201-002',
+      tradeNumber: Trade.generateTradeNumber(),
       customer: user2._id,
       sarafi: sarafi1._id,
       currency: eur._id,
@@ -484,11 +490,11 @@ const seedDatabase = async () => {
       amount: 500,
       rate: 675000,
       totalAmount: 337500000,
+      netAmount: 335981250,
       status: 'awaiting_rial',
       sarafiDecision: {
         decision: 'instant',
-        decidedAt: new Date(),
-        decidedBy: sarafi1._id
+        decidedAt: new Date()
       },
       currencyCollection: {
         status: 'collected',
@@ -500,13 +506,18 @@ const seedDatabase = async () => {
       },
       commission: {
         rate: 0.45,
-        amount: 1518750
+        amount: 1518750,
+        type: 'percentage'
       },
-      paymentMethod: 'credit'
+      paymentMethod: 'credit_wallet',
+      paymentDetails: {
+        cashAmount: 0,
+        creditAmount: 337500000
+      }
     });
 
     const trade3 = await Trade.create({
-      tradeNumber: 'TRD-20241201-003',
+      tradeNumber: Trade.generateTradeNumber(),
       customer: user3._id,
       sarafi: sarafi2._id,
       currency: aed._id,
@@ -514,12 +525,17 @@ const seedDatabase = async () => {
       amount: 2000,
       rate: 170000,
       totalAmount: 340000000,
+      netAmount: 338300000,
       status: 'pending',
-      paymentMethod: 'cash'
+      paymentMethod: 'cash_wallet',
+      paymentDetails: {
+        cashAmount: 340000000,
+        creditAmount: 0
+      }
     });
 
     const trade4 = await Trade.create({
-      tradeNumber: 'TRD-20241201-004',
+      tradeNumber: Trade.generateTradeNumber(),
       customer: user1._id,
       sarafi: sarafi1._id,
       currency: gbp._id,
@@ -527,21 +543,26 @@ const seedDatabase = async () => {
       amount: 300,
       rate: 790000,
       totalAmount: 237000000,
+      netAmount: 236052000,
       status: 'awaiting_currency',
       sarafiDecision: {
         decision: 'callback',
         decidedAt: new Date(),
-        decidedBy: sarafi1._id,
-        notes: 'تماس گرفته شد - مشتری تایید کرد'
+        reason: 'تماس گرفته شد - مشتری تایید کرد'
       },
       currencyCollection: {
         status: 'pending'
       },
       commission: {
         rate: 0.4,
-        amount: 948000
+        amount: 948000,
+        type: 'percentage'
       },
-      paymentMethod: 'mixed'
+      paymentMethod: 'mixed',
+      paymentDetails: {
+        cashAmount: 100000000,
+        creditAmount: 137000000
+      }
     });
     console.log('   ✓ 4 معامله ایجاد شد');
 
