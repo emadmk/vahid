@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const currencySchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
-    unique: true
+    required: true
+    // unique: false - حذف شد چون code باید unique باشد نه name
   },
   nameFa: {
     type: String,
