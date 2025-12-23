@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
-  FaWallet, FaSpinner, FaSearch, FaFilter, FaEye,
-  FaMoneyBillWave, FaCreditCard, FaHistory, FaTimes
+  FaWallet, FaSpinner, FaSearch, FaFilter,
+  FaMoneyBillWave, FaCreditCard, FaHistory, FaTimes,
+  FaPlus, FaMinus, FaArrowUp, FaArrowDown
 } from 'react-icons/fa';
 import api from '../../services/api';
 import Select from '../../components/ui/Select';
+import { toast } from 'react-hot-toast';
 
 const AdminWallets = () => {
   const [wallets, setWallets] = useState([]);
@@ -15,6 +17,12 @@ const AdminWallets = () => {
   const [transactions, setTransactions] = useState([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+
+  // مودال عملیات
+  const [operationModal, setOperationModal] = useState(null); // deposit, withdraw, creditIncrease, creditDecrease
+  const [operationAmount, setOperationAmount] = useState('');
+  const [operationDescription, setOperationDescription] = useState('');
+  const [operationLoading, setOperationLoading] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -60,6 +68,62 @@ const AdminWallets = () => {
     fetchTransactions(wallet._id);
   };
 
+  const handleOperation = async () => {
+    if (!operationAmount || operationAmount <= 0) {
+      toast.error('مبلغ نامعتبر است');
+      return;
+    }
+
+    setOperationLoading(true);
+    try {
+      let endpoint = '';
+      const data = {
+        userId: selectedWallet.user._id,
+        amount: parseInt(operationAmount),
+        description: operationDescription
+      };
+
+      switch (operationModal) {
+        case 'deposit':
+          endpoint = '/admin/wallets/deposit';
+          break;
+        case 'withdraw':
+          endpoint = '/admin/wallets/withdraw';
+          break;
+        case 'creditIncrease':
+          endpoint = '/admin/wallets/credit/increase';
+          break;
+        case 'creditDecrease':
+          endpoint = '/admin/wallets/credit/decrease';
+          break;
+      }
+
+      const res = await api.post(endpoint, data);
+      toast.success(res.data.message);
+
+      // بروزرسانی
+      setOperationModal(null);
+      setOperationAmount('');
+      setOperationDescription('');
+      fetchData();
+      fetchTransactions(selectedWallet._id);
+
+      // آپدیت selectedWallet
+      if (res.data.data?.wallet) {
+        setSelectedWallet(prev => ({
+          ...prev,
+          balance: res.data.data.wallet.balance,
+          creditLimit: res.data.data.wallet.creditLimit,
+          usedCredit: res.data.data.wallet.usedCredit
+        }));
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'خطا در انجام عملیات');
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
   const formatNumber = (num) => {
     return new Intl.NumberFormat('fa-IR').format(num || 0);
   };
@@ -73,13 +137,25 @@ const AdminWallets = () => {
       deposit: { label: 'واریز', color: 'text-green-500' },
       withdraw: { label: 'برداشت', color: 'text-red-500' },
       credit_use: { label: 'استفاده از اعتبار', color: 'text-orange-500' },
-      credit_payment: { label: 'پرداخت اعتبار', color: 'text-blue-500' },
+      credit_repay: { label: 'بازپرداخت اعتبار', color: 'text-blue-500' },
+      credit_increase: { label: 'افزایش سقف اعتبار', color: 'text-green-500' },
+      credit_decrease: { label: 'کاهش سقف اعتبار', color: 'text-red-500' },
       trade_buy: { label: 'خرید ارز', color: 'text-purple-500' },
       trade_sell: { label: 'فروش ارز', color: 'text-gold' },
       commission: { label: 'کارمزد', color: 'text-pink-500' },
       refund: { label: 'استرداد', color: 'text-cyan-500' }
     };
     return types[type] || { label: type, color: 'text-white' };
+  };
+
+  const getOperationTitle = () => {
+    switch (operationModal) {
+      case 'deposit': return 'واریز به کیف پول نقدی';
+      case 'withdraw': return 'برداشت از کیف پول نقدی';
+      case 'creditIncrease': return 'افزایش سقف اعتبار';
+      case 'creditDecrease': return 'کاهش سقف اعتبار';
+      default: return '';
+    }
   };
 
   return (
@@ -167,7 +243,6 @@ const AdminWallets = () => {
                   <th className="px-4 py-3 text-right text-sm font-medium text-dark-400">سقف اعتبار</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-dark-400">اعتبار استفاده شده</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-dark-400">وضعیت</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-dark-400">آخرین تراکنش</th>
                   <th className="px-4 py-3 text-center text-sm font-medium text-dark-400">عملیات</th>
                 </tr>
               </thead>
@@ -208,13 +283,11 @@ const AdminWallets = () => {
                         {wallet.isActive ? 'فعال' : 'غیرفعال'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-dark-400">
-                      {wallet.lastTransaction ? formatDate(wallet.lastTransaction) : '-'}
-                    </td>
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={() => handleViewWallet(wallet)}
                         className="text-gold hover:text-gold-400"
+                        title="مشاهده و مدیریت"
                       >
                         <FaHistory />
                       </button>
@@ -253,13 +326,13 @@ const AdminWallets = () => {
       )}
 
       {/* Wallet Details Modal */}
-      {selectedWallet && (
+      {selectedWallet && !operationModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <FaWallet className="text-gold" />
-                جزئیات کیف پول
+                مدیریت کیف پول
               </h2>
               <button onClick={() => setSelectedWallet(null)} className="text-dark-400 hover:text-white">
                 <FaTimes />
@@ -298,6 +371,42 @@ const AdminWallets = () => {
               )}
             </div>
 
+            {/* دکمه‌های عملیات */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              {selectedWallet.type === 'cash' && (
+                <>
+                  <button
+                    onClick={() => setOperationModal('deposit')}
+                    className="flex items-center justify-center gap-2 px-4 py-3 bg-green-500/20 text-green-500 rounded-lg hover:bg-green-500/30 transition"
+                  >
+                    <FaArrowDown /> واریز
+                  </button>
+                  <button
+                    onClick={() => setOperationModal('withdraw')}
+                    className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500/30 transition"
+                  >
+                    <FaArrowUp /> برداشت
+                  </button>
+                </>
+              )}
+              {selectedWallet.type === 'credit' && (
+                <>
+                  <button
+                    onClick={() => setOperationModal('creditIncrease')}
+                    className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-500/20 text-blue-500 rounded-lg hover:bg-blue-500/30 transition"
+                  >
+                    <FaPlus /> افزایش اعتبار
+                  </button>
+                  <button
+                    onClick={() => setOperationModal('creditDecrease')}
+                    className="flex items-center justify-center gap-2 px-4 py-3 bg-orange-500/20 text-orange-500 rounded-lg hover:bg-orange-500/30 transition"
+                  >
+                    <FaMinus /> کاهش اعتبار
+                  </button>
+                </>
+              )}
+            </div>
+
             {/* Transactions */}
             <h3 className="font-bold mb-4 flex items-center gap-2">
               <FaHistory className="text-gold" />
@@ -314,32 +423,84 @@ const AdminWallets = () => {
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {transactions.map((tx) => {
                   const typeInfo = getTransactionTypeLabel(tx.type);
+                  const isPositive = tx.amount > 0 || tx.type.includes('deposit') || tx.type.includes('sell') || tx.type.includes('refund') || tx.type.includes('increase');
                   return (
                     <div key={tx._id} className="flex items-center justify-between p-3 bg-dark-800 rounded-lg">
                       <div className="flex items-center gap-3">
-                        <span className={`w-2 h-2 rounded-full ${
-                          tx.type.includes('deposit') || tx.type.includes('sell') || tx.type.includes('refund')
-                            ? 'bg-green-500'
-                            : 'bg-red-500'
-                        }`} />
+                        <span className={`w-2 h-2 rounded-full ${isPositive ? 'bg-green-500' : 'bg-red-500'}`} />
                         <div>
                           <p className={`text-sm font-medium ${typeInfo.color}`}>{typeInfo.label}</p>
                           <p className="text-xs text-dark-400">{formatDate(tx.createdAt)}</p>
                         </div>
                       </div>
-                      <p className={`font-bold ${
-                        tx.type.includes('deposit') || tx.type.includes('sell') || tx.type.includes('refund')
-                          ? 'text-green-500'
-                          : 'text-red-500'
-                      }`}>
-                        {tx.type.includes('deposit') || tx.type.includes('sell') || tx.type.includes('refund') ? '+' : '-'}
-                        {formatNumber(tx.amount)} ریال
+                      <p className={`font-bold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                        {isPositive ? '+' : ''}{formatNumber(Math.abs(tx.amount))} ریال
                       </p>
                     </div>
                   );
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Operation Modal */}
+      {operationModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="card p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">{getOperationTitle()}</h2>
+              <button onClick={() => setOperationModal(null)} className="text-dark-400 hover:text-white">
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-dark-400 text-sm mb-2">کاربر</p>
+              <p className="font-bold">{selectedWallet?.user?.firstName} {selectedWallet?.user?.lastName}</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-dark-400 text-sm mb-1">مبلغ (ریال)</label>
+                <input
+                  type="number"
+                  value={operationAmount}
+                  onChange={(e) => setOperationAmount(e.target.value)}
+                  className="input-field w-full"
+                  placeholder="مثال: 10000000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-dark-400 text-sm mb-1">توضیحات (اختیاری)</label>
+                <textarea
+                  value={operationDescription}
+                  onChange={(e) => setOperationDescription(e.target.value)}
+                  className="input-field w-full"
+                  rows={2}
+                  placeholder="توضیحات..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setOperationModal(null)}
+                className="flex-1 px-4 py-2 bg-dark-700 rounded-lg hover:bg-dark-600 transition"
+              >
+                انصراف
+              </button>
+              <button
+                onClick={handleOperation}
+                disabled={operationLoading || !operationAmount}
+                className="flex-1 px-4 py-2 bg-gold text-dark-900 rounded-lg hover:bg-gold-400 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {operationLoading ? <FaSpinner className="animate-spin" /> : null}
+                تایید
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -127,7 +127,16 @@ export const sarafiAPI = {
   approveCustomer: (id) => api.put(`/sarafi/customers/${id}/approve`),
   unknownCustomer: (id) => api.put(`/sarafi/customers/${id}/unknown`),
   rejectCustomer: (id, reason) => api.put(`/sarafi/customers/${id}/reject`, { reason }),
-  getStats: (params) => api.get('/sarafi/stats', { params })
+  getStats: (params) => api.get('/sarafi/stats', { params }),
+
+  // کیف پول مشتریان
+  getCustomerWallets: (customerId) => api.get(`/wallets/customer/${customerId}`),
+  getCustomerTransactions: (customerId, params) => api.get(`/wallets/customer/${customerId}/transactions`, { params }),
+  deposit: (data) => api.post('/wallets/deposit', data),
+  withdraw: (data) => api.post('/wallets/withdraw', data),
+  increaseCreditLimit: (data) => api.post('/wallets/credit/increase', data),
+  decreaseCreditLimit: (data) => api.post('/wallets/credit/decrease', data),
+  repayCredit: (data) => api.post('/wallets/credit/repay', data)
 };
 
 // اعلان‌ها

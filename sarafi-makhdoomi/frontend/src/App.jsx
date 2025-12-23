@@ -43,6 +43,7 @@ import SarafiTrades from './pages/sarafi/Trades';
 import SarafiAccountant from './pages/sarafi/Accountant';
 import SarafiCurrencyCollection from './pages/sarafi/CurrencyCollection';
 import SarafiRialCollection from './pages/sarafi/RialCollection';
+import SarafiCustomerWallets from './pages/sarafi/CustomerWallets';
 
 // صفحات ادمین
 import AdminDashboard from './pages/admin/Dashboard';
@@ -159,6 +160,7 @@ function App() {
           <Route path="accountant" element={<SarafiAccountant />} />
           <Route path="currency-collection" element={<SarafiCurrencyCollection />} />
           <Route path="rial-collection" element={<SarafiRialCollection />} />
+          <Route path="customer-wallets" element={<SarafiCustomerWallets />} />
           <Route path="requests" element={<SarafiRequests />} />
           <Route path="customers" element={<SarafiCustomers />} />
           <Route path="public-requests" element={<SarafiPublicRequests />} />
