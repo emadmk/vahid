@@ -633,20 +633,31 @@ const seedDatabase = async () => {
     console.log('📋 ایجاد درخواست‌ها (سیستم قدیم)...');
     await Request.create({
       user: user1._id,
-      sarafi: sarafi1._id,
+      originalSarafi: sarafi1._id,
       currency: usd._id,
       type: 'buy',
       amount: 500,
+      rate: 620000,
+      totalPrice: 310000000,
+      fee: 1550000,
+      finalPrice: 311550000,
+      timerExpiry: new Date(Date.now() + 60 * 60 * 1000),
       status: 'completed',
-      visibility: 'private'
+      visibility: 'private',
+      completedAt: new Date()
     });
 
     await Request.create({
       user: user2._id,
-      sarafi: sarafi1._id,
+      originalSarafi: sarafi1._id,
       currency: eur._id,
       type: 'sell',
       amount: 300,
+      rate: 675000,
+      totalPrice: 202500000,
+      fee: 1012500,
+      finalPrice: 203512500,
+      timerExpiry: new Date(Date.now() + 60 * 60 * 1000),
       status: 'pending',
       visibility: 'private'
     });
