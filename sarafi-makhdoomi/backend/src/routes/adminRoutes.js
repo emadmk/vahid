@@ -230,6 +230,162 @@ router.post('/wallets/credit/decrease', async (req, res) => {
   }
 });
 
+// ============================================
+// روت‌های اسکرپر نرخ از تلگرام
+// ============================================
+const rateScraperService = require('../services/rateScraperService');
+const Settings = require('../models/Settings');
+
+// دریافت تنظیمات اسکرپر
+router.get('/rate-scraper/settings', async (req, res) => {
+  try {
+    const settings = await Settings.getSettings();
+    res.json({
+      success: true,
+      data: settings.rateScraperSettings || {}
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// به‌روزرسانی تنظیمات اسکرپر
+router.put('/rate-scraper/settings', async (req, res) => {
+  try {
+    const {
+      enabled, intervalMinutes, telegramApiId, telegramApiHash,
+      dollarChannel, goldChannel, conversionRates, buySpread, sellSpread
+    } = req.body;
+
+    const updateData = {};
+    if (enabled !== undefined) updateData['rateScraperSettings.enabled'] = enabled;
+    if (intervalMinutes) updateData['rateScraperSettings.intervalMinutes'] = intervalMinutes;
+    if (telegramApiId) updateData['rateScraperSettings.telegramApiId'] = telegramApiId;
+    if (telegramApiHash) updateData['rateScraperSettings.telegramApiHash'] = telegramApiHash;
+    if (dollarChannel) updateData['rateScraperSettings.dollarChannel'] = dollarChannel;
+    if (goldChannel) updateData['rateScraperSettings.goldChannel'] = goldChannel;
+    if (conversionRates) updateData['rateScraperSettings.conversionRates'] = conversionRates;
+    if (buySpread !== undefined) updateData['rateScraperSettings.buySpread'] = buySpread;
+    if (sellSpread !== undefined) updateData['rateScraperSettings.sellSpread'] = sellSpread;
+
+    await Settings.findOneAndUpdate({}, updateData);
+
+    // اگه بازه تغییر کرد، job رو ریستارت کن
+    if (intervalMinutes) {
+      const { updateInterval } = require('../jobs/rateScraperJob');
+      await updateInterval(intervalMinutes);
+    }
+
+    res.json({
+      success: true,
+      message: 'تنظیمات ذخیره شد'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// شروع احراز هویت تلگرام
+router.post('/rate-scraper/auth/start', async (req, res) => {
+  try {
+    const { apiId, apiHash, phoneNumber } = req.body;
+
+    if (!apiId || !apiHash || !phoneNumber) {
+      return res.status(400).json({ success: false, message: 'اطلاعات ناقص است' });
+    }
+
+    // ذخیره API credentials
+    await Settings.findOneAndUpdate({}, {
+      'rateScraperSettings.telegramApiId': apiId,
+      'rateScraperSettings.telegramApiHash': apiHash
+    });
+
+    const result = await rateScraperService.startAuth(apiId, apiHash, phoneNumber);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// تایید کد احراز هویت
+router.post('/rate-scraper/auth/verify', async (req, res) => {
+  try {
+    const { phoneNumber, phoneCodeHash, code } = req.body;
+
+    if (!phoneNumber || !phoneCodeHash || !code) {
+      return res.status(400).json({ success: false, message: 'اطلاعات ناقص است' });
+    }
+
+    const settings = await Settings.getSettings();
+    const { telegramApiId, telegramApiHash } = settings.rateScraperSettings || {};
+
+    if (!telegramApiId || !telegramApiHash) {
+      return res.status(400).json({ success: false, message: 'ابتدا API تنظیم شود' });
+    }
+
+    const result = await rateScraperService.verifyCode(
+      telegramApiId, telegramApiHash, phoneNumber, phoneCodeHash, code
+    );
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// اجرای دستی اسکرپر
+router.post('/rate-scraper/run', async (req, res) => {
+  try {
+    const result = await rateScraperService.run();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// تست خواندن کانال
+router.post('/rate-scraper/test-channel', async (req, res) => {
+  try {
+    const { channelUsername } = req.body;
+
+    if (!channelUsername) {
+      return res.status(400).json({ success: false, message: 'نام کانال الزامی است' });
+    }
+
+    const settings = await Settings.getSettings();
+    const { telegramApiId, telegramApiHash, telegramSession } = settings.rateScraperSettings || {};
+
+    if (!telegramSession) {
+      return res.status(400).json({ success: false, message: 'ابتدا به تلگرام لاگین کنید' });
+    }
+
+    // اتصال اگه نیست
+    if (!rateScraperService.isConnected) {
+      await rateScraperService.connect(telegramApiId, telegramApiHash, telegramSession);
+    }
+
+    const message = await rateScraperService.getLastMessage(channelUsername);
+
+    if (!message) {
+      return res.json({ success: false, message: 'پیامی یافت نشد' });
+    }
+
+    // تلاش برای پارس نرخ
+    const dollarRate = rateScraperService.parseDollarRate(message);
+    const goldRate = rateScraperService.parseGoldRate(message);
+
+    res.json({
+      success: true,
+      data: {
+        message: message.substring(0, 500),
+        parsedDollarRate: dollarRate,
+        parsedGoldRate: goldRate
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
 
 // روت عمومی برای لیست صراف‌ها

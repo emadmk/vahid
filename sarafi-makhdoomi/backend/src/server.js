@@ -9,6 +9,7 @@ const path = require('path');
 const connectDB = require('./config/db');
 const errorHandler = require('./middlewares/errorHandler');
 const startTimerJob = require('./jobs/timerJob');
+const { startRateScraperJob } = require('./jobs/rateScraperJob');
 const telegramBot = require('./bot/index');
 
 // روت‌ها
@@ -86,6 +87,9 @@ const server = app.listen(PORT, async () => {
 
   // شروع job تایمر
   startTimerJob();
+
+  // شروع job اسکرپر نرخ
+  startRateScraperJob();
 
   // راه‌اندازی ربات تلگرام
   await telegramBot.init();
