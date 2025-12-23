@@ -62,28 +62,35 @@ class RateScraperServiceSimple {
       let cleanMessage = persianToEnglish(message);
       cleanMessage = cleanMessage.replace(/,/g, '').replace(/٬/g, '').replace(/،/g, '');
 
-      // الگوهای مختلف برای استخراج قیمت دلار (معمولاً 5 رقمی)
+      console.log('🔍 پیام پاکسازی شده:', cleanMessage);
+
+      // الگوهای مختلف برای استخراج قیمت دلار (5-6 رقمی)
       const patterns = [
         // الگوی "خرید: 65000 فروش: 65500"
-        /خرید[:\s]*(\d{4,6})[^\d]*فروش[:\s]*(\d{4,6})/i,
+        /خرید[:\s]*(\d{5,6})[^\d]*فروش[:\s]*(\d{5,6})/i,
         // الگوی "فروش: 65500 خرید: 65000"
-        /فروش[:\s]*(\d{4,6})[^\d]*خرید[:\s]*(\d{4,6})/i,
+        /فروش[:\s]*(\d{5,6})[^\d]*خرید[:\s]*(\d{5,6})/i,
+        // الگوی "135000 فروش" - عدد قبل از فروش
+        /(\d{5,6})\s*فروش/i,
+        // الگوی "135000 خرید" - عدد قبل از خرید
+        /(\d{5,6})\s*خرید/i,
         // الگوی "65000 - 65500" یا "65000/65500"
-        /(\d{4,6})\s*[-–\/]\s*(\d{4,6})/,
+        /(\d{5,6})\s*[-–\/]\s*(\d{5,6})/,
         // الگوی "دلار 65000"
-        /دلار[:\s]*(\d{4,6})/i,
-        // الگوی ساده - اعداد 5 رقمی (نرخ دلار معمولاً 50000-100000)
-        /\b(\d{5})\b/g
+        /دلار[:\s]*(\d{5,6})/i,
+        // الگوی ساده - اعداد 5-6 رقمی در محدوده قیمت دلار
+        /\b(\d{5,6})\b/g
       ];
 
       for (const pattern of patterns) {
         const match = cleanMessage.match(pattern);
         if (match) {
+          console.log('✅ الگو مطابقت داد:', pattern, 'نتیجه:', match);
           if (match[2]) {
             const rate1 = parseInt(match[1]);
             const rate2 = parseInt(match[2]);
             // اعتبارسنجی محدوده نرخ دلار
-            if (rate1 > 30000 && rate1 < 150000 && rate2 > 30000 && rate2 < 150000) {
+            if (rate1 > 30000 && rate1 < 200000 && rate2 > 30000 && rate2 < 200000) {
               return {
                 buyRate: Math.min(rate1, rate2),
                 sellRate: Math.max(rate1, rate2)
@@ -91,19 +98,22 @@ class RateScraperServiceSimple {
             }
           } else if (match[1]) {
             const rate = parseInt(match[1]);
-            if (rate > 30000 && rate < 150000) {
+            if (rate > 30000 && rate < 200000) {
               return { buyRate: rate, sellRate: rate };
             }
           }
         }
       }
 
-      // پیدا کردن همه اعداد 5 رقمی
-      const allNumbers = cleanMessage.match(/\b\d{5}\b/g);
+      // پیدا کردن همه اعداد 5-6 رقمی
+      const allNumbers = cleanMessage.match(/\b\d{5,6}\b/g);
+      console.log('🔢 اعداد پیدا شده:', allNumbers);
       if (allNumbers && allNumbers.length > 0) {
         const validRates = allNumbers
           .map(n => parseInt(n))
-          .filter(n => n > 30000 && n < 150000);
+          .filter(n => n > 30000 && n < 200000);
+
+        console.log('✅ نرخ‌های معتبر:', validRates);
 
         if (validRates.length >= 2) {
           return {
