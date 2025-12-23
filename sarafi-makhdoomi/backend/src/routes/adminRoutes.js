@@ -304,6 +304,16 @@ router.post('/rate-scraper/test-tgju', async (req, res) => {
   }
 });
 
+// دریافت لیست کدهای موجود
+router.get('/rate-scraper/available-codes', async (req, res) => {
+  try {
+    const codes = tgjuScraperService.getAvailableCodes();
+    res.json({ success: true, data: codes });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // تست خواندن کانال تلگرام
 router.post('/rate-scraper/test-channel', async (req, res) => {
   try {

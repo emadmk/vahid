@@ -7,24 +7,55 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jalaliMoment from 'jalali-moment';
 
-// لیست ارزهای قابل انتخاب
+// لیست ارزها
 const AVAILABLE_CURRENCIES = [
-  { code: 'USD', name: 'دلار آمریکا', flag: '🇺🇸' },
-  { code: 'EUR', name: 'یورو', flag: '🇪🇺' },
-  { code: 'GBP', name: 'پوند انگلیس', flag: '🇬🇧' },
-  { code: 'AED', name: 'درهم امارات', flag: '🇦🇪' },
-  { code: 'TRY', name: 'لیر ترکیه', flag: '🇹🇷' },
-  { code: 'CAD', name: 'دلار کانادا', flag: '🇨🇦' },
-  { code: 'AUD', name: 'دلار استرالیا', flag: '🇦🇺' },
-  { code: 'CHF', name: 'فرانک سوئیس', flag: '🇨🇭' },
-  { code: 'CNY', name: 'یوان چین', flag: '🇨🇳' },
-  { code: 'SAR', name: 'ریال سعودی', flag: '🇸🇦' },
-  { code: 'KWD', name: 'دینار کویت', flag: '🇰🇼' },
-  { code: 'QAR', name: 'ریال قطر', flag: '🇶🇦' },
-  { code: 'RUB', name: 'روبل روسیه', flag: '🇷🇺' },
-  { code: 'INR', name: 'روپیه هند', flag: '🇮🇳' },
-  { code: 'AFN', name: 'افغانی', flag: '🇦🇫' },
-  { code: 'IQD', name: 'دینار عراق', flag: '🇮🇶' }
+  { code: 'USD', name: 'دلار آمریکا', icon: '🇺🇸' },
+  { code: 'EUR', name: 'یورو', icon: '🇪🇺' },
+  { code: 'GBP', name: 'پوند انگلیس', icon: '🇬🇧' },
+  { code: 'AED', name: 'درهم امارات', icon: '🇦🇪' },
+  { code: 'TRY', name: 'لیر ترکیه', icon: '🇹🇷' },
+  { code: 'CAD', name: 'دلار کانادا', icon: '🇨🇦' },
+  { code: 'AUD', name: 'دلار استرالیا', icon: '🇦🇺' },
+  { code: 'CHF', name: 'فرانک سوئیس', icon: '🇨🇭' },
+  { code: 'CNY', name: 'یوان چین', icon: '🇨🇳' },
+  { code: 'SAR', name: 'ریال سعودی', icon: '🇸🇦' },
+  { code: 'KWD', name: 'دینار کویت', icon: '🇰🇼' },
+  { code: 'QAR', name: 'ریال قطر', icon: '🇶🇦' },
+  { code: 'RUB', name: 'روبل روسیه', icon: '🇷🇺' },
+  { code: 'INR', name: 'روپیه هند', icon: '🇮🇳' },
+  { code: 'AFN', name: 'افغانی', icon: '🇦🇫' },
+  { code: 'IQD', name: 'دینار عراق', icon: '🇮🇶' }
+];
+
+// لیست طلا و سکه
+const GOLD_ITEMS = [
+  { code: 'GOLD_18K', name: 'طلای 18 عیار', icon: '🪙' },
+  { code: 'GOLD_24K', name: 'طلای 24 عیار', icon: '🏆' },
+  { code: 'GOLD_750', name: 'طلای 750', icon: '💛' },
+  { code: 'MESGHAL', name: 'مثقال طلا', icon: '⚖️' },
+  { code: 'COIN_EMAMI', name: 'سکه امامی', icon: '🥇' },
+  { code: 'COIN_BAHAR', name: 'سکه بهار', icon: '🌸' },
+  { code: 'COIN_NIM', name: 'نیم سکه', icon: '🔶' },
+  { code: 'COIN_ROB', name: 'ربع سکه', icon: '🔸' },
+  { code: 'COIN_GERAMI', name: 'سکه گرمی', icon: '💠' },
+  { code: 'SILVER_999', name: 'نقره 999', icon: '🥈' },
+  { code: 'SILVER_925', name: 'نقره 925', icon: '⚪' },
+  { code: 'GOLD_OUNCE', name: 'انس طلا', icon: '🌍' },
+  { code: 'SILVER_OUNCE', name: 'انس نقره', icon: '🌐' }
+];
+
+// لیست کریپتو
+const CRYPTO_ITEMS = [
+  { code: 'USDT', name: 'تتر', icon: '💵' },
+  { code: 'BTC', name: 'بیت‌کوین', icon: '₿' },
+  { code: 'ETH', name: 'اتریوم', icon: 'Ξ' },
+  { code: 'BNB', name: 'بایننس', icon: '🔶' },
+  { code: 'XRP', name: 'ریپل', icon: '💧' },
+  { code: 'ADA', name: 'کاردانو', icon: '💎' },
+  { code: 'DOGE', name: 'دوج‌کوین', icon: '🐕' },
+  { code: 'SOL', name: 'سولانا', icon: '☀️' },
+  { code: 'DOT', name: 'پولکادات', icon: '⚫' },
+  { code: 'LTC', name: 'لایت‌کوین', icon: '🥈' }
 ];
 
 const RateScraper = () => {
@@ -354,11 +385,11 @@ const RateScraper = () => {
           </div>
         </div>
 
-        {/* انتخاب ارزها */}
+        {/* انتخاب ارزها - TGJU */}
         {settings.source === 'tgju' && (
-          <div className="card-dark">
+          <div className="card-dark lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-bold">ارزهای فعال برای به‌روزرسانی</h3>
+              <h3 className="text-white font-bold">انتخاب نرخ‌های فعال از TGJU</h3>
               <button
                 onClick={handleTestTgju}
                 disabled={tgjuTestLoading}
@@ -369,30 +400,82 @@ const RateScraper = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {AVAILABLE_CURRENCIES.map(currency => (
-                <button
-                  key={currency.code}
-                  onClick={() => toggleCurrency(currency.code)}
-                  className={`py-2 px-3 rounded-lg border text-sm transition-all flex items-center gap-2 ${
-                    (settings.activeCurrencies || []).includes(currency.code)
-                      ? 'bg-gold-500/20 border-gold-500 text-gold-500'
-                      : 'border-dark-600 text-dark-400 hover:border-dark-500'
-                  }`}
-                >
-                  <span>{currency.flag}</span>
-                  <span>{currency.code}</span>
-                </button>
-              ))}
+            {/* ارزها */}
+            <div className="mb-6">
+              <h4 className="text-gold-500 font-bold mb-3 flex items-center gap-2">
+                <FaDollarSign /> ارزها
+              </h4>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                {AVAILABLE_CURRENCIES.map(item => (
+                  <button
+                    key={item.code}
+                    onClick={() => toggleCurrency(item.code)}
+                    className={`py-2 px-3 rounded-lg border text-sm transition-all flex items-center gap-2 ${
+                      (settings.activeCurrencies || []).includes(item.code)
+                        ? 'bg-gold-500/20 border-gold-500 text-gold-500'
+                        : 'border-dark-600 text-dark-400 hover:border-dark-500'
+                    }`}
+                  >
+                    <span>{item.icon}</span>
+                    <span>{item.code}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* طلا و سکه */}
+            <div className="mb-6">
+              <h4 className="text-yellow-500 font-bold mb-3 flex items-center gap-2">
+                <FaCoins /> طلا، سکه و نقره
+              </h4>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                {GOLD_ITEMS.map(item => (
+                  <button
+                    key={item.code}
+                    onClick={() => toggleCurrency(item.code)}
+                    className={`py-2 px-3 rounded-lg border text-sm transition-all flex items-center gap-2 ${
+                      (settings.activeCurrencies || []).includes(item.code)
+                        ? 'bg-yellow-500/20 border-yellow-500 text-yellow-500'
+                        : 'border-dark-600 text-dark-400 hover:border-dark-500'
+                    }`}
+                  >
+                    <span>{item.icon}</span>
+                    <span className="text-xs">{item.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* کریپتو */}
+            <div className="mb-6">
+              <h4 className="text-blue-500 font-bold mb-3 flex items-center gap-2">
+                <span>₿</span> رمز ارزها
+              </h4>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                {CRYPTO_ITEMS.map(item => (
+                  <button
+                    key={item.code}
+                    onClick={() => toggleCurrency(item.code)}
+                    className={`py-2 px-3 rounded-lg border text-sm transition-all flex items-center gap-2 ${
+                      (settings.activeCurrencies || []).includes(item.code)
+                        ? 'bg-blue-500/20 border-blue-500 text-blue-500'
+                        : 'border-dark-600 text-dark-400 hover:border-dark-500'
+                    }`}
+                  >
+                    <span>{item.icon}</span>
+                    <span>{item.code}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* نتیجه تست TGJU */}
             {tgjuTestResult && (
-              <div className="mt-4 bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
                 <p className="text-green-400 font-bold mb-2">✅ اتصال موفق - نرخ‌های دریافتی:</p>
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  {Object.entries(tgjuTestResult).slice(0, 9).map(([code, rate]) => (
-                    <div key={code} className="text-dark-300">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-sm">
+                  {Object.entries(tgjuTestResult).map(([code, rate]) => (
+                    <div key={code} className="text-dark-300 bg-dark-700/50 rounded px-2 py-1">
                       <span className="text-gold-500">{code}:</span> {rate?.toLocaleString()}
                     </div>
                   ))}

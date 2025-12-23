@@ -3,14 +3,20 @@ const Settings = require('../models/Settings');
 const Currency = require('../models/Currency');
 
 /**
- * سرویس اسکرپر TGJU برای دریافت نرخ ارز از سایت tgju.org
+ * سرویس اسکرپر TGJU برای دریافت نرخ ارز، طلا و کریپتو از سایت tgju.org
  */
 class TgjuScraperService {
   constructor() {
-    this.currencyUrl = 'https://www.tgju.org/currency';
+    // آدرس صفحات مختلف TGJU
+    this.urls = {
+      currency: 'https://www.tgju.org/currency',
+      gold: 'https://www.tgju.org/gold-chart',
+      crypto: 'https://www.tgju.org/crypto'
+    };
+
     this.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-    // نگاشت کدهای TGJU به کدهای سیستم
+    // نگاشت کدهای TGJU به کدهای سیستم - ارزها
     this.currencyMapping = {
       'price_dollar_rl': 'USD',
       'price_eur': 'EUR',
@@ -36,53 +42,163 @@ class TgjuScraperService {
       'price_gel': 'GEL',
       'price_tmt': 'TMT'
     };
+
+    // نگاشت طلا و سکه
+    this.goldMapping = {
+      // طلا
+      'geram18': 'GOLD_18K',      // طلای 18 عیار
+      'geram24': 'GOLD_24K',      // طلای 24 عیار
+      'gold_740k': 'GOLD_750',    // طلای 750 (18 عیار)
+      'mesghal': 'MESGHAL',       // مثقال طلا
+      // سکه
+      'sekee': 'COIN_EMAMI',      // سکه امامی
+      'sekeb': 'COIN_BAHAR',      // سکه بهار آزادی
+      'nim': 'COIN_NIM',          // نیم سکه
+      'rob': 'COIN_ROB',          // ربع سکه
+      'gerami': 'COIN_GERAMI',    // سکه یک گرمی
+      // نقره
+      'silver': 'SILVER_999',     // نقره 999
+      'silver_925': 'SILVER_925', // نقره 925
+      // آنس جهانی
+      'ounce': 'GOLD_OUNCE',      // انس طلا
+      'silver_ounce': 'SILVER_OUNCE' // انس نقره
+    };
+
+    // نگاشت کریپتو
+    this.cryptoMapping = {
+      'crypto-bitcoin': 'BTC',
+      'crypto-ethereum': 'ETH',
+      'crypto-tether': 'USDT',
+      'crypto-binance-coin': 'BNB',
+      'crypto-ripple': 'XRP',
+      'crypto-cardano': 'ADA',
+      'crypto-dogecoin': 'DOGE',
+      'crypto-solana': 'SOL',
+      'crypto-polkadot': 'DOT',
+      'crypto-litecoin': 'LTC',
+      // فرمت‌های جایگزین
+      'bitcoin': 'BTC',
+      'ethereum': 'ETH',
+      'tether': 'USDT'
+    };
+  }
+
+  /**
+   * دریافت HTML از یک صفحه
+   */
+  async fetchPage(url) {
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent': this.userAgent,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'fa-IR,fa;q=0.9,en;q=0.8',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        timeout: 15000
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`❌ خطا در دریافت ${url}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * استخراج قیمت‌ها از HTML
+   */
+  parseRates(html, mapping) {
+    const rates = {};
+
+    if (!html) return rates;
+
+    const lines = html.split('\n');
+
+    for (const line of lines) {
+      // استخراج data-market-row
+      const rowMatch = line.match(/data-market-row="([^"]+)"/);
+      // استخراج data-price
+      const priceMatch = line.match(/data-price="([^"]+)"/);
+
+      if (rowMatch && priceMatch) {
+        const marketRow = rowMatch[1];
+        const priceStr = priceMatch[1];
+
+        // حذف کاما از قیمت
+        const price = parseInt(priceStr.replace(/,/g, ''));
+
+        if (mapping[marketRow] && !isNaN(price) && price > 0) {
+          rates[mapping[marketRow]] = price;
+        }
+      }
+    }
+
+    return rates;
   }
 
   /**
    * دریافت نرخ‌های ارز از صفحه TGJU
    */
+  async fetchCurrencyRates() {
+    console.log('🔄 در حال دریافت نرخ‌های ارز از TGJU...');
+    const html = await this.fetchPage(this.urls.currency);
+    const rates = this.parseRates(html, this.currencyMapping);
+    console.log(`  ✅ ${Object.keys(rates).length} نرخ ارز دریافت شد`);
+    return rates;
+  }
+
+  /**
+   * دریافت نرخ‌های طلا و سکه
+   */
+  async fetchGoldRates() {
+    console.log('🔄 در حال دریافت نرخ‌های طلا و سکه از TGJU...');
+    const html = await this.fetchPage(this.urls.gold);
+    const rates = this.parseRates(html, this.goldMapping);
+    console.log(`  ✅ ${Object.keys(rates).length} نرخ طلا/سکه دریافت شد`);
+    return rates;
+  }
+
+  /**
+   * دریافت نرخ‌های کریپتو
+   */
+  async fetchCryptoRates() {
+    console.log('🔄 در حال دریافت نرخ‌های کریپتو از TGJU...');
+    const html = await this.fetchPage(this.urls.crypto);
+    const rates = this.parseRates(html, this.cryptoMapping);
+    console.log(`  ✅ ${Object.keys(rates).length} نرخ کریپتو دریافت شد`);
+    return rates;
+  }
+
+  /**
+   * دریافت همه نرخ‌ها
+   */
   async fetchRates() {
     try {
-      console.log('🔄 در حال دریافت نرخ‌ها از TGJU...');
+      console.log('🚀 در حال دریافت همه نرخ‌ها از TGJU...');
 
-      const response = await axios.get(this.currencyUrl, {
-        headers: {
-          'User-Agent': this.userAgent,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'fa-IR,fa;q=0.9,en;q=0.8',
-          'Cache-Control': 'no-cache'
-        },
-        timeout: 15000
-      });
+      // دریافت همزمان از سه صفحه
+      const [currencyRates, goldRates, cryptoRates] = await Promise.all([
+        this.fetchCurrencyRates(),
+        this.fetchGoldRates(),
+        this.fetchCryptoRates()
+      ]);
 
-      const html = response.data;
-      const rates = {};
+      // ترکیب همه نرخ‌ها
+      const allRates = {
+        ...currencyRates,
+        ...goldRates,
+        ...cryptoRates
+      };
 
-      // پیدا کردن همه خطوطی که شامل data-market-row و data-price هستن
-      const lines = html.split('\n');
+      console.log(`✅ مجموع ${Object.keys(allRates).length} نرخ دریافت شد از TGJU`);
 
-      for (const line of lines) {
-        // استخراج data-market-row
-        const rowMatch = line.match(/data-market-row="([^"]+)"/);
-        // استخراج data-price
-        const priceMatch = line.match(/data-price="([^"]+)"/);
-
-        if (rowMatch && priceMatch) {
-          const marketRow = rowMatch[1];
-          const priceStr = priceMatch[1];
-
-          // حذف کاما از قیمت
-          const price = parseInt(priceStr.replace(/,/g, ''));
-
-          if (this.currencyMapping[marketRow] && !isNaN(price) && price > 0) {
-            rates[this.currencyMapping[marketRow]] = price;
-            console.log(`  📊 ${marketRow} -> ${this.currencyMapping[marketRow]}: ${price.toLocaleString()}`);
-          }
-        }
+      // لاگ جزئیات
+      for (const [code, rate] of Object.entries(allRates)) {
+        console.log(`  📊 ${code}: ${rate.toLocaleString()}`);
       }
 
-      console.log(`✅ ${Object.keys(rates).length} نرخ ارز دریافت شد از TGJU`);
-      return rates;
+      return allRates;
     } catch (error) {
       console.error('❌ خطا در دریافت نرخ‌ها از TGJU:', error.message);
       throw error;
@@ -115,7 +231,7 @@ class TgjuScraperService {
       );
 
       if (currency) {
-        console.log(`✅ ${code}: ${buyRate.toLocaleString()} / ${sellRate.toLocaleString()}`);
+        console.log(`✅ ${code}: خرید ${buyRate.toLocaleString()} / فروش ${sellRate.toLocaleString()}`);
         return true;
       }
       return false;
@@ -155,7 +271,11 @@ class TgjuScraperService {
 
       // به‌روزرسانی نرخ‌ها در دیتابیس
       let updatedCount = 0;
-      const activeCurrencies = scraperSettings.activeCurrencies || ['USD', 'EUR', 'GBP', 'AED', 'TRY', 'CAD'];
+      const activeCurrencies = scraperSettings.activeCurrencies || [
+        'USD', 'EUR', 'GBP', 'AED', 'TRY', 'CAD',
+        'GOLD_18K', 'COIN_EMAMI', 'COIN_BAHAR',
+        'USDT', 'BTC', 'ETH'
+      ];
 
       for (const code of activeCurrencies) {
         if (rates[code]) {
@@ -171,7 +291,7 @@ class TgjuScraperService {
       });
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`✅ به‌روزرسانی تمام شد - ${updatedCount} ارز در ${duration} ثانیه`);
+      console.log(`✅ به‌روزرسانی تمام شد - ${updatedCount} نرخ در ${duration} ثانیه`);
 
       return {
         success: true,
@@ -209,6 +329,17 @@ class TgjuScraperService {
         message: `خطا در اتصال: ${error.message}`
       };
     }
+  }
+
+  /**
+   * لیست کدهای موجود
+   */
+  getAvailableCodes() {
+    return {
+      currencies: Object.values(this.currencyMapping),
+      gold: Object.values(this.goldMapping),
+      crypto: Object.values(this.cryptoMapping)
+    };
   }
 }
 

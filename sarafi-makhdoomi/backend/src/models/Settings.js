@@ -164,7 +164,16 @@ const settingsSchema = new mongoose.Schema({
     // ارزهای فعال برای به‌روزرسانی
     activeCurrencies: {
       type: [String],
-      default: ['USD', 'EUR', 'GBP', 'AED', 'TRY', 'CAD']
+      default: [
+        // ارزها
+        'USD', 'EUR', 'GBP', 'AED', 'TRY', 'CAD',
+        // طلا و سکه
+        'GOLD_18K', 'GOLD_24K', 'COIN_EMAMI', 'COIN_BAHAR', 'COIN_NIM', 'COIN_ROB', 'COIN_GERAMI',
+        // نقره
+        'SILVER_999',
+        // کریپتو
+        'USDT', 'BTC', 'ETH'
+      ]
     },
     // تنظیمات API تلگرام (در صورت استفاده از telegram)
     telegramApiId: String,
