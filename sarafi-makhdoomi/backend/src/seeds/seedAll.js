@@ -46,7 +46,8 @@ const seedDatabase = async () => {
       Notification.deleteMany({})
     ]);
 
-    const hashedPassword = await bcrypt.hash('123456', 10);
+    // پسورد plain text - مدل User خودش هش می‌کنه
+    const plainPassword = '123456';
 
     // ========== 1. تنظیمات سیستم ==========
     console.log('⚙️  ایجاد تنظیمات سیستم...');
@@ -169,7 +170,7 @@ const seedDatabase = async () => {
       lastName: 'سیستم',
       email: 'admin@golden2026.com',
       phone: '09121111111',
-      password: hashedPassword,
+      password: plainPassword,
       role: 'admin',
       status: 'approved',
       isEmailVerified: true,
@@ -183,7 +184,7 @@ const seedDatabase = async () => {
       lastName: 'احمدی',
       email: 'sarafi1@golden2026.com',
       phone: '09122222222',
-      password: hashedPassword,
+      password: plainPassword,
       role: 'sarafi',
       status: 'approved',
       isEmailVerified: true,
@@ -204,7 +205,7 @@ const seedDatabase = async () => {
       lastName: 'رضایی',
       email: 'sarafi2@golden2026.com',
       phone: '09123333333',
-      password: hashedPassword,
+      password: plainPassword,
       role: 'sarafi',
       status: 'approved',
       isEmailVerified: true,
@@ -225,7 +226,7 @@ const seedDatabase = async () => {
       lastName: 'محمدی',
       email: 'user1@gmail.com',
       phone: '09124444444',
-      password: hashedPassword,
+      password: plainPassword,
       role: 'user',
       status: 'approved',
       isEmailVerified: true,
@@ -247,7 +248,7 @@ const seedDatabase = async () => {
       lastName: 'کریمی',
       email: 'user2@gmail.com',
       phone: '09125555555',
-      password: hashedPassword,
+      password: plainPassword,
       role: 'user',
       status: 'approved',
       isEmailVerified: true,
@@ -269,7 +270,7 @@ const seedDatabase = async () => {
       lastName: 'حسینی',
       email: 'user3@gmail.com',
       phone: '09126666666',
-      password: hashedPassword,
+      password: plainPassword,
       role: 'user',
       status: 'approved',
       isEmailVerified: true,
@@ -291,7 +292,7 @@ const seedDatabase = async () => {
       lastName: 'نوری',
       email: 'user4@gmail.com',
       phone: '09127777777',
-      password: hashedPassword,
+      password: plainPassword,
       role: 'user',
       status: 'approved',
       isEmailVerified: true,
