@@ -397,7 +397,9 @@ const seedDatabase = async () => {
       user: user1._id,
       type: 'deposit',
       amount: 50000000,
+      balanceBefore: 0,
       balanceAfter: 50000000,
+      referenceNumber: WalletTransaction.generateReferenceNumber(),
       description: 'واریز نقدی',
       status: 'completed'
     });
@@ -407,7 +409,9 @@ const seedDatabase = async () => {
       user: user1._id,
       type: 'credit_use',
       amount: 100000000,
+      balanceBefore: 0,
       balanceAfter: 0,
+      referenceNumber: WalletTransaction.generateReferenceNumber(),
       description: 'استفاده از اعتبار برای خرید',
       status: 'completed'
     });
@@ -417,7 +421,9 @@ const seedDatabase = async () => {
       user: user2._id,
       type: 'deposit',
       amount: 30000000,
+      balanceBefore: 0,
       balanceAfter: 30000000,
+      referenceNumber: WalletTransaction.generateReferenceNumber(),
       description: 'واریز نقدی',
       status: 'completed'
     });
@@ -427,7 +433,9 @@ const seedDatabase = async () => {
       user: user2._id,
       type: 'withdraw',
       amount: 5000000,
+      balanceBefore: 30000000,
       balanceAfter: 25000000,
+      referenceNumber: WalletTransaction.generateReferenceNumber(),
       description: 'برداشت نقدی',
       status: 'completed'
     });
