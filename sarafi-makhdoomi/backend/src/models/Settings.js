@@ -145,31 +145,40 @@ const settingsSchema = new mongoose.Schema({
     message: String
   },
 
-  // تنظیمات اسکرپر نرخ از تلگرام
+  // تنظیمات اسکرپر نرخ
   rateScraperSettings: {
     enabled: {
       type: Boolean,
       default: false
     },
+    // منبع داده: 'tgju' یا 'telegram'
+    source: {
+      type: String,
+      enum: ['tgju', 'telegram'],
+      default: 'tgju'
+    },
     intervalMinutes: {
       type: Number,
       default: 5
     },
-    // تنظیمات API تلگرام
+    // ارزهای فعال برای به‌روزرسانی
+    activeCurrencies: {
+      type: [String],
+      default: ['USD', 'EUR', 'GBP', 'AED', 'TRY', 'CAD']
+    },
+    // تنظیمات API تلگرام (در صورت استفاده از telegram)
     telegramApiId: String,
     telegramApiHash: String,
-    telegramSession: String, // ذخیره سشن برای لاگین نشدن مجدد
-    // کانال دلار
+    telegramSession: String,
     dollarChannel: {
       type: String,
       default: 'dollar_tehran3bze'
     },
-    // کانال طلا
     goldChannel: {
       type: String,
       default: 'abshdh'
     },
-    // ضرایب تبدیل دلار به سایر ارزها
+    // ضرایب تبدیل (فقط برای تلگرام)
     conversionRates: {
       usdToEur: { type: Number, default: 0.92 },
       usdToGbp: { type: Number, default: 0.79 },

@@ -231,9 +231,11 @@ router.post('/wallets/credit/decrease', async (req, res) => {
 });
 
 // ============================================
-// روت‌های اسکرپر نرخ از تلگرام (روش ساده - بدون نیاز به API)
+// روت‌های اسکرپر نرخ (TGJU و تلگرام)
 // ============================================
-const rateScraperService = require('../services/rateScraperServiceSimple');
+const tgjuScraperService = require('../services/tgjuScraperService');
+const telegramScraperService = require('../services/rateScraperServiceSimple');
+const { runNow, getScraperService, startRateScraperJob } = require('../jobs/rateScraperJob');
 const Settings = require('../models/Settings');
 
 // دریافت تنظیمات اسکرپر
@@ -253,13 +255,15 @@ router.get('/rate-scraper/settings', async (req, res) => {
 router.put('/rate-scraper/settings', async (req, res) => {
   try {
     const {
-      enabled, intervalMinutes,
+      enabled, source, intervalMinutes, activeCurrencies,
       dollarChannel, goldChannel, conversionRates, buySpread, sellSpread
     } = req.body;
 
     const updateData = {};
     if (enabled !== undefined) updateData['rateScraperSettings.enabled'] = enabled;
+    if (source) updateData['rateScraperSettings.source'] = source;
     if (intervalMinutes) updateData['rateScraperSettings.intervalMinutes'] = intervalMinutes;
+    if (activeCurrencies) updateData['rateScraperSettings.activeCurrencies'] = activeCurrencies;
     if (dollarChannel) updateData['rateScraperSettings.dollarChannel'] = dollarChannel;
     if (goldChannel) updateData['rateScraperSettings.goldChannel'] = goldChannel;
     if (conversionRates) updateData['rateScraperSettings.conversionRates'] = conversionRates;
@@ -268,11 +272,8 @@ router.put('/rate-scraper/settings', async (req, res) => {
 
     await Settings.findOneAndUpdate({}, updateData);
 
-    // اگه بازه تغییر کرد، job رو ریستارت کن
-    if (intervalMinutes) {
-      const { updateInterval } = require('../jobs/rateScraperJob');
-      await updateInterval(intervalMinutes);
-    }
+    // ریستارت job با تنظیمات جدید
+    await startRateScraperJob();
 
     res.json({
       success: true,
@@ -286,14 +287,24 @@ router.put('/rate-scraper/settings', async (req, res) => {
 // اجرای دستی اسکرپر
 router.post('/rate-scraper/run', async (req, res) => {
   try {
-    const result = await rateScraperService.run();
+    const result = await runNow();
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// تست خواندن کانال (بدون نیاز به لاگین)
+// تست اتصال به TGJU
+router.post('/rate-scraper/test-tgju', async (req, res) => {
+  try {
+    const result = await tgjuScraperService.testConnection();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// تست خواندن کانال تلگرام
 router.post('/rate-scraper/test-channel', async (req, res) => {
   try {
     const { channelUsername } = req.body;
@@ -302,15 +313,14 @@ router.post('/rate-scraper/test-channel', async (req, res) => {
       return res.status(400).json({ success: false, message: 'نام کانال الزامی است' });
     }
 
-    const message = await rateScraperService.getLastMessage(channelUsername);
+    const message = await telegramScraperService.getLastMessage(channelUsername);
 
     if (!message) {
       return res.json({ success: false, message: 'پیامی یافت نشد' });
     }
 
-    // تلاش برای پارس نرخ
-    const dollarRate = rateScraperService.parseDollarRate(message);
-    const goldRate = rateScraperService.parseGoldRate(message);
+    const dollarRate = telegramScraperService.parseDollarRate(message);
+    const goldRate = telegramScraperService.parseGoldRate(message);
 
     res.json({
       success: true,

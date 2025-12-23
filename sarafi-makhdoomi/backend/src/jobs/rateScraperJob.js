@@ -1,15 +1,30 @@
 const cron = require('node-cron');
 const Settings = require('../models/Settings');
-// استفاده از روش ساده (بدون نیاز به API تلگرام)
-const rateScraperService = require('../services/rateScraperServiceSimple');
+
+// سرویس‌های اسکرپر
+const tgjuScraperService = require('../services/tgjuScraperService');
+const telegramScraperService = require('../services/rateScraperServiceSimple');
 
 let currentJob = null;
+
+// انتخاب سرویس بر اساس تنظیمات
+const getScraperService = async () => {
+  const settings = await Settings.getSettings();
+  const source = settings.rateScraperSettings?.source || 'tgju';
+
+  if (source === 'tgju') {
+    return tgjuScraperService;
+  } else {
+    return telegramScraperService;
+  }
+};
 
 // شروع job اسکرپر نرخ
 const startRateScraperJob = async () => {
   try {
     const settings = await Settings.getSettings();
     const interval = settings.rateScraperSettings?.intervalMinutes || 5;
+    const source = settings.rateScraperSettings?.source || 'tgju';
 
     // اگه job قبلی وجود داره، متوقفش کن
     if (currentJob) {
@@ -21,15 +36,19 @@ const startRateScraperJob = async () => {
 
     currentJob = cron.schedule(cronExpression, async () => {
       console.log(`⏰ [${new Date().toLocaleTimeString('fa-IR')}] اجرای خودکار اسکرپر نرخ...`);
-      await rateScraperService.run();
+      const scraperService = await getScraperService();
+      await scraperService.run();
     });
 
-    console.log(`✅ Rate Scraper Job راه‌اندازی شد (هر ${interval} دقیقه)`);
+    console.log(`✅ Rate Scraper Job راه‌اندازی شد (هر ${interval} دقیقه از ${source === 'tgju' ? 'TGJU' : 'تلگرام'})`);
 
     // اجرای اولیه
     if (settings.rateScraperSettings?.enabled) {
       console.log('🔄 اجرای اولیه اسکرپر نرخ...');
-      setTimeout(() => rateScraperService.run(), 5000);
+      setTimeout(async () => {
+        const scraperService = await getScraperService();
+        await scraperService.run();
+      }, 5000);
     }
 
   } catch (error) {
@@ -51,8 +70,16 @@ const stopJob = () => {
   }
 };
 
+// اجرای دستی
+const runNow = async () => {
+  const scraperService = await getScraperService();
+  return await scraperService.run();
+};
+
 module.exports = {
   startRateScraperJob,
   updateInterval,
-  stopJob
+  stopJob,
+  runNow,
+  getScraperService
 };
