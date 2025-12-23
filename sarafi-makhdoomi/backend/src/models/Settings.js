@@ -173,7 +173,7 @@ const settingsSchema = new mongoose.Schema({
         'GOLD_18K', 'GOLD_24K', 'GOLD_750', 'MESGHAL',
         'COIN_EMAMI', 'COIN_BAHAR', 'COIN_NIM', 'COIN_ROB', 'COIN_GERAMI',
         // نقره
-        'SILVER_999', 'SILVER_925', 'GOLD_OUNCE', 'SILVER_OUNCE',
+        'SILVER_999', 'SILVER_925',
         // کریپتو
         'USDT', 'BTC', 'ETH'
       ]

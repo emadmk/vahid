@@ -11,6 +11,7 @@ class TgjuScraperService {
     this.urls = {
       currency: 'https://www.tgju.org/currency',
       gold: 'https://www.tgju.org/gold-chart',
+      coin: 'https://www.tgju.org/coin',
       crypto: 'https://www.tgju.org/crypto'
     };
 
@@ -43,25 +44,25 @@ class TgjuScraperService {
       'price_tmt': 'TMT'
     };
 
-    // نگاشت طلا و سکه
+    // نگاشت طلا و نقره (از صفحه /gold-chart)
     this.goldMapping = {
       // طلا
       'geram18': 'GOLD_18K',      // طلای 18 عیار
       'geram24': 'GOLD_24K',      // طلای 24 عیار
       'gold_740k': 'GOLD_750',    // طلای 750 (18 عیار)
       'mesghal': 'MESGHAL',       // مثقال طلا
-      // سکه
+      // نقره
+      'silver_999': 'SILVER_999', // نقره 999
+      'silver_925': 'SILVER_925'  // نقره 925
+    };
+
+    // نگاشت سکه (از صفحه /coin)
+    this.coinMapping = {
       'sekee': 'COIN_EMAMI',      // سکه امامی
       'sekeb': 'COIN_BAHAR',      // سکه بهار آزادی
       'nim': 'COIN_NIM',          // نیم سکه
       'rob': 'COIN_ROB',          // ربع سکه
-      'gerami': 'COIN_GERAMI',    // سکه یک گرمی
-      // نقره
-      'silver': 'SILVER_999',     // نقره 999
-      'silver_925': 'SILVER_925', // نقره 925
-      // آنس جهانی
-      'ounce': 'GOLD_OUNCE',      // انس طلا
-      'silver_ounce': 'SILVER_OUNCE' // انس نقره
+      'gerami': 'COIN_GERAMI'     // سکه یک گرمی
     };
 
     // نگاشت کریپتو
@@ -149,13 +150,24 @@ class TgjuScraperService {
   }
 
   /**
-   * دریافت نرخ‌های طلا و سکه
+   * دریافت نرخ‌های طلا و نقره (از صفحه gold-chart)
    */
   async fetchGoldRates() {
-    console.log('🔄 در حال دریافت نرخ‌های طلا و سکه از TGJU...');
+    console.log('🔄 در حال دریافت نرخ‌های طلا و نقره از TGJU...');
     const html = await this.fetchPage(this.urls.gold);
     const rates = this.parseRates(html, this.goldMapping);
-    console.log(`  ✅ ${Object.keys(rates).length} نرخ طلا/سکه دریافت شد`);
+    console.log(`  ✅ ${Object.keys(rates).length} نرخ طلا/نقره دریافت شد`);
+    return rates;
+  }
+
+  /**
+   * دریافت نرخ‌های سکه (از صفحه coin)
+   */
+  async fetchCoinRates() {
+    console.log('🔄 در حال دریافت نرخ‌های سکه از TGJU...');
+    const html = await this.fetchPage(this.urls.coin);
+    const rates = this.parseRates(html, this.coinMapping);
+    console.log(`  ✅ ${Object.keys(rates).length} نرخ سکه دریافت شد`);
     return rates;
   }
 
@@ -214,10 +226,11 @@ class TgjuScraperService {
     try {
       console.log('🚀 در حال دریافت همه نرخ‌ها از TGJU...');
 
-      // دریافت همزمان از سه صفحه
-      const [currencyRates, goldRates, cryptoRates] = await Promise.all([
+      // دریافت همزمان از چهار صفحه
+      const [currencyRates, goldRates, coinRates, cryptoRates] = await Promise.all([
         this.fetchCurrencyRates(),
         this.fetchGoldRates(),
+        this.fetchCoinRates(),
         this.fetchCryptoRates()
       ]);
 
@@ -225,6 +238,7 @@ class TgjuScraperService {
       const allRates = {
         ...currencyRates,
         ...goldRates,
+        ...coinRates,
         ...cryptoRates
       };
 
@@ -375,6 +389,7 @@ class TgjuScraperService {
     return {
       currencies: Object.values(this.currencyMapping),
       gold: Object.values(this.goldMapping),
+      coins: Object.values(this.coinMapping),
       crypto: Object.values(this.cryptoMapping)
     };
   }

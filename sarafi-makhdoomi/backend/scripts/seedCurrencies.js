@@ -50,8 +50,6 @@ const currencies = [
   { code: 'COIN_GERAMI', name: 'سکه گرمی', nameFa: 'سکه گرمی', symbol: '💠', type: 'gold', icon: '💠', order: 109, unit: 'عدد' },
   { code: 'SILVER_999', name: 'نقره ۹۹۹', nameFa: 'نقره ۹۹۹ (گرم)', symbol: '🥈', type: 'gold', icon: '🥈', order: 110, unit: 'گرم' },
   { code: 'SILVER_925', name: 'نقره ۹۲۵', nameFa: 'نقره ۹۲۵ (گرم)', symbol: '⚪', type: 'gold', icon: '⚪', order: 111, unit: 'گرم' },
-  { code: 'GOLD_OUNCE', name: 'انس طلا', nameFa: 'انس طلا (جهانی)', symbol: '🌍', type: 'gold', icon: '🌍', order: 112, unit: 'انس' },
-  { code: 'SILVER_OUNCE', name: 'انس نقره', nameFa: 'انس نقره (جهانی)', symbol: '🌐', type: 'gold', icon: '🌐', order: 113, unit: 'انس' },
 
   // کریپتو
   { code: 'USDT', name: 'تتر', nameFa: 'تتر (USDT)', symbol: '₮', type: 'crypto', icon: '💵', order: 201, unit: '1' },
