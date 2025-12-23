@@ -569,51 +569,63 @@ const seedDatabase = async () => {
     // ========== 9. پیشنهادات بازار ==========
     console.log('🏪 ایجاد پیشنهادات بازار...');
     await MarketOffer.create({
-      user: user1._id,
+      offeredBy: user1._id,
+      offeredByType: 'customer',
+      sarafi: sarafi1._id,
       currency: usd._id,
       type: 'sell',
       amount: 2000,
-      pricePerUnit: 622000,
-      totalPrice: 1244000000,
+      price: 622000,
+      priceType: 'fixed',
       status: 'active',
+      isPublic: true,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
     await MarketOffer.create({
-      user: user2._id,
+      offeredBy: user2._id,
+      offeredByType: 'customer',
+      sarafi: sarafi1._id,
       currency: eur._id,
       type: 'buy',
       amount: 1000,
-      pricePerUnit: 678000,
-      totalPrice: 678000000,
+      price: 678000,
+      priceType: 'conditional',
+      priceCondition: {
+        operator: 'lte',
+        targetPrice: 670000,
+        triggered: false
+      },
       status: 'active',
-      isConditional: true,
-      conditionType: 'price_below',
-      conditionValue: 670000,
+      isPublic: true,
       expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000)
     });
 
     await MarketOffer.create({
-      user: user3._id,
+      offeredBy: sarafi2._id,
+      offeredByType: 'sarafi',
       currency: aed._id,
       type: 'sell',
       amount: 5000,
-      pricePerUnit: 169000,
-      totalPrice: 845000000,
+      price: 169000,
+      priceType: 'fixed',
       status: 'active',
+      isPublic: true,
+      priority: 1,
       expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000)
     });
 
     await MarketOffer.create({
-      user: user1._id,
+      offeredBy: user1._id,
+      offeredByType: 'customer',
+      sarafi: sarafi1._id,
       currency: gbp._id,
       type: 'buy',
       amount: 500,
-      pricePerUnit: 788000,
-      totalPrice: 394000000,
-      status: 'completed',
-      acceptedBy: user2._id,
-      acceptedAt: new Date()
+      price: 788000,
+      priceType: 'fixed',
+      status: 'filled',
+      isPublic: true
     });
     console.log('   ✓ 4 پیشنهاد بازار ایجاد شد');
 
