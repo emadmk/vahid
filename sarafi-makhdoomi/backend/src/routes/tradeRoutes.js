@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const tradeService = require('../services/tradeService');
 const commissionService = require('../services/commissionService');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize } = require('../middlewares/auth');
 
 // =============== روت‌های مشتری ===============
 

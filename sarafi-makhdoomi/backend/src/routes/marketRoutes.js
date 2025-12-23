@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const marketService = require('../services/marketService');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize } = require('../middlewares/auth');
 
 // =============== روت‌های عمومی ===============
 

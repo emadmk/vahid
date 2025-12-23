@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const walletService = require('../services/walletService');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize } = require('../middlewares/auth');
 
 // دریافت کیف پول‌های کاربر
 router.get('/my-wallets', protect, async (req, res) => {
