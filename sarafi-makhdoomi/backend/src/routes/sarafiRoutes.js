@@ -11,6 +11,9 @@ const {
   getStats
 } = require('../controllers/sarafiController');
 const { protect, authorize } = require('../middlewares/auth');
+const SarafiStaff = require('../models/SarafiStaff');
+const User = require('../models/User');
+const AuditLog = require('../models/AuditLog');
 
 // همه روت‌ها نیاز به صراف دارند
 router.use(protect, authorize('sarafi', 'admin'));
@@ -28,5 +31,232 @@ router.get('/customers', getMyCustomers);
 router.put('/customers/:id/approve', approveCustomer);
 router.put('/customers/:id/unknown', unknownCustomer);
 router.put('/customers/:id/reject', rejectCustomer);
+
+// ==================== مدیریت کارکنان ====================
+
+// دریافت لیست کارکنان
+router.get('/staff', async (req, res) => {
+  try {
+    const staff = await SarafiStaff.find({ sarafi: req.user._id })
+      .populate('user', 'firstName lastName email phone')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: staff });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// افزودن کارمند جدید
+router.post('/staff', async (req, res) => {
+  try {
+    const { email, firstName, lastName, phone, role, permissions } = req.body;
+
+    // بررسی وجود کاربر
+    let user = await User.findOne({ email });
+    if (!user) {
+      // ایجاد کاربر جدید
+      user = await User.create({
+        email,
+        firstName,
+        lastName,
+        phone,
+        password: 'Staff@123456', // رمز پیش‌فرض
+        role: 'staff',
+        status: 'approved',
+        isEmailVerified: true
+      });
+    }
+
+    // بررسی تکراری نبودن
+    const exists = await SarafiStaff.findOne({ sarafi: req.user._id, user: user._id });
+    if (exists) {
+      return res.status(400).json({ success: false, message: 'این کارمند قبلا اضافه شده است' });
+    }
+
+    const staff = await SarafiStaff.create({
+      sarafi: req.user._id,
+      user: user._id,
+      role,
+      permissions
+    });
+
+    await staff.populate('user', 'firstName lastName email phone');
+
+    // ثبت لاگ
+    await AuditLog.log({
+      action: 'staff.create',
+      category: 'staff',
+      user: req.user._id,
+      userRole: 'sarafi',
+      sarafi: req.user._id,
+      targetType: 'SarafiStaff',
+      targetId: staff._id,
+      description: `افزودن کارمند ${firstName} ${lastName} با نقش ${role}`,
+      ipAddress: req.ip
+    });
+
+    res.status(201).json({ success: true, data: staff });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// به‌روزرسانی کارمند
+router.put('/staff/:id', async (req, res) => {
+  try {
+    const { role, permissions, firstName, lastName, phone } = req.body;
+
+    const staff = await SarafiStaff.findOne({
+      _id: req.params.id,
+      sarafi: req.user._id
+    }).populate('user');
+
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'کارمند یافت نشد' });
+    }
+
+    // به‌روزرسانی اطلاعات کاربر
+    if (firstName || lastName || phone) {
+      await User.findByIdAndUpdate(staff.user._id, {
+        ...(firstName && { firstName }),
+        ...(lastName && { lastName }),
+        ...(phone && { phone })
+      });
+    }
+
+    // به‌روزرسانی نقش و دسترسی‌ها
+    if (role) staff.role = role;
+    if (permissions) staff.permissions = permissions;
+
+    await staff.save();
+    await staff.populate('user', 'firstName lastName email phone');
+
+    // ثبت لاگ
+    await AuditLog.log({
+      action: 'staff.update',
+      category: 'staff',
+      user: req.user._id,
+      userRole: 'sarafi',
+      sarafi: req.user._id,
+      targetType: 'SarafiStaff',
+      targetId: staff._id,
+      description: `به‌روزرسانی کارمند ${staff.user.firstName} ${staff.user.lastName}`,
+      ipAddress: req.ip
+    });
+
+    res.json({ success: true, data: staff });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// تغییر وضعیت کارمند
+router.put('/staff/:id/toggle-status', async (req, res) => {
+  try {
+    const staff = await SarafiStaff.findOne({
+      _id: req.params.id,
+      sarafi: req.user._id
+    }).populate('user', 'firstName lastName');
+
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'کارمند یافت نشد' });
+    }
+
+    staff.isActive = !staff.isActive;
+    await staff.save();
+
+    // ثبت لاگ
+    await AuditLog.log({
+      action: staff.isActive ? 'staff.update' : 'staff.deactivate',
+      category: 'staff',
+      user: req.user._id,
+      userRole: 'sarafi',
+      sarafi: req.user._id,
+      targetType: 'SarafiStaff',
+      targetId: staff._id,
+      description: `${staff.isActive ? 'فعال‌سازی' : 'غیرفعال‌سازی'} کارمند ${staff.user.firstName} ${staff.user.lastName}`,
+      ipAddress: req.ip
+    });
+
+    res.json({ success: true, data: staff });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// حذف کارمند
+router.delete('/staff/:id', async (req, res) => {
+  try {
+    const staff = await SarafiStaff.findOne({
+      _id: req.params.id,
+      sarafi: req.user._id
+    }).populate('user', 'firstName lastName');
+
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'کارمند یافت نشد' });
+    }
+
+    const staffName = `${staff.user.firstName} ${staff.user.lastName}`;
+    await staff.deleteOne();
+
+    // ثبت لاگ
+    await AuditLog.log({
+      action: 'staff.deactivate',
+      category: 'staff',
+      user: req.user._id,
+      userRole: 'sarafi',
+      sarafi: req.user._id,
+      targetType: 'SarafiStaff',
+      targetId: staff._id,
+      description: `حذف کارمند ${staffName}`,
+      ipAddress: req.ip
+    });
+
+    res.json({ success: true, message: 'کارمند حذف شد' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== لاگ عملیات ====================
+
+// دریافت لاگ‌های صراف
+router.get('/audit-logs', async (req, res) => {
+  try {
+    const { category, severity, action, startDate, endDate, limit = 50, page = 1 } = req.query;
+
+    const query = { sarafi: req.user._id };
+
+    if (category) query.category = category;
+    if (severity) query.severity = severity;
+    if (action) query.action = new RegExp(action, 'i');
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+
+    const logs = await AuditLog.find(query)
+      .populate('user', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    res.json({ success: true, data: logs });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// دریافت لاگ‌های پرخطر
+router.get('/audit-logs/high-risk', async (req, res) => {
+  try {
+    const logs = await AuditLog.getHighRiskLogs(req.user._id, 50);
+    res.json({ success: true, data: logs });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;

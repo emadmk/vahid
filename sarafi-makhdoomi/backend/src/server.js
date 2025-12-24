@@ -19,11 +19,15 @@ const adminRoutes = require('./routes/adminRoutes');
 const sarafiRoutes = require('./routes/sarafiRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const publicRoutes = require('./routes/publicRoutes');
-// روت‌های جدید سیستم معاملات
+// روت‌های سیستم معاملات
 const walletRoutes = require('./routes/walletRoutes');
 const tradeRoutes = require('./routes/tradeRoutes');
 const marketRoutes = require('./routes/marketRoutes');
 const scoringRoutes = require('./routes/scoringRoutes');
+// روت‌های Order Book, Receipt, Spread
+const orderRoutes = require('./routes/orderRoutes');
+const receiptRoutes = require('./routes/receiptRoutes');
+const spreadRoutes = require('./routes/spreadRoutes');
 
 const app = express();
 
@@ -66,6 +70,10 @@ app.use('/api/wallets', walletRoutes);
 app.use('/api/trades', tradeRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/scoring', scoringRoutes);
+// روت‌های Order Book, Receipt, Spread
+app.use('/api/orders', orderRoutes);
+app.use('/api/receipts', receiptRoutes);
+app.use('/api/spreads', spreadRoutes);
 
 // روت سلامت
 app.get('/api/health', (req, res) => {

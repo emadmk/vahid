@@ -32,6 +32,7 @@ import UserWallet from './pages/user/Wallet';
 import UserScore from './pages/user/Score';
 import UserMarket from './pages/user/Market';
 import UserTrades from './pages/user/Trades';
+import UserOrders from './pages/user/Orders';
 
 // صفحات صراف
 import SarafiDashboard from './pages/sarafi/Dashboard';
@@ -44,6 +45,11 @@ import SarafiAccountant from './pages/sarafi/Accountant';
 import SarafiCurrencyCollection from './pages/sarafi/CurrencyCollection';
 import SarafiRialCollection from './pages/sarafi/RialCollection';
 import SarafiCustomerWallets from './pages/sarafi/CustomerWallets';
+import SarafiSpreads from './pages/sarafi/Spreads';
+import SarafiOrderBook from './pages/sarafi/OrderBook';
+import SarafiStaff from './pages/sarafi/Staff';
+import SarafiAuditLogs from './pages/sarafi/AuditLogs';
+import SarafiReceipts from './pages/sarafi/Receipts';
 
 // صفحات ادمین
 import AdminDashboard from './pages/admin/Dashboard';
@@ -57,6 +63,9 @@ import AdminWallets from './pages/admin/Wallets';
 import AdminCustomerTiers from './pages/admin/CustomerTiers';
 import AdminCommissions from './pages/admin/Commissions';
 import AdminRateScraper from './pages/admin/RateScraper';
+import AdminOrders from './pages/admin/Orders';
+import AdminReceipts from './pages/admin/Receipts';
+import AdminAuditLogs from './pages/admin/AuditLogs';
 
 // کامپوننت محافظ روت
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -139,6 +148,7 @@ function App() {
           <Route index element={<UserDashboard />} />
           <Route path="wallet" element={<UserWallet />} />
           <Route path="trades" element={<UserTrades />} />
+          <Route path="orders" element={<UserOrders />} />
           <Route path="market" element={<UserMarket />} />
           <Route path="score" element={<UserScore />} />
           <Route path="requests" element={<UserRequests />} />
@@ -158,12 +168,17 @@ function App() {
         >
           <Route index element={<SarafiDashboard />} />
           <Route path="trades" element={<SarafiTrades />} />
+          <Route path="order-book" element={<SarafiOrderBook />} />
+          <Route path="spreads" element={<SarafiSpreads />} />
+          <Route path="receipts" element={<SarafiReceipts />} />
           <Route path="accountant" element={<SarafiAccountant />} />
           <Route path="currency-collection" element={<SarafiCurrencyCollection />} />
           <Route path="rial-collection" element={<SarafiRialCollection />} />
           <Route path="customer-wallets" element={<SarafiCustomerWallets />} />
           <Route path="requests" element={<SarafiRequests />} />
           <Route path="customers" element={<SarafiCustomers />} />
+          <Route path="staff" element={<SarafiStaff />} />
+          <Route path="audit-logs" element={<SarafiAuditLogs />} />
           <Route path="public-requests" element={<SarafiPublicRequests />} />
           <Route path="profile" element={<SarafiProfile />} />
         </Route>
@@ -179,6 +194,8 @@ function App() {
         >
           <Route index element={<AdminDashboard />} />
           <Route path="trades" element={<AdminTrades />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="receipts" element={<AdminReceipts />} />
           <Route path="wallets" element={<AdminWallets />} />
           <Route path="customer-tiers" element={<AdminCustomerTiers />} />
           <Route path="commissions" element={<AdminCommissions />} />
@@ -186,6 +203,7 @@ function App() {
           <Route path="sarafis" element={<AdminSarafis />} />
           <Route path="requests" element={<AdminRequests />} />
           <Route path="currencies" element={<AdminCurrencies />} />
+          <Route path="audit-logs" element={<AdminAuditLogs />} />
           <Route path="rate-scraper" element={<AdminRateScraper />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>

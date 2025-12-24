@@ -2,7 +2,8 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import {
   FaHome, FaUsers, FaExchangeAlt, FaGlobe, FaUser, FaSignOutAlt,
-  FaBars, FaTimes, FaBell, FaCalculator, FaCoins, FaMoneyBillWave, FaStore, FaWallet
+  FaBars, FaTimes, FaBell, FaCalculator, FaCoins, FaMoneyBillWave, FaStore, FaWallet,
+  FaPercent, FaBook, FaUserTie, FaHistory, FaReceipt, FaChartLine
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
 import { notificationAPI } from '../../services/api';
@@ -17,11 +18,16 @@ const SarafiLayout = () => {
   const menuItems = [
     { path: '/sarafi', label: 'داشبورد', icon: FaHome },
     { path: '/sarafi/trades', label: 'معاملات', icon: FaExchangeAlt },
+    { path: '/sarafi/order-book', label: 'دفتر سفارشات', icon: FaBook },
+    { path: '/sarafi/spreads', label: 'مدیریت اسپرد', icon: FaPercent },
+    { path: '/sarafi/receipts', label: 'رسیدها', icon: FaReceipt },
     { path: '/sarafi/accountant', label: 'حسابداری', icon: FaCalculator },
     { path: '/sarafi/currency-collection', label: 'وصول ارزی', icon: FaCoins },
     { path: '/sarafi/rial-collection', label: 'وصول ریالی', icon: FaMoneyBillWave },
     { path: '/sarafi/customer-wallets', label: 'کیف پول مشتریان', icon: FaWallet },
     { path: '/sarafi/customers', label: 'مشتریان', icon: FaUsers },
+    { path: '/sarafi/staff', label: 'کارکنان', icon: FaUserTie },
+    { path: '/sarafi/audit-logs', label: 'لاگ عملیات', icon: FaHistory },
     { path: '/sarafi/requests', label: 'درخواست‌ها (قدیم)', icon: FaGlobe },
     { path: '/sarafi/profile', label: 'پروفایل', icon: FaUser }
   ];

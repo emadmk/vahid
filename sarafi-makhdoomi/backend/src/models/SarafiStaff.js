@@ -23,6 +23,7 @@ const sarafiStaffSchema = new mongoose.Schema({
       'accountant',          // حسابدار
       'currency_collector',  // وصول ارزی
       'rial_collector',      // وصول ریالی
+      'sales_manager',       // مدیر فروش
       'manager',             // مدیر
       'operator'             // اپراتور
     ],
@@ -31,7 +32,7 @@ const sarafiStaffSchema = new mongoose.Schema({
 
   // دسترسی‌ها
   permissions: {
-    // دسترسی‌های حسابدار
+    // ========== دسترسی‌های حسابدار ==========
     canManageWallets: {
       type: Boolean,
       default: false
@@ -48,8 +49,12 @@ const sarafiStaffSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
+    canCreateAccountingDoc: {
+      type: Boolean,
+      default: false
+    },
 
-    // دسترسی‌های وصول ارزی
+    // ========== دسترسی‌های وصول ارزی ==========
     canConfirmCurrencyCollection: {
       type: Boolean,
       default: false
@@ -58,8 +63,12 @@ const sarafiStaffSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
+    canUploadCurrencyReceipt: {
+      type: Boolean,
+      default: false
+    },
 
-    // دسترسی‌های وصول ریالی
+    // ========== دسترسی‌های وصول ریالی ==========
     canConfirmRialCollection: {
       type: Boolean,
       default: false
@@ -68,8 +77,42 @@ const sarafiStaffSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
+    canUploadRialReceipt: {
+      type: Boolean,
+      default: false
+    },
 
-    // دسترسی‌های عمومی
+    // ========== دسترسی‌های مدیر فروش ==========
+    canCreateOffers: {
+      type: Boolean,
+      default: false
+    },
+    canEditOffers: {
+      type: Boolean,
+      default: false
+    },
+    canCancelOffers: {
+      type: Boolean,
+      default: false
+    },
+    canBuyCurrency: {
+      type: Boolean,
+      default: false
+    },
+    canSellCurrency: {
+      type: Boolean,
+      default: false
+    },
+    canViewOrderBook: {
+      type: Boolean,
+      default: false
+    },
+    canViewMarketTape: {
+      type: Boolean,
+      default: false
+    },
+
+    // ========== دسترسی‌های عمومی ==========
     canViewCustomers: {
       type: Boolean,
       default: false
@@ -83,6 +126,22 @@ const sarafiStaffSchema = new mongoose.Schema({
       default: false
     },
     canManageRates: {
+      type: Boolean,
+      default: false
+    },
+    canManageSpread: {
+      type: Boolean,
+      default: false
+    },
+    canSuspendCustomer: {
+      type: Boolean,
+      default: false
+    },
+    canChangeTier: {
+      type: Boolean,
+      default: false
+    },
+    canViewAuditLogs: {
       type: Boolean,
       default: false
     }
@@ -135,36 +194,61 @@ sarafiStaffSchema.pre('save', function(next) {
   if (this.isNew) {
     switch (this.role) {
       case 'accountant':
+        // حسابدار: دسترسی مالی و گزارش‌گیری، بدون دسترسی به معاملات
         this.permissions.canManageWallets = true;
         this.permissions.canViewTransactions = true;
-        this.permissions.canManageCredit = true;
+        this.permissions.canManageCredit = false; // بدون اختیار شارژ اعتباری
         this.permissions.canGenerateReports = true;
         this.permissions.canViewCustomers = true;
+        this.permissions.canCreateAccountingDoc = true;
+        this.permissions.canViewAuditLogs = true;
         break;
 
       case 'currency_collector':
+        // وصول ارزی: فقط ثبت و تایید وصول ارزی
         this.permissions.canConfirmCurrencyCollection = true;
         this.permissions.canViewCurrencyTrades = true;
         this.permissions.canViewCustomers = true;
+        this.permissions.canUploadCurrencyReceipt = true;
         break;
 
       case 'rial_collector':
+        // وصول ریالی: فقط ثبت و تایید وصول ریالی
         this.permissions.canConfirmRialCollection = true;
         this.permissions.canViewRialTrades = true;
         this.permissions.canViewCustomers = true;
+        this.permissions.canUploadRialReceipt = true;
+        break;
+
+      case 'sales_manager':
+        // مدیر فروش: دسترسی کامل به بازار و فروش
+        this.permissions.canCreateOffers = true;
+        this.permissions.canEditOffers = true;
+        this.permissions.canCancelOffers = true;
+        this.permissions.canBuyCurrency = true;
+        this.permissions.canSellCurrency = true;
+        this.permissions.canViewOrderBook = true;
+        this.permissions.canViewMarketTape = true;
+        this.permissions.canManageOffers = true;
+        this.permissions.canViewTransactions = true;
+        this.permissions.canViewCustomers = true;
+        this.permissions.canApproveTrades = true; // قابل تایید معامله (با قواعد)
         break;
 
       case 'manager':
-        // مدیر همه دسترسی‌ها را دارد
-        Object.keys(this.permissions).forEach(key => {
+        // مدیر: همه دسترسی‌ها
+        Object.keys(this.permissions.toObject()).forEach(key => {
           this.permissions[key] = true;
         });
         break;
 
       case 'operator':
+        // اپراتور: دسترسی محدود به مشاهده و ثبت
         this.permissions.canViewTransactions = true;
         this.permissions.canViewCustomers = true;
         this.permissions.canManageOffers = true;
+        this.permissions.canViewOrderBook = true;
+        this.permissions.canViewMarketTape = true;
         break;
     }
   }

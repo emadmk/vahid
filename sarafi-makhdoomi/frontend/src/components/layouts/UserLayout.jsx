@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import {
   FaHome, FaPlus, FaList, FaGlobe, FaUser, FaSignOutAlt,
-  FaBars, FaTimes, FaBell, FaWallet, FaStar, FaStore, FaExchangeAlt
+  FaBars, FaTimes, FaBell, FaWallet, FaStar, FaStore, FaExchangeAlt, FaBook
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
 import { notificationAPI } from '../../services/api';
@@ -18,6 +18,7 @@ const UserLayout = () => {
     { path: '/dashboard', label: 'داشبورد', icon: FaHome },
     { path: '/dashboard/wallet', label: 'کیف پول', icon: FaWallet },
     { path: '/dashboard/trades', label: 'معاملات', icon: FaExchangeAlt },
+    { path: '/dashboard/orders', label: 'سفارشات', icon: FaBook },
     { path: '/dashboard/market', label: 'بازار', icon: FaStore },
     { path: '/dashboard/score', label: 'امتیاز', icon: FaStar },
     { path: '/dashboard/new-request', label: 'درخواست جدید', icon: FaPlus },

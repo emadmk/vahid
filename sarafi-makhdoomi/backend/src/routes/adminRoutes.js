@@ -27,6 +27,9 @@ const walletService = require('../services/walletService');
 const Trade = require('../models/Trade');
 const CustomerTier = require('../models/CustomerTier');
 const User = require('../models/User');
+const Order = require('../models/Order');
+const Receipt = require('../models/Receipt');
+const AuditLog = require('../models/AuditLog');
 
 // همه روت‌ها نیاز به ادمین دارند
 router.use(protect, authorize('admin'));
@@ -399,6 +402,337 @@ router.post('/customer-tiers/init', async (req, res) => {
   try {
     await CustomerTier.initDefaultTiers();
     res.json({ success: true, message: 'دسته‌بندی‌های پیش‌فرض ایجاد شدند' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ========== مدیریت سفارشات ==========
+
+// دریافت همه سفارشات
+router.get('/orders', async (req, res) => {
+  try {
+    const { status, type, side, sarafi, search, page = 1, limit = 20 } = req.query;
+    const query = {};
+
+    if (status) query.status = status;
+    if (type) query.type = type;
+    if (side) query.side = side;
+    if (sarafi) query.sarafi = sarafi;
+
+    const skip = (page - 1) * limit;
+
+    let orders = await Order.find(query)
+      .populate('customer', 'firstName lastName phone')
+      .populate('sarafi', 'firstName lastName phone sarafiName')
+      .populate('currency', 'code name nameFa')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // فیلتر جستجو
+    if (search) {
+      orders = orders.filter(o =>
+        o.orderNumber?.includes(search) ||
+        o.customer?.firstName?.includes(search) ||
+        o.customer?.lastName?.includes(search) ||
+        o.customer?.phone?.includes(search)
+      );
+    }
+
+    const total = await Order.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: orders,
+      total,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// آمار سفارشات
+router.get('/orders/stats', async (req, res) => {
+  try {
+    const stats = await Order.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalVolume: { $sum: '$totalValue' }
+        }
+      }
+    ]);
+
+    const result = {
+      total: 0,
+      pending: 0,
+      active: 0,
+      filled: 0,
+      cancelled: 0,
+      expired: 0,
+      totalVolume: 0
+    };
+
+    stats.forEach(s => {
+      result.total += s.count;
+      result.totalVolume += s.totalVolume || 0;
+      if (s._id === 'pending') result.pending = s.count;
+      if (s._id === 'active') result.active = s.count;
+      if (s._id === 'filled' || s._id === 'partially_filled') result.filled += s.count;
+      if (s._id === 'cancelled') result.cancelled = s.count;
+      if (s._id === 'expired') result.expired = s.count;
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// لغو سفارش توسط ادمین
+router.put('/orders/:id/cancel', async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'سفارش یافت نشد' });
+    }
+
+    if (!['pending', 'active'].includes(order.status)) {
+      return res.status(400).json({ success: false, message: 'این سفارش قابل لغو نیست' });
+    }
+
+    order.status = 'cancelled';
+    order.cancelledAt = new Date();
+    order.cancelledBy = req.user._id;
+    order.cancelReason = req.body.reason || 'لغو توسط ادمین';
+    await order.save();
+
+    // ثبت در لاگ
+    await AuditLog.create({
+      sarafi: order.sarafi,
+      action: 'order_cancelled',
+      actor: req.user._id,
+      target: order._id,
+      targetModel: 'Order',
+      details: { reason: order.cancelReason },
+      severity: 'medium'
+    });
+
+    res.json({ success: true, message: 'سفارش لغو شد', data: order });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ========== مدیریت رسیدها ==========
+
+// دریافت همه رسیدها
+router.get('/receipts', async (req, res) => {
+  try {
+    const { status, type, paymentMethod, sarafi, search, page = 1, limit = 20 } = req.query;
+    const query = {};
+
+    if (status) query.status = status;
+    if (type) query.type = type;
+    if (paymentMethod) query.paymentMethod = paymentMethod;
+    if (sarafi) query.sarafi = sarafi;
+
+    const skip = (page - 1) * limit;
+
+    let receipts = await Receipt.find(query)
+      .populate('customer', 'firstName lastName phone')
+      .populate('sarafi', 'firstName lastName phone sarafiName')
+      .populate('currency', 'code name nameFa')
+      .populate('collector', 'firstName lastName')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // فیلتر جستجو
+    if (search) {
+      receipts = receipts.filter(r =>
+        r.receiptNumber?.includes(search) ||
+        r.customer?.firstName?.includes(search) ||
+        r.customer?.lastName?.includes(search) ||
+        r.customer?.phone?.includes(search)
+      );
+    }
+
+    const total = await Receipt.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: receipts,
+      total,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// آمار رسیدها
+router.get('/receipts/stats', async (req, res) => {
+  try {
+    const stats = await Receipt.aggregate([
+      {
+        $group: {
+          _id: { type: '$type', status: '$status' },
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' }
+        }
+      }
+    ]);
+
+    const result = {
+      total: 0,
+      rial: { pending: 0, confirmed: 0, rejected: 0, totalAmount: 0 },
+      currency: { pending: 0, confirmed: 0, rejected: 0, totalAmount: 0 }
+    };
+
+    stats.forEach(s => {
+      result.total += s.count;
+      const type = s._id.type === 'rial' ? 'rial' : 'currency';
+      const status = s._id.status;
+      if (result[type][status] !== undefined) {
+        result[type][status] += s.count;
+        result[type].totalAmount += s.totalAmount || 0;
+      }
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// تایید یا رد رسید توسط ادمین
+router.put('/receipts/:id/status', async (req, res) => {
+  try {
+    const { status, rejectionReason } = req.body;
+    const receipt = await Receipt.findById(req.params.id);
+
+    if (!receipt) {
+      return res.status(404).json({ success: false, message: 'رسید یافت نشد' });
+    }
+
+    if (receipt.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'این رسید قبلاً بررسی شده است' });
+    }
+
+    receipt.status = status;
+    if (status === 'confirmed') {
+      receipt.confirmedAt = new Date();
+      receipt.confirmedBy = req.user._id;
+    } else if (status === 'rejected') {
+      receipt.rejectedAt = new Date();
+      receipt.rejectedBy = req.user._id;
+      receipt.rejectionReason = rejectionReason;
+    }
+    await receipt.save();
+
+    // ثبت در لاگ
+    await AuditLog.create({
+      sarafi: receipt.sarafi,
+      action: status === 'confirmed' ? 'receipt_confirmed' : 'receipt_rejected',
+      actor: req.user._id,
+      target: receipt._id,
+      targetModel: 'Receipt',
+      details: { status, rejectionReason },
+      severity: 'medium'
+    });
+
+    res.json({ success: true, message: `رسید ${status === 'confirmed' ? 'تایید' : 'رد'} شد`, data: receipt });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ========== لاگ عملیات ==========
+
+// دریافت همه لاگ‌های عملیات
+router.get('/audit-logs', async (req, res) => {
+  try {
+    const { action, severity, sarafi, actor, search, page = 1, limit = 50 } = req.query;
+    const query = {};
+
+    if (action) query.action = action;
+    if (severity) query.severity = severity;
+    if (sarafi) query.sarafi = sarafi;
+    if (actor) query.actor = actor;
+
+    const skip = (page - 1) * limit;
+
+    let logs = await AuditLog.find(query)
+      .populate('sarafi', 'firstName lastName sarafiName')
+      .populate('actor', 'firstName lastName phone role')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // فیلتر جستجو
+    if (search) {
+      logs = logs.filter(l =>
+        l.action?.includes(search) ||
+        l.actor?.firstName?.includes(search) ||
+        l.actor?.lastName?.includes(search) ||
+        l.ipAddress?.includes(search)
+      );
+    }
+
+    const total = await AuditLog.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: logs,
+      total,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// آمار لاگ‌ها
+router.get('/audit-logs/stats', async (req, res) => {
+  try {
+    const stats = await AuditLog.aggregate([
+      {
+        $group: {
+          _id: '$severity',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const result = {
+      total: 0,
+      low: 0,
+      medium: 0,
+      high: 0,
+      critical: 0
+    };
+
+    stats.forEach(s => {
+      result.total += s.count;
+      if (result[s._id] !== undefined) {
+        result[s._id] = s.count;
+      }
+    });
+
+    // لاگ‌های پرخطر اخیر
+    const highRiskLogs = await AuditLog.find({ severity: { $in: ['high', 'critical'] } })
+      .populate('sarafi', 'firstName lastName sarafiName')
+      .populate('actor', 'firstName lastName')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    result.recentHighRisk = highRiskLogs;
+
+    res.json({ success: true, data: result });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
