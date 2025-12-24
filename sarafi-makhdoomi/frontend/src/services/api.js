@@ -148,3 +148,78 @@ export const notificationAPI = {
   delete: (id) => api.delete(`/notifications/${id}`),
   deleteAll: () => api.delete('/notifications/all')
 };
+
+// سفارشات (Order Book)
+export const orderAPI = {
+  // کاربر
+  getMyOrders: (params) => api.get('/orders/my', { params }),
+  create: (data) => api.post('/orders', data),
+  cancel: (id, reason) => api.put(`/orders/${id}/cancel`, { reason }),
+  getOrderBook: (params) => api.get('/orders/order-book', { params }),
+
+  // صراف
+  getSarafiOrders: (params) => api.get('/orders/sarafi', { params }),
+  getOrderBookBySarafi: (sarafiId, params) => api.get(`/orders/order-book/${sarafiId}`, { params }),
+  approve: (id) => api.put(`/orders/${id}/approve`),
+  reject: (id, reason) => api.put(`/orders/${id}/reject`, { reason }),
+  fill: (id, data) => api.put(`/orders/${id}/fill`, data),
+
+  // ادمین
+  getAll: (params) => api.get('/admin/orders', { params }),
+  getStats: () => api.get('/admin/orders/stats'),
+  adminCancel: (id, reason) => api.put(`/admin/orders/${id}/cancel`, { reason })
+};
+
+// رسیدها (Receipts)
+export const receiptAPI = {
+  // صراف
+  getSarafiReceipts: (params) => api.get('/receipts', { params }),
+  create: (data) => api.post('/receipts', data),
+  getOne: (id) => api.get(`/receipts/${id}`),
+  update: (id, data) => api.put(`/receipts/${id}`, data),
+  confirm: (id) => api.put(`/receipts/${id}/confirm`),
+  reject: (id, reason) => api.put(`/receipts/${id}/reject`, { reason }),
+
+  // ادمین
+  getAll: (params) => api.get('/admin/receipts', { params }),
+  getStats: () => api.get('/admin/receipts/stats'),
+  adminConfirm: (id) => api.put(`/admin/receipts/${id}/status`, { status: 'confirmed' }),
+  adminReject: (id, reason) => api.put(`/admin/receipts/${id}/status`, { status: 'rejected', rejectionReason: reason })
+};
+
+// اسپردها (Spreads)
+export const spreadAPI = {
+  // صراف
+  getSarafiSpreads: (params) => api.get('/spreads', { params }),
+  create: (data) => api.post('/spreads', data),
+  update: (id, data) => api.put(`/spreads/${id}`, data),
+  delete: (id) => api.delete(`/spreads/${id}`),
+  toggle: (id) => api.put(`/spreads/${id}/toggle`),
+  calculate: (data) => api.post('/spreads/calculate', data),
+
+  // ادمین
+  getAll: (params) => api.get('/admin/spreads', { params }),
+  getStats: () => api.get('/admin/spreads/stats'),
+  adminToggle: (id) => api.put(`/admin/spreads/${id}/toggle`),
+  adminDelete: (id) => api.delete(`/admin/spreads/${id}`)
+};
+
+// کارکنان صرافی (Staff)
+export const staffAPI = {
+  getAll: () => api.get('/sarafi/staff'),
+  create: (data) => api.post('/sarafi/staff', data),
+  update: (id, data) => api.put(`/sarafi/staff/${id}`, data),
+  delete: (id) => api.delete(`/sarafi/staff/${id}`),
+  toggleStatus: (id) => api.put(`/sarafi/staff/${id}/toggle-status`)
+};
+
+// لاگ عملیات (Audit Logs)
+export const auditLogAPI = {
+  // صراف
+  getSarafiLogs: (params) => api.get('/sarafi/audit-logs', { params }),
+  getHighRisk: () => api.get('/sarafi/audit-logs/high-risk'),
+
+  // ادمین
+  getAll: (params) => api.get('/admin/audit-logs', { params }),
+  getStats: () => api.get('/admin/audit-logs/stats')
+};

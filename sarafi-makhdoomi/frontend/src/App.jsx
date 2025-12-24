@@ -66,6 +66,7 @@ import AdminRateScraper from './pages/admin/RateScraper';
 import AdminOrders from './pages/admin/Orders';
 import AdminReceipts from './pages/admin/Receipts';
 import AdminAuditLogs from './pages/admin/AuditLogs';
+import AdminSpreads from './pages/admin/Spreads';
 
 // کامپوننت محافظ روت
 const ProtectedRoute = ({ children, roles = [] }) => {
@@ -199,6 +200,7 @@ function App() {
           <Route path="wallets" element={<AdminWallets />} />
           <Route path="customer-tiers" element={<AdminCustomerTiers />} />
           <Route path="commissions" element={<AdminCommissions />} />
+          <Route path="spreads" element={<AdminSpreads />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="sarafis" element={<AdminSarafis />} />
           <Route path="requests" element={<AdminRequests />} />

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import {
   FaHome, FaUsers, FaExchangeAlt, FaCoins, FaCog, FaSignOutAlt,
   FaBars, FaTimes, FaBell, FaUserTie, FaWallet, FaMedal, FaPercent, FaTelegram,
-  FaBook, FaReceipt, FaHistory
+  FaBook, FaReceipt, FaHistory, FaChartLine
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
 
@@ -23,6 +23,7 @@ const AdminLayout = () => {
     { path: '/admin/sarafis', label: 'صراف‌ها', icon: FaUserTie },
     { path: '/admin/customer-tiers', label: 'رده‌بندی مشتریان', icon: FaMedal },
     { path: '/admin/commissions', label: 'کارمزد', icon: FaPercent },
+    { path: '/admin/spreads', label: 'اسپردها', icon: FaChartLine },
     { path: '/admin/currencies', label: 'ارزها', icon: FaCoins },
     { path: '/admin/audit-logs', label: 'لاگ عملیات', icon: FaHistory },
     { path: '/admin/rate-scraper', label: 'اسکرپر نرخ', icon: FaTelegram },

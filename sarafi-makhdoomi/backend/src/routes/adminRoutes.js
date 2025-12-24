@@ -30,6 +30,7 @@ const User = require('../models/User');
 const Order = require('../models/Order');
 const Receipt = require('../models/Receipt');
 const AuditLog = require('../models/AuditLog');
+const Spread = require('../models/Spread');
 
 // همه روت‌ها نیاز به ادمین دارند
 router.use(protect, authorize('admin'));
@@ -733,6 +734,134 @@ router.get('/audit-logs/stats', async (req, res) => {
     result.recentHighRisk = highRiskLogs;
 
     res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ========== مدیریت اسپردها ==========
+
+// دریافت همه اسپردها
+router.get('/spreads', async (req, res) => {
+  try {
+    const { sarafi, currency, isActive, page = 1, limit = 20 } = req.query;
+    const query = {};
+
+    if (sarafi) query.sarafi = sarafi;
+    if (currency) query.currency = currency;
+    if (isActive !== undefined) query.isActive = isActive === 'true';
+
+    const skip = (page - 1) * limit;
+
+    const spreads = await Spread.find(query)
+      .populate('sarafi', 'firstName lastName sarafiName')
+      .populate('currency', 'code name nameFa')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Spread.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: spreads,
+      total,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// آمار اسپردها
+router.get('/spreads/stats', async (req, res) => {
+  try {
+    const stats = await Spread.aggregate([
+      {
+        $group: {
+          _id: '$sarafi',
+          count: { $sum: 1 },
+          activeCount: { $sum: { $cond: ['$isActive', 1, 0] } }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'sarafiInfo'
+        }
+      },
+      { $unwind: '$sarafiInfo' }
+    ]);
+
+    const result = {
+      totalSpreads: stats.reduce((sum, s) => sum + s.count, 0),
+      totalActive: stats.reduce((sum, s) => sum + s.activeCount, 0),
+      bySarafi: stats.map(s => ({
+        sarafiId: s._id,
+        sarafiName: s.sarafiInfo.sarafiName || `${s.sarafiInfo.firstName} ${s.sarafiInfo.lastName}`,
+        count: s.count,
+        activeCount: s.activeCount
+      }))
+    };
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// فعال/غیرفعال کردن اسپرد
+router.put('/spreads/:id/toggle', async (req, res) => {
+  try {
+    const spread = await Spread.findById(req.params.id);
+    if (!spread) {
+      return res.status(404).json({ success: false, message: 'اسپرد یافت نشد' });
+    }
+
+    spread.isActive = !spread.isActive;
+    await spread.save();
+
+    // ثبت لاگ
+    await AuditLog.create({
+      sarafi: spread.sarafi,
+      action: spread.isActive ? 'spread_activated' : 'spread_deactivated',
+      actor: req.user._id,
+      target: spread._id,
+      targetModel: 'Spread',
+      details: { isActive: spread.isActive },
+      severity: 'medium'
+    });
+
+    res.json({ success: true, message: `اسپرد ${spread.isActive ? 'فعال' : 'غیرفعال'} شد`, data: spread });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// حذف اسپرد
+router.delete('/spreads/:id', async (req, res) => {
+  try {
+    const spread = await Spread.findById(req.params.id);
+    if (!spread) {
+      return res.status(404).json({ success: false, message: 'اسپرد یافت نشد' });
+    }
+
+    // ثبت لاگ قبل از حذف
+    await AuditLog.create({
+      sarafi: spread.sarafi,
+      action: 'spread_deleted',
+      actor: req.user._id,
+      target: spread._id,
+      targetModel: 'Spread',
+      details: { deletedSpread: spread.toObject() },
+      severity: 'high'
+    });
+
+    await spread.deleteOne();
+
+    res.json({ success: true, message: 'اسپرد حذف شد' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
