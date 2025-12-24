@@ -86,7 +86,7 @@ const AdminDashboard = () => {
         <div className="stat-card">
           <FaCoins className="text-green-500 text-2xl mb-2" />
           <div className="stat-value">{(stats?.transactions?.total || 0).toLocaleString()}</div>
-          <div className="stat-label">مجموع تراکنش‌ها (تومان)</div>
+          <div className="stat-label">مجموع تراکنش‌ها (ریال)</div>
         </div>
       </div>
 

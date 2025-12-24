@@ -166,11 +166,11 @@ const Requests = () => {
                 <div className="flex gap-6 text-sm">
                   <div>
                     <span className="text-dark-500">نرخ:</span>
-                    <span className="text-white mr-2">{request.rate?.toLocaleString()} تومان</span>
+                    <span className="text-white mr-2">{request.rate?.toLocaleString()} ریال</span>
                   </div>
                   <div>
                     <span className="text-dark-500">مبلغ کل:</span>
-                    <span className="text-gold-500 font-bold mr-2">{request.finalPrice?.toLocaleString()} تومان</span>
+                    <span className="text-gold-500 font-bold mr-2">{request.finalPrice?.toLocaleString()} ریال</span>
                   </div>
                 </div>
 

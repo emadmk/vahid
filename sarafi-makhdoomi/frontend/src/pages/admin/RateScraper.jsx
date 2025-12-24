@@ -646,10 +646,10 @@ const RateScraper = () => {
                     {testResult.dollarRate ? (
                       <div>
                         <p className="text-green-400 text-lg font-bold">
-                          خرید: {testResult.dollarRate.buyRate?.toLocaleString()} تومان
+                          خرید: {testResult.dollarRate.buyRate?.toLocaleString()} ریال
                         </p>
                         <p className="text-green-400 text-lg font-bold">
-                          فروش: {testResult.dollarRate.sellRate?.toLocaleString()} تومان
+                          فروش: {testResult.dollarRate.sellRate?.toLocaleString()} ریال
                         </p>
                       </div>
                     ) : (
@@ -661,10 +661,10 @@ const RateScraper = () => {
                     {testResult.goldRate ? (
                       <div>
                         <p className="text-yellow-400 text-lg font-bold">
-                          خرید: {testResult.goldRate.buyRate?.toLocaleString()} تومان
+                          خرید: {testResult.goldRate.buyRate?.toLocaleString()} ریال
                         </p>
                         <p className="text-yellow-400 text-lg font-bold">
-                          فروش: {testResult.goldRate.sellRate?.toLocaleString()} تومان
+                          فروش: {testResult.goldRate.sellRate?.toLocaleString()} ریال
                         </p>
                       </div>
                     ) : (

@@ -69,8 +69,8 @@ class TelegramBot {
         let message = '📊 *نرخ لحظه‌ای ارز*\n\n';
         for (const c of currencies) {
           message += `${c.symbol} *${c.nameFa}*\n`;
-          message += `   خرید: ${c.buyRate.toLocaleString()} تومان\n`;
-          message += `   فروش: ${c.sellRate.toLocaleString()} تومان\n\n`;
+          message += `   خرید: ${c.buyRate.toLocaleString()} ریال\n`;
+          message += `   فروش: ${c.sellRate.toLocaleString()} ریال\n\n`;
         }
 
         await ctx.reply(message, { parse_mode: 'Markdown' });
@@ -150,7 +150,7 @@ class TelegramBot {
         message += `${req.type === 'buy' ? '🛒' : '💵'} `;
         message += `${req.type === 'buy' ? 'خرید' : 'فروش'} `;
         message += `${req.amount} ${req.currency.nameFa}\n`;
-        message += `   مبلغ: ${req.finalPrice.toLocaleString()} تومان\n`;
+        message += `   مبلغ: ${req.finalPrice.toLocaleString()} ریال\n`;
         message += `   وضعیت: ${statusText[req.status]}\n\n`;
       }
 
@@ -427,8 +427,8 @@ class TelegramBot {
           `نوع: ${type === 'buy' ? '🛒 خرید' : '💵 فروش'}\n` +
           `ارز: ${currency.nameFa}\n` +
           `مقدار: ${amount}\n` +
-          `نرخ: ${rate.toLocaleString()} تومان\n` +
-          `مبلغ کل: ${totalPrice.toLocaleString()} تومان\n\n` +
+          `نرخ: ${rate.toLocaleString()} ریال\n` +
+          `مبلغ کل: ${totalPrice.toLocaleString()} ریال\n\n` +
           `آیا تایید می‌کنید؟`,
           { parse_mode: 'Markdown', ...keyboard }
         );

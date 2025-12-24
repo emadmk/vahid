@@ -152,7 +152,7 @@ const SarafiRequests = () => {
                 <div className="flex flex-wrap gap-6 text-sm mb-4">
                   <div>
                     <span className="text-dark-500">مبلغ:</span>
-                    <span className="text-gold-500 font-bold mr-2">{request.finalPrice?.toLocaleString()} تومان</span>
+                    <span className="text-gold-500 font-bold mr-2">{request.finalPrice?.toLocaleString()} ریال</span>
                   </div>
                   <div>
                     <span className="text-dark-500">تاریخ:</span>

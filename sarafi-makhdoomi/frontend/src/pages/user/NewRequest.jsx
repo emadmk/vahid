@@ -168,12 +168,12 @@ const NewRequest = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-dark-300">نرخ:</span>
-              <span className="text-white font-bold">{getRate().toLocaleString()} تومان</span>
+              <span className="text-white font-bold">{getRate().toLocaleString()} ریال</span>
             </div>
             <div className="border-t border-dark-600 my-4"></div>
             <div className="flex justify-between text-lg">
               <span className="text-dark-300">مبلغ کل:</span>
-              <span className="text-gold-500 font-bold">{getTotalPrice().toLocaleString()} تومان</span>
+              <span className="text-gold-500 font-bold">{getTotalPrice().toLocaleString()} ریال</span>
             </div>
           </div>
         </div>

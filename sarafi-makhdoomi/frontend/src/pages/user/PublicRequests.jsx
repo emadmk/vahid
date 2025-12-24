@@ -101,11 +101,11 @@ const PublicRequests = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-500">نرخ:</span>
-                  <span className="text-white">{request.rate?.toLocaleString()} تومان</span>
+                  <span className="text-white">{request.rate?.toLocaleString()} ریال</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-500">مبلغ کل:</span>
-                  <span className="text-gold-500 font-bold">{request.finalPrice?.toLocaleString()} تومان</span>
+                  <span className="text-gold-500 font-bold">{request.finalPrice?.toLocaleString()} ریال</span>
                 </div>
               </div>
 

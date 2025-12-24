@@ -73,7 +73,7 @@ const Rates = () => {
                   <span className="text-dark-300">نرخ خرید</span>
                   <span className="text-green-400 font-bold text-xl">
                     {rate.buyRate?.toLocaleString()}
-                    <span className="text-sm mr-1 text-dark-500">تومان</span>
+                    <span className="text-sm mr-1 text-dark-500">ریال</span>
                   </span>
                 </div>
 
@@ -81,7 +81,7 @@ const Rates = () => {
                   <span className="text-dark-300">نرخ فروش</span>
                   <span className="text-red-400 font-bold text-xl">
                     {rate.sellRate?.toLocaleString()}
-                    <span className="text-sm mr-1 text-dark-500">تومان</span>
+                    <span className="text-sm mr-1 text-dark-500">ریال</span>
                   </span>
                 </div>
               </div>
