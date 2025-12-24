@@ -146,7 +146,9 @@ class MarketService {
     session.startTransaction();
 
     try {
-      const offer = await MarketOffer.findById(offerId).session(session);
+      const offer = await MarketOffer.findById(offerId)
+        .populate('currency')
+        .session(session);
 
       if (!offer) {
         throw new Error('پیشنهاد یافت نشد');
@@ -154,6 +156,11 @@ class MarketService {
 
       if (offer.status !== 'active') {
         throw new Error('این پیشنهاد دیگر فعال نیست');
+      }
+
+      // بررسی اینکه کاربر خودش پیشنهاد خودش رو قبول نکنه
+      if (offer.offeredBy.toString() === acceptedBy.toString()) {
+        throw new Error('شما نمی‌توانید پیشنهاد خودتان را بپذیرید');
       }
 
       const amount = acceptAmount || offer.remainingAmount;
@@ -172,16 +179,25 @@ class MarketService {
         sarafiId = offer.sarafi || acceptedBy;
       }
 
-      // ایجاد معامله
-      const trade = await tradeService.createTrade({
-        type: offer.type === 'buy' ? 'sell' : 'buy', // برعکس پیشنهاد
-        currency: offer.currency,
+      // محاسبه مبلغ کل
+      const totalAmount = amount * offer.price;
+
+      // ایجاد رکورد ساده معامله بدون وابستگی به wallet
+      const Trade = require('../models/Trade');
+      const trade = await Trade.create([{
+        tradeNumber: Trade.generateTradeNumber ? Trade.generateTradeNumber() : `TRD-${Date.now()}`,
+        type: offer.type === 'buy' ? 'sell' : 'buy',
+        currency: offer.currency._id || offer.currency,
         amount,
         rate: offer.price,
-        customerId,
-        sarafiId,
-        marketOfferId: offer._id
-      });
+        totalAmount,
+        commission: { amount: 0, rate: 0, type: 'none' },
+        netAmount: totalAmount,
+        customer: customerId,
+        sarafi: sarafiId,
+        marketOffer: offer._id,
+        status: 'pending'
+      }], { session });
 
       // به‌روزرسانی پیشنهاد
       offer.remainingAmount -= amount;
@@ -195,7 +211,7 @@ class MarketService {
       await offer.save({ session });
       await session.commitTransaction();
 
-      return { offer, trade };
+      return { offer, trade: trade[0] };
     } catch (error) {
       await session.abortTransaction();
       throw error;

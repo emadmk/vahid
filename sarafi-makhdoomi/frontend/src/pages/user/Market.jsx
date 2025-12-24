@@ -28,8 +28,8 @@ const Market = () => {
         api.get('/market/offers', { params: filter }),
         api.get('/public/rates')
       ]);
-      setOffers(offersRes.data.data);
-      setCurrencies(currenciesRes.data.data);
+      setOffers(offersRes.data.data || []);
+      setCurrencies(currenciesRes.data.data || []);
     } catch (error) {
       console.error('خطا در دریافت اطلاعات:', error);
     } finally {
