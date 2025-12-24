@@ -31,6 +31,7 @@ const Order = require('../models/Order');
 const Receipt = require('../models/Receipt');
 const AuditLog = require('../models/AuditLog');
 const Spread = require('../models/Spread');
+const Commission = require('../models/Commission');
 
 // همه روت‌ها نیاز به ادمین دارند
 router.use(protect, authorize('admin'));
@@ -403,6 +404,147 @@ router.post('/customer-tiers/init', async (req, res) => {
   try {
     await CustomerTier.initDefaultTiers();
     res.json({ success: true, message: 'دسته‌بندی‌های پیش‌فرض ایجاد شدند' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ========== مدیریت صراف‌ها ==========
+
+// دریافت لیست صراف‌ها
+router.get('/sarafis', async (req, res) => {
+  try {
+    const { status, search, page = 1, limit = 20 } = req.query;
+    const query = { role: 'sarafi' };
+
+    if (status) query.status = status;
+
+    const skip = (page - 1) * limit;
+
+    let sarafis = await User.find(query)
+      .select('firstName lastName phone email sarafiName status createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    if (search) {
+      sarafis = sarafis.filter(s =>
+        s.firstName?.includes(search) ||
+        s.lastName?.includes(search) ||
+        s.phone?.includes(search) ||
+        s.sarafiName?.includes(search)
+      );
+    }
+
+    const total = await User.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: sarafis,
+      total,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ========== مدیریت کارمزدها ==========
+
+// دریافت همه کارمزدها
+router.get('/commissions', async (req, res) => {
+  try {
+    const { type, isActive, page = 1, limit = 20 } = req.query;
+    const query = {};
+
+    if (type) query.type = type;
+    if (isActive !== undefined) query.isActive = isActive === 'true';
+
+    const skip = (page - 1) * limit;
+
+    const commissions = await Commission.find(query)
+      .populate('currency', 'code nameFa')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Commission.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: commissions,
+      total,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// آمار کارمزدها
+router.get('/commissions/stats', async (req, res) => {
+  try {
+    const stats = await Commission.aggregate([
+      {
+        $group: {
+          _id: '$type',
+          count: { $sum: 1 },
+          activeCount: { $sum: { $cond: ['$isActive', 1, 0] } }
+        }
+      }
+    ]);
+
+    const result = {
+      total: stats.reduce((sum, s) => sum + s.count, 0),
+      active: stats.reduce((sum, s) => sum + s.activeCount, 0),
+      byType: stats.map(s => ({
+        type: s._id,
+        count: s.count,
+        activeCount: s.activeCount
+      }))
+    };
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ایجاد کارمزد جدید
+router.post('/commissions', async (req, res) => {
+  try {
+    const commission = await Commission.create(req.body);
+    res.status(201).json({ success: true, data: commission });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// به‌روزرسانی کارمزد
+router.put('/commissions/:id', async (req, res) => {
+  try {
+    const commission = await Commission.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    if (!commission) {
+      return res.status(404).json({ success: false, message: 'کارمزد یافت نشد' });
+    }
+    res.json({ success: true, data: commission });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// حذف کارمزد
+router.delete('/commissions/:id', async (req, res) => {
+  try {
+    const commission = await Commission.findByIdAndDelete(req.params.id);
+    if (!commission) {
+      return res.status(404).json({ success: false, message: 'کارمزد یافت نشد' });
+    }
+    res.json({ success: true, message: 'کارمزد حذف شد' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
