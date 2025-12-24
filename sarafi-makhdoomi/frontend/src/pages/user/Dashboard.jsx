@@ -36,8 +36,9 @@ const Dashboard = () => {
           api.get('/trades/my-trades', { params: { limit: 3 } }).catch(() => ({ data: { data: [] } }))
         ]);
 
-        setRecentRequests(requestsRes.data.data);
-        setRates(ratesRes.data.data);
+        const requestsData = requestsRes.data.data || [];
+        setRecentRequests(requestsData);
+        setRates(ratesRes.data.data || []);
         setRecentTrades(tradesRes.data.data || []);
 
         // تنظیم کیف پول‌ها
@@ -48,11 +49,10 @@ const Dashboard = () => {
         });
 
         // محاسبه آمار
-        const all = requestsRes.data.data;
         setStats({
-          total: requestsRes.data.total,
-          pending: all.filter(r => ['pending', 'waiting_public', 'public'].includes(r.status)).length,
-          completed: all.filter(r => r.status === 'completed').length
+          total: requestsRes.data.total || 0,
+          pending: requestsData.filter(r => ['pending', 'waiting_public', 'public'].includes(r.status)).length,
+          completed: requestsData.filter(r => r.status === 'completed').length
         });
       } catch (e) {
         console.error(e);
