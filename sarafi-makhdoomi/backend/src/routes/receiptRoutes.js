@@ -41,6 +41,114 @@ const upload = multer({
 // همه روت‌ها نیاز به احراز هویت دارند
 router.use(protect);
 
+// ========== روت کلی لیست رسیدها ==========
+
+// دریافت همه رسیدهای صراف
+router.get('/', authorize('sarafi'), async (req, res) => {
+  try {
+    const { type, status, page = 1, limit = 20 } = req.query;
+    const query = { sarafi: req.user._id };
+
+    if (type) query.type = type;
+    if (status) query.status = status;
+
+    const skip = (page - 1) * limit;
+
+    const receipts = await Receipt.find(query)
+      .populate('trade', 'tradeNumber totalAmount')
+      .populate('customer', 'firstName lastName phone')
+      .populate('currency', 'code nameFa')
+      .populate('createdBy', 'firstName lastName')
+      .populate('confirmedBy', 'firstName lastName')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Receipt.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: receipts,
+      total,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ایجاد رسید جدید
+router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res) => {
+  try {
+    const {
+      tradeId, type, collectionMethod, amount, bankTrackingNumber,
+      transactionDate, description, accountHolder, customerId, currencyId
+    } = req.body;
+
+    // بررسی معامله
+    let trade = null;
+    if (tradeId) {
+      trade = await Trade.findOne({ _id: tradeId, sarafi: req.user._id });
+      if (!trade) {
+        return res.status(404).json({ success: false, message: 'معامله یافت نشد' });
+      }
+    }
+
+    // ساخت رسید
+    const receipt = new Receipt({
+      receiptNumber: Receipt.generateReceiptNumber ? Receipt.generateReceiptNumber() : `RC-${Date.now()}`,
+      sarafi: req.user._id,
+      trade: tradeId || null,
+      customer: customerId || trade?.customer,
+      currency: currencyId || trade?.currency,
+      type,
+      collectionMethod,
+      amount: parseFloat(amount),
+      bankTrackingNumber,
+      collectionDate: transactionDate ? new Date(transactionDate) : new Date(),
+      description,
+      accountHolder: accountHolder ? JSON.parse(accountHolder) : {},
+      createdBy: req.user._id,
+      status: 'submitted'
+    });
+
+    // اضافه کردن فایل‌ها
+    if (req.files && req.files.length > 0) {
+      receipt.attachments = req.files.map(file => ({
+        filename: file.filename,
+        originalName: file.originalname,
+        path: `/uploads/receipts/${file.filename}`,
+        mimeType: file.mimetype,
+        size: file.size
+      }));
+    }
+
+    await receipt.save();
+
+    // ثبت لاگ
+    await AuditLog.log({
+      action: 'receipt.create',
+      category: 'receipt',
+      user: req.user._id,
+      userRole: 'sarafi',
+      sarafi: req.user._id,
+      targetType: 'Receipt',
+      targetId: receipt._id,
+      targetReference: receipt.receiptNumber,
+      description: `ایجاد رسید ${type === 'rial' ? 'ریالی' : 'ارزی'} به مبلغ ${amount}`,
+      ipAddress: req.ip
+    });
+
+    res.status(201).json({
+      success: true,
+      data: receipt,
+      message: 'رسید ثبت شد'
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 // ========== روت‌های وصول ریالی ==========
 
 // دریافت لیست وصول‌های ریالی در انتظار

@@ -69,7 +69,7 @@ const SarafiOrderBook = () => {
   const fetchMyOrders = async () => {
     try {
       const params = filter !== 'all' ? { status: filter } : {};
-      const res = await api.get('/orders/sarafi/orders', { params });
+      const res = await api.get('/orders/sarafi/all', { params });
       setMyOrders(res.data.data || []);
     } catch (error) {
       console.error(error);

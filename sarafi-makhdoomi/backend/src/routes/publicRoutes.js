@@ -20,6 +20,22 @@ router.get('/rates', async (req, res, next) => {
   }
 });
 
+// دریافت لیست ارزها (عمومی)
+router.get('/currencies', async (req, res, next) => {
+  try {
+    const currencies = await Currency.find({ isActive: true })
+      .select('name nameFa symbol code buyRate sellRate type unit order')
+      .sort({ order: 1 });
+
+    res.status(200).json({
+      success: true,
+      data: currencies
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // دریافت تنظیمات عمومی
 router.get('/settings', async (req, res, next) => {
   try {
