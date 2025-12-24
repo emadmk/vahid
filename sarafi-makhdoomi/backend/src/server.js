@@ -44,16 +44,29 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
-// Rate limiting
+// Rate limiting - محدودیت عمومی
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 دقیقه
-  max: 100,
+  max: 1000, // افزایش به 1000 درخواست
   message: {
     success: false,
     message: 'تعداد درخواست‌های شما بیش از حد مجاز است. لطفا کمی صبر کنید.'
   }
 });
+
+// Rate limiting برای auth - محدودیت کمتر
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50, // 50 بار لاگین در 15 دقیقه
+  message: {
+    success: false,
+    message: 'تعداد تلاش‌های ورود بیش از حد مجاز است. لطفا کمی صبر کنید.'
+  },
+  skipSuccessfulRequests: true // درخواست‌های موفق شمارش نشوند
+});
+
 app.use('/api', limiter);
+app.use('/api/auth', authLimiter);
 
 // فایل‌های استاتیک
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
