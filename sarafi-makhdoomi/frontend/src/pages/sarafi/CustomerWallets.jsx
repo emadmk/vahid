@@ -9,7 +9,7 @@ const CustomerWallets = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [customerWallets, setCustomerWallets] = useState([]);
+  const [customerWallets, setCustomerWallets] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [walletsLoading, setWalletsLoading] = useState(false);
 
@@ -27,7 +27,7 @@ const CustomerWallets = () => {
     setLoading(true);
     try {
       const res = await sarafiAPI.getCustomers({ search, status: 'approved' });
-      setCustomers(res.data.data);
+      setCustomers(res.data.data || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -42,7 +42,7 @@ const CustomerWallets = () => {
         sarafiAPI.getCustomerWallets(customerId),
         sarafiAPI.getCustomerTransactions(customerId, { limit: 20 })
       ]);
-      setCustomerWallets(walletsRes.data.data);
+      setCustomerWallets(walletsRes.data.data || null);
       setTransactions(transactionsRes.data.data || []);
     } catch (e) {
       console.error(e);
@@ -138,8 +138,13 @@ const CustomerWallets = () => {
     return types[type] || { label: type, class: 'text-white' };
   };
 
-  const cashWallet = customerWallets.find(w => w.type === 'cash');
-  const creditWallet = customerWallets.find(w => w.type === 'credit');
+  // API یک object با cash و credit برمی‌گردونه نه آرایه
+  const cashWallet = Array.isArray(customerWallets)
+    ? customerWallets.find(w => w.type === 'cash')
+    : customerWallets?.cash;
+  const creditWallet = Array.isArray(customerWallets)
+    ? customerWallets.find(w => w.type === 'credit')
+    : customerWallets?.credit;
 
   return (
     <div>
