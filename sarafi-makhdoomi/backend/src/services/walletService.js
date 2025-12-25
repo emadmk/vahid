@@ -59,10 +59,12 @@ class WalletService {
    * واریز به کیف پول نقدی
    */
   async deposit(userId, amount, description = '', processedBy = null) {
-    const wallet = await Wallet.findOne({ user: userId, type: 'cash' });
+    let wallet = await Wallet.findOne({ user: userId, type: 'cash' });
 
+    // اگر کیف پول وجود نداشت، ایجاد کن
     if (!wallet) {
-      throw new Error('کیف پول یافت نشد');
+      const wallets = await this.createWalletsForUser(userId, processedBy);
+      wallet = wallets.cashWallet;
     }
 
     if (!wallet.isActive) {
@@ -132,10 +134,12 @@ class WalletService {
    * افزایش سقف اعتبار
    */
   async increaseCreditLimit(userId, amount, processedBy) {
-    const wallet = await Wallet.findOne({ user: userId, type: 'credit' });
+    let wallet = await Wallet.findOne({ user: userId, type: 'credit' });
 
+    // اگر کیف پول وجود نداشت، ایجاد کن
     if (!wallet) {
-      throw new Error('کیف پول اعتباری یافت نشد');
+      const wallets = await this.createWalletsForUser(userId, processedBy);
+      wallet = wallets.creditWallet;
     }
 
     const previousLimit = wallet.creditLimit;
