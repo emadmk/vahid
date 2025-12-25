@@ -41,11 +41,11 @@ const Dashboard = () => {
         setRates(ratesRes.data.data || []);
         setRecentTrades(tradesRes.data.data || []);
 
-        // تنظیم کیف پول‌ها
-        const walletsData = walletsRes.data.data || [];
+        // تنظیم کیف پول‌ها - API یک object با cash و credit برمی‌گردونه
+        const walletsData = walletsRes.data.data || {};
         setWallets({
-          cash: walletsData.find(w => w.type === 'cash'),
-          credit: walletsData.find(w => w.type === 'credit')
+          cash: walletsData.cash || null,
+          credit: walletsData.credit || null
         });
 
         // محاسبه آمار
