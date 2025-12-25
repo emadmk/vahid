@@ -7,40 +7,35 @@ class WalletService {
    * ایجاد کیف پول‌های کاربر (نقدی و اعتباری)
    */
   async createWalletsForUser(userId, sarafiId = null) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // بررسی وجود کیف پول قبلی
+    const existingWallets = await Wallet.find({ user: userId });
 
-    try {
-      // ایجاد کیف پول نقدی
-      const cashWallet = await Wallet.create([{
+    let cashWallet = existingWallets.find(w => w.type === 'cash');
+    let creditWallet = existingWallets.find(w => w.type === 'credit');
+
+    // ایجاد کیف پول نقدی اگر وجود نداشت
+    if (!cashWallet) {
+      cashWallet = await Wallet.create({
         user: userId,
         type: 'cash',
         balance: 0,
         managedBy: sarafiId
-      }], { session });
+      });
+    }
 
-      // ایجاد کیف پول اعتباری
-      const creditWallet = await Wallet.create([{
+    // ایجاد کیف پول اعتباری اگر وجود نداشت
+    if (!creditWallet) {
+      creditWallet = await Wallet.create({
         user: userId,
         type: 'credit',
         balance: 0,
         creditLimit: 0,
         usedCredit: 0,
         managedBy: sarafiId
-      }], { session });
-
-      await session.commitTransaction();
-
-      return {
-        cashWallet: cashWallet[0],
-        creditWallet: creditWallet[0]
-      };
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+      });
     }
+
+    return { cashWallet, creditWallet };
   }
 
   /**
