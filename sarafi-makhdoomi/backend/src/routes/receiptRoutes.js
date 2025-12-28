@@ -78,7 +78,7 @@ router.get('/', authorize('sarafi'), async (req, res) => {
 });
 
 // ایجاد رسید جدید
-router.post('/', authorize('sarafi'), upload.array('files', 5), async (req, res) => {
+router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res) => {
   try {
     const {
       tradeId, type, collectionMethod, amount, bankTrackingNumber,
@@ -266,7 +266,7 @@ router.get('/currency/pending', authorize('sarafi'), async (req, res) => {
 // ========== عملیات مشترک ==========
 
 // ایجاد رسید وصول جدید
-router.post('/', authorize('sarafi'), upload.array('files', 5), async (req, res) => {
+router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res) => {
   try {
     const {
       tradeId,
@@ -387,7 +387,7 @@ router.post('/', authorize('sarafi'), upload.array('files', 5), async (req, res)
 });
 
 // آپلود فایل اضافی به رسید
-router.post('/:id/files', authorize('sarafi'), upload.array('files', 5), async (req, res) => {
+router.post('/:id/files', authorize('sarafi'), upload.array('files', 10), async (req, res) => {
   try {
     const receipt = await Receipt.findOne({
       _id: req.params.id,
@@ -564,7 +564,7 @@ router.put('/:id/reject', authorize('sarafi'), async (req, res) => {
 });
 
 // ایجاد سند اصلاحی
-router.post('/:id/amend', authorize('sarafi'), upload.array('files', 5), async (req, res) => {
+router.post('/:id/amend', authorize('sarafi'), upload.array('files', 10), async (req, res) => {
   try {
     const { reason, ...amendmentData } = req.body;
 

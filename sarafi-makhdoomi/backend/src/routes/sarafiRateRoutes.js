@@ -23,11 +23,31 @@ router.get('/', authorize('sarafi'), async (req, res) => {
     // دریافت همه ارزها برای نمایش
     const allCurrencies = await Currency.find({ isActive: true }).sort({ order: 1 });
 
+    // دریافت آخرین تاریخچه برای هر ارز (برای نمایش نرخ قبلی)
+    const lastHistoryItems = await SarafiRateHistory.aggregate([
+      { $match: { sarafi: req.user._id } },
+      { $sort: { createdAt: -1 } },
+      { $group: {
+        _id: '$currency',
+        previousBuyRate: { $first: '$previousBuyRate' },
+        previousSellRate: { $first: '$previousSellRate' }
+      }}
+    ]);
+
+    const historyMap = {};
+    lastHistoryItems.forEach(h => {
+      historyMap[h._id.toString()] = {
+        previousBuyRate: h.previousBuyRate,
+        previousSellRate: h.previousSellRate
+      };
+    });
+
     // ترکیب نرخ‌های صراف با نرخ‌های پیش‌فرض
     const rates = allCurrencies.map(currency => {
       const sarafiRate = sarafiRates.find(
         r => r.currency._id.toString() === currency._id.toString()
       );
+      const history = historyMap[currency._id.toString()];
 
       return {
         currency: {
@@ -40,6 +60,8 @@ router.get('/', authorize('sarafi'), async (req, res) => {
         },
         buyRate: sarafiRate?.buyRate || currency.buyRate,
         sellRate: sarafiRate?.sellRate || currency.sellRate,
+        previousBuyRate: history?.previousBuyRate,
+        previousSellRate: history?.previousSellRate,
         isCustom: !!sarafiRate,
         lastUpdate: sarafiRate?.lastUpdate || currency.lastRateUpdate,
         updatedBy: sarafiRate?.updatedBy,
@@ -93,7 +115,7 @@ router.get('/:currencyId', authorize('sarafi'), async (req, res) => {
 // ثبت/ویرایش نرخ ارز
 router.post('/:currencyId', authorize('sarafi'), async (req, res) => {
   try {
-    const { buyRate, sellRate, validUntil, notes } = req.body;
+    const { buyRate, sellRate, validUntil, validityMinutes, notes } = req.body;
 
     // اعتبارسنجی
     if (!buyRate || !sellRate) {
@@ -129,13 +151,21 @@ router.post('/:currencyId', authorize('sarafi'), async (req, res) => {
       ipAddress: req.ip
     });
 
+    // محاسبه زمان اعتبار نرخ
+    let calculatedValidUntil = null;
+    if (validityMinutes && validityMinutes > 0) {
+      calculatedValidUntil = new Date(Date.now() + validityMinutes * 60 * 1000);
+    } else if (validUntil) {
+      calculatedValidUntil = new Date(validUntil);
+    }
+
     // ایجاد یا به‌روزرسانی نرخ
     const sarafiRate = await SarafiRate.findOneAndUpdate(
       { sarafi: req.user._id, currency: req.params.currencyId },
       {
         buyRate,
         sellRate,
-        validUntil: validUntil ? new Date(validUntil) : null,
+        validUntil: calculatedValidUntil,
         notes,
         lastUpdate: new Date(),
         updatedBy: req.user._id,

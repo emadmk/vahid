@@ -1,17 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   FaMoneyBillWave, FaCoins, FaCheckCircle, FaClock, FaExclamationTriangle,
   FaFileAlt, FaFilter, FaSearch, FaCalendarAlt, FaUser, FaPhone,
   FaDownload, FaUpload, FaHistory, FaChartPie, FaWallet, FaTimes,
-  FaCheck, FaEye, FaInfoCircle, FaSync
+  FaCheck, FaEye, FaInfoCircle, FaSync, FaReceipt, FaTrash, FaFilePdf,
+  FaFileImage, FaCloudUploadAlt
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const SettlementPanel = () => {
   // State
-  const [activeTab, setActiveTab] = useState('pending'); // pending, completed, overdue
-  const [settlementType, setSettlementType] = useState('all'); // all, rial, currency
+  const [activeTab, setActiveTab] = useState('pending');
+  const [settlementType, setSettlementType] = useState('all');
   const [settlements, setSettlements] = useState([]);
   const [stats, setStats] = useState({
     pendingRial: 0,
@@ -21,7 +22,9 @@ const SettlementPanel = () => {
   });
   const [loading, setLoading] = useState(true);
   const [selectedSettlement, setSelectedSettlement] = useState(null);
-  const [showModal, setShowModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptStep, setReceiptStep] = useState(1); // 1: فرم رسید, 2: تایید نهایی
+  const [submitting, setSubmitting] = useState(false);
   const [filter, setFilter] = useState({
     search: '',
     dateFrom: '',
@@ -29,13 +32,23 @@ const SettlementPanel = () => {
     currency: ''
   });
 
-  // Settlement form
-  const [settlementForm, setSettlementForm] = useState({
+  // فایل آپلود
+  const fileInputRef = useRef(null);
+  const MAX_FILES = 10;
+  const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
+  const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg'];
+  const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg'];
+
+  // Receipt form - فرم رسید اجباری
+  const [receiptForm, setReceiptForm] = useState({
+    type: 'rial', // rial | currency
     amount: '',
-    paymentMethod: 'cash',
-    referenceNumber: '',
+    paymentMethod: 'bank_transfer',
+    accountHolder: '',
+    bankTrackingNumber: '',
+    transactionDate: new Date().toISOString().split('T')[0],
     notes: '',
-    attachments: []
+    attachments: [] // {file, name, size, preview}
   });
 
   useEffect(() => {
@@ -64,28 +77,167 @@ const SettlementPanel = () => {
     }
   };
 
-  const handleConfirmSettlement = async () => {
-    if (!selectedSettlement) return;
+  // باز کردن مودال رسید اجباری
+  const openReceiptModal = (settlement) => {
+    setSelectedSettlement(settlement);
+    setReceiptForm({
+      type: settlement.type || 'rial',
+      amount: settlement.amount?.toString() || '',
+      paymentMethod: 'bank_transfer',
+      accountHolder: `${settlement.customer?.firstName || ''} ${settlement.customer?.lastName || ''}`.trim(),
+      bankTrackingNumber: '',
+      transactionDate: new Date().toISOString().split('T')[0],
+      notes: '',
+      attachments: []
+    });
+    setReceiptStep(1);
+    setShowReceiptModal(true);
+  };
 
+  // اعتبارسنجی فایل
+  const validateFile = (file) => {
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      toast.error(`فقط فایل‌های PDF و JPG/JPEG مجاز هستند`);
+      return false;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`حجم فایل نباید بیشتر از 200 مگابایت باشد`);
+      return false;
+    }
+    return true;
+  };
+
+  // افزودن فایل
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+
+    if (receiptForm.attachments.length + files.length > MAX_FILES) {
+      toast.error(`حداکثر ${MAX_FILES} فایل مجاز است`);
+      return;
+    }
+
+    const validFiles = files.filter(validateFile);
+
+    const newAttachments = validFiles.map(file => ({
+      file,
+      name: file.name,
+      size: file.size,
+      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    }));
+
+    setReceiptForm(prev => ({
+      ...prev,
+      attachments: [...prev.attachments, ...newAttachments]
+    }));
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // حذف فایل
+  const removeAttachment = (index) => {
+    setReceiptForm(prev => ({
+      ...prev,
+      attachments: prev.attachments.filter((_, i) => i !== index)
+    }));
+  };
+
+  // فرمت سایز فایل
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  // ثبت رسید و تسویه
+  const handleSubmitReceiptAndSettlement = async () => {
+    // اعتبارسنجی فرم رسید
+    if (!receiptForm.amount || parseFloat(receiptForm.amount) <= 0) {
+      toast.error('مبلغ رسید الزامی است');
+      return;
+    }
+    if (!receiptForm.bankTrackingNumber.trim()) {
+      toast.error('شماره پیگیری بانکی الزامی است');
+      return;
+    }
+    if (!receiptForm.accountHolder.trim()) {
+      toast.error('نام صاحب حساب الزامی است');
+      return;
+    }
+
+    setSubmitting(true);
     try {
+      // ابتدا آپلود فایل‌ها
+      let uploadedFiles = [];
+      if (receiptForm.attachments.length > 0) {
+        const formData = new FormData();
+        receiptForm.attachments.forEach((att, i) => {
+          formData.append('files', att.file);
+        });
+
+        try {
+          const uploadRes = await api.post('/receipts/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          uploadedFiles = uploadRes.data.files || [];
+        } catch (uploadError) {
+          console.error('Upload error:', uploadError);
+          // ادامه بدون فایل اگر آپلود مشکل داشت
+        }
+      }
+
+      // ثبت رسید
+      const receiptData = {
+        type: receiptForm.type,
+        amount: parseFloat(receiptForm.amount),
+        paymentMethod: receiptForm.paymentMethod,
+        accountHolder: receiptForm.accountHolder,
+        bankTrackingNumber: receiptForm.bankTrackingNumber,
+        transactionDate: receiptForm.transactionDate,
+        notes: receiptForm.notes,
+        attachments: uploadedFiles,
+        relatedTrade: selectedSettlement._id,
+        customer: selectedSettlement.customer?._id
+      };
+
+      await api.post('/receipts', receiptData);
+
+      // ثبت تسویه
       await api.post(`/settlements/${selectedSettlement._id}/confirm`, {
-        ...settlementForm,
-        amount: parseFloat(settlementForm.amount)
+        amount: parseFloat(receiptForm.amount),
+        paymentMethod: receiptForm.paymentMethod,
+        referenceNumber: receiptForm.bankTrackingNumber,
+        notes: receiptForm.notes,
+        receiptAttached: true
       });
-      toast.success('تسویه ثبت شد');
-      setShowModal(false);
+
+      toast.success('رسید و تسویه با موفقیت ثبت شد');
+      setShowReceiptModal(false);
       setSelectedSettlement(null);
-      setSettlementForm({
-        amount: '',
-        paymentMethod: 'cash',
-        referenceNumber: '',
-        notes: '',
-        attachments: []
-      });
+      resetReceiptForm();
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'خطا در ثبت تسویه');
+      toast.error(error.response?.data?.message || 'خطا در ثبت رسید و تسویه');
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  const resetReceiptForm = () => {
+    setReceiptForm({
+      type: 'rial',
+      amount: '',
+      paymentMethod: 'bank_transfer',
+      accountHolder: '',
+      bankTrackingNumber: '',
+      transactionDate: new Date().toISOString().split('T')[0],
+      notes: '',
+      attachments: []
+    });
+    setReceiptStep(1);
   };
 
   const handleMarkOverdue = async (settlementId) => {
@@ -117,12 +269,12 @@ const SettlementPanel = () => {
     );
   };
 
-  // Demo data for settlements
+  // Demo data
   const demoSettlements = [
     {
       _id: '1',
       tradeNumber: 'TRD-241228-ABC123',
-      customer: { firstName: 'علی', lastName: 'محمدی', phone: '09121234567' },
+      customer: { firstName: 'علی', lastName: 'محمدی', phone: '09121234567', _id: 'c1' },
       type: 'rial',
       amount: 50000000,
       dueDate: new Date(),
@@ -132,7 +284,7 @@ const SettlementPanel = () => {
     {
       _id: '2',
       tradeNumber: 'TRD-241227-DEF456',
-      customer: { firstName: 'محمد', lastName: 'رضایی', phone: '09127654321' },
+      customer: { firstName: 'محمد', lastName: 'رضایی', phone: '09127654321', _id: 'c2' },
       type: 'currency',
       amount: 500,
       currency: { code: 'EUR', nameFa: 'یورو' },
@@ -292,6 +444,15 @@ const SettlementPanel = () => {
         </div>
       </div>
 
+      {/* Important Notice */}
+      <div className="bg-gold/10 border border-gold/30 rounded-xl p-4 flex items-center gap-3">
+        <FaReceipt className="text-gold text-2xl flex-shrink-0" />
+        <div>
+          <p className="text-gold font-bold">ثبت رسید اجباری</p>
+          <p className="text-dark-300 text-sm">قبل از تسویه هر معامله، ابتدا باید رسید پرداخت ثبت شود. بدون رسید امکان تسویه وجود ندارد.</p>
+        </div>
+      </div>
+
       {/* Settlements Table */}
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
@@ -380,24 +541,17 @@ const SettlementPanel = () => {
                       <div className="flex items-center justify-center gap-2">
                         {settlement.status !== 'completed' && (
                           <button
-                            onClick={() => {
-                              setSelectedSettlement(settlement);
-                              setSettlementForm(prev => ({
-                                ...prev,
-                                amount: settlement.amount.toString()
-                              }));
-                              setShowModal(true);
-                            }}
-                            className="p-2 rounded-lg bg-green-500/20 text-green-500 hover:bg-green-500/30"
-                            title="ثبت تسویه"
+                            onClick={() => openReceiptModal(settlement)}
+                            className="p-2 rounded-lg bg-green-500/20 text-green-500 hover:bg-green-500/30 flex items-center gap-1"
+                            title="ثبت رسید و تسویه"
                           >
-                            <FaCheck />
+                            <FaReceipt />
+                            <span className="text-xs hidden lg:inline">ثبت رسید</span>
                           </button>
                         )}
                         <button
                           onClick={() => {
                             setSelectedSettlement(settlement);
-                            // Show details modal
                           }}
                           className="p-2 rounded-lg bg-dark-700 text-dark-400 hover:text-white"
                           title="جزئیات"
@@ -423,128 +577,278 @@ const SettlementPanel = () => {
         </div>
       </div>
 
-      {/* Settlement Confirmation Modal */}
-      {showModal && selectedSettlement && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="card w-full max-w-lg">
-            <div className="flex items-center justify-between mb-6">
+      {/* ========== مودال ثبت رسید اجباری ========== */}
+      {showReceiptModal && selectedSettlement && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 sticky top-0 bg-dark-900 pb-4 border-b border-dark-700">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <FaCheckCircle className="text-green-500" />
-                ثبت تسویه
+                <FaReceipt className="text-gold" />
+                ثبت رسید جدید
+                <span className="text-sm font-normal text-dark-400">(اجباری قبل از تسویه)</span>
               </h2>
-              <button onClick={() => setShowModal(false)} className="text-dark-400 hover:text-white">
+              <button
+                onClick={() => {
+                  if (confirm('با بستن این پنجره، تسویه انجام نمی‌شود. آیا مطمئنید؟')) {
+                    setShowReceiptModal(false);
+                    setSelectedSettlement(null);
+                    resetReceiptForm();
+                  }
+                }}
+                className="text-dark-400 hover:text-white"
+              >
                 <FaTimes />
               </button>
             </div>
 
-            {/* Settlement Info */}
-            <div className="bg-dark-800 rounded-lg p-4 mb-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            {/* اطلاعات معامله */}
+            <div className="bg-dark-800 rounded-lg p-4 mb-6">
+              <h3 className="text-dark-400 text-sm mb-3">اطلاعات معامله مرتبط:</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <span className="text-dark-400">شماره معامله:</span>
+                  <span className="text-dark-500">شماره معامله:</span>
                   <p className="text-gold font-bold">{selectedSettlement.tradeNumber}</p>
                 </div>
                 <div>
-                  <span className="text-dark-400">مشتری:</span>
+                  <span className="text-dark-500">مشتری:</span>
                   <p className="text-white">
                     {selectedSettlement.customer?.firstName} {selectedSettlement.customer?.lastName}
                   </p>
                 </div>
                 <div>
-                  <span className="text-dark-400">نوع:</span>
+                  <span className="text-dark-500">نوع تسویه:</span>
                   <p className={selectedSettlement.type === 'rial' ? 'text-yellow-500' : 'text-blue-500'}>
                     {selectedSettlement.type === 'rial' ? 'ریالی' : 'ارزی'}
                   </p>
                 </div>
                 <div>
-                  <span className="text-dark-400">مبلغ کل:</span>
+                  <span className="text-dark-500">مبلغ:</span>
                   <p className="text-white font-bold">{formatNumber(selectedSettlement.amount)}</p>
                 </div>
               </div>
             </div>
 
-            {/* Settlement Form */}
+            {/* فرم رسید */}
             <div className="space-y-4">
+              {/* نوع رسید */}
               <div>
-                <label className="block text-dark-300 mb-2">مبلغ وصول شده</label>
-                <input
-                  type="number"
-                  value={settlementForm.amount}
-                  onChange={(e) => setSettlementForm({ ...settlementForm, amount: e.target.value })}
-                  className="input w-full text-lg"
-                  placeholder="مبلغ وصول شده را وارد کنید"
-                />
-              </div>
-
-              <div>
-                <label className="block text-dark-300 mb-2">روش پرداخت</label>
-                <select
-                  value={settlementForm.paymentMethod}
-                  onChange={(e) => setSettlementForm({ ...settlementForm, paymentMethod: e.target.value })}
-                  className="input w-full"
-                >
-                  <option value="cash">نقدی</option>
-                  <option value="bank_transfer">انتقال بانکی</option>
-                  <option value="cheque">چک</option>
-                  <option value="pos">کارتخوان</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-dark-300 mb-2">شماره پیگیری / رسید</label>
-                <input
-                  type="text"
-                  value={settlementForm.referenceNumber}
-                  onChange={(e) => setSettlementForm({ ...settlementForm, referenceNumber: e.target.value })}
-                  className="input w-full"
-                  placeholder="شماره پیگیری یا رسید"
-                />
-              </div>
-
-              <div>
-                <label className="block text-dark-300 mb-2">پیوست (اختیاری)</label>
-                <div className="border-2 border-dashed border-dark-700 rounded-lg p-4 text-center">
-                  <FaUpload className="text-dark-400 text-2xl mx-auto mb-2" />
-                  <p className="text-dark-400 text-sm">فایل رسید یا مدرک پرداخت</p>
-                  <input type="file" className="hidden" id="attachment" />
-                  <label htmlFor="attachment" className="btn-outline mt-2 cursor-pointer inline-block">
-                    انتخاب فایل
+                <label className="block text-dark-300 mb-2">نوع رسید *</label>
+                <div className="flex gap-4">
+                  <label className={`flex-1 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    receiptForm.type === 'rial'
+                      ? 'border-yellow-500 bg-yellow-500/10'
+                      : 'border-dark-700 hover:border-dark-600'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="receiptType"
+                      value="rial"
+                      checked={receiptForm.type === 'rial'}
+                      onChange={(e) => setReceiptForm({ ...receiptForm, type: e.target.value })}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-2">
+                      <FaMoneyBillWave className={receiptForm.type === 'rial' ? 'text-yellow-500' : 'text-dark-400'} />
+                      <span className={receiptForm.type === 'rial' ? 'text-yellow-500' : 'text-dark-300'}>ریالی</span>
+                    </div>
+                  </label>
+                  <label className={`flex-1 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    receiptForm.type === 'currency'
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-dark-700 hover:border-dark-600'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="receiptType"
+                      value="currency"
+                      checked={receiptForm.type === 'currency'}
+                      onChange={(e) => setReceiptForm({ ...receiptForm, type: e.target.value })}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-2">
+                      <FaCoins className={receiptForm.type === 'currency' ? 'text-blue-500' : 'text-dark-400'} />
+                      <span className={receiptForm.type === 'currency' ? 'text-blue-500' : 'text-dark-300'}>ارزی</span>
+                    </div>
                   </label>
                 </div>
               </div>
 
+              {/* مبلغ */}
               <div>
-                <label className="block text-dark-300 mb-2">یادداشت</label>
+                <label className="block text-dark-300 mb-2">مبلغ رسید *</label>
+                <input
+                  type="number"
+                  value={receiptForm.amount}
+                  onChange={(e) => setReceiptForm({ ...receiptForm, amount: e.target.value })}
+                  className="input w-full text-lg"
+                  placeholder="مبلغ را وارد کنید"
+                />
+              </div>
+
+              {/* روش پرداخت */}
+              <div>
+                <label className="block text-dark-300 mb-2">روش وصول *</label>
+                <select
+                  value={receiptForm.paymentMethod}
+                  onChange={(e) => setReceiptForm({ ...receiptForm, paymentMethod: e.target.value })}
+                  className="input w-full"
+                >
+                  <option value="bank_transfer">انتقال بانکی</option>
+                  <option value="cash">نقدی</option>
+                  <option value="cheque">چک</option>
+                  <option value="pos">کارتخوان</option>
+                  <option value="crypto">ارز دیجیتال</option>
+                </select>
+              </div>
+
+              {/* نام صاحب حساب */}
+              <div>
+                <label className="block text-dark-300 mb-2">نام صاحب حساب / پرداخت‌کننده *</label>
+                <input
+                  type="text"
+                  value={receiptForm.accountHolder}
+                  onChange={(e) => setReceiptForm({ ...receiptForm, accountHolder: e.target.value })}
+                  className="input w-full"
+                  placeholder="نام کامل صاحب حساب"
+                />
+              </div>
+
+              {/* شماره پیگیری */}
+              <div>
+                <label className="block text-dark-300 mb-2">شماره پیگیری بانکی / رسید *</label>
+                <input
+                  type="text"
+                  value={receiptForm.bankTrackingNumber}
+                  onChange={(e) => setReceiptForm({ ...receiptForm, bankTrackingNumber: e.target.value })}
+                  className="input w-full"
+                  placeholder="شماره پیگیری تراکنش"
+                />
+              </div>
+
+              {/* تاریخ تراکنش */}
+              <div>
+                <label className="block text-dark-300 mb-2">تاریخ تراکنش</label>
+                <input
+                  type="date"
+                  value={receiptForm.transactionDate}
+                  onChange={(e) => setReceiptForm({ ...receiptForm, transactionDate: e.target.value })}
+                  className="input w-full"
+                />
+              </div>
+
+              {/* توضیحات */}
+              <div>
+                <label className="block text-dark-300 mb-2">توضیحات</label>
                 <textarea
-                  value={settlementForm.notes}
-                  onChange={(e) => setSettlementForm({ ...settlementForm, notes: e.target.value })}
+                  value={receiptForm.notes}
+                  onChange={(e) => setReceiptForm({ ...receiptForm, notes: e.target.value })}
                   className="input w-full"
                   rows="2"
                   placeholder="توضیحات اضافی..."
                 />
               </div>
+
+              {/* آپلود فایل */}
+              <div>
+                <label className="block text-dark-300 mb-2">
+                  فایل‌های پیوست
+                  <span className="text-dark-500 text-xs mr-2">
+                    (حداکثر {MAX_FILES} فایل، هر فایل تا 200MB، فرمت PDF/JPG/JPEG)
+                  </span>
+                </label>
+
+                {/* Upload Zone */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-dark-600 hover:border-gold rounded-xl p-6 text-center cursor-pointer transition-all"
+                >
+                  <FaCloudUploadAlt className="text-dark-400 text-4xl mx-auto mb-3" />
+                  <p className="text-dark-300">برای آپلود فایل کلیک کنید یا فایل را اینجا رها کنید</p>
+                  <p className="text-dark-500 text-sm mt-1">PDF, JPG, JPEG - حداکثر 200MB</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </div>
+
+                {/* File List */}
+                {receiptForm.attachments.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-dark-400 text-sm">
+                      {receiptForm.attachments.length} فایل انتخاب شده:
+                    </p>
+                    {receiptForm.attachments.map((att, index) => (
+                      <div key={index} className="flex items-center gap-3 bg-dark-800 rounded-lg p-3">
+                        {att.name.endsWith('.pdf') ? (
+                          <FaFilePdf className="text-red-500 text-xl flex-shrink-0" />
+                        ) : (
+                          <FaFileImage className="text-blue-500 text-xl flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm truncate">{att.name}</p>
+                          <p className="text-dark-500 text-xs">{formatFileSize(att.size)}</p>
+                        </div>
+                        {att.preview && (
+                          <img src={att.preview} alt="" className="w-10 h-10 object-cover rounded" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(index)}
+                          className="p-2 text-red-500 hover:bg-red-500/20 rounded-lg"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Partial payment warning */}
-            {parseFloat(settlementForm.amount) < selectedSettlement.amount && settlementForm.amount && (
-              <div className="mt-4 p-3 bg-yellow-500/20 rounded-lg flex items-center gap-2">
-                <FaInfoCircle className="text-yellow-500" />
-                <span className="text-yellow-500 text-sm">
-                  این مبلغ کمتر از کل است. وصول جزئی ثبت می‌شود.
-                </span>
+            {/* Warning */}
+            <div className="mt-6 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-start gap-2">
+              <FaInfoCircle className="text-yellow-500 mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="text-yellow-500 font-bold">توجه:</p>
+                <p className="text-dark-300">
+                  بدون ثبت رسید، امکان تسویه وجود ندارد. پس از ثبت رسید، تسویه به صورت خودکار انجام می‌شود.
+                </p>
               </div>
-            )}
+            </div>
 
-            <div className="flex gap-4 mt-6">
+            {/* Actions */}
+            <div className="flex gap-4 mt-6 sticky bottom-0 bg-dark-900 pt-4 border-t border-dark-700">
               <button
-                onClick={handleConfirmSettlement}
+                onClick={handleSubmitReceiptAndSettlement}
+                disabled={submitting}
                 className="btn-gold flex-1 flex items-center justify-center gap-2"
               >
-                <FaCheck />
-                ثبت تسویه
+                {submitting ? (
+                  <>
+                    <div className="loading-spinner-sm"></div>
+                    در حال ثبت...
+                  </>
+                ) : (
+                  <>
+                    <FaReceipt />
+                    ثبت رسید و تسویه
+                  </>
+                )}
               </button>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  if (confirm('با بستن این پنجره، تسویه انجام نمی‌شود. آیا مطمئنید؟')) {
+                    setShowReceiptModal(false);
+                    setSelectedSettlement(null);
+                    resetReceiptForm();
+                  }
+                }}
+                disabled={submitting}
                 className="btn-outline flex-1"
               >
                 انصراف

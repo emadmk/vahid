@@ -16,6 +16,11 @@ const SarafiReceipts = () => {
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const fileInputRef = useRef(null);
 
+  // محدودیت‌های فایل آپلود
+  const MAX_FILES = 10;
+  const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
+  const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg'];
+
   const [formData, setFormData] = useState({
     tradeId: '',
     type: 'rial',
@@ -71,13 +76,28 @@ const SarafiReceipts = () => {
 
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files);
-    if (files.length + formData.files.length > 10) {
-      toast.error('حداکثر 10 فایل مجاز است');
+    if (files.length + formData.files.length > MAX_FILES) {
+      toast.error(`حداکثر ${MAX_FILES} فایل مجاز است`);
       return;
     }
+
+    // اعتبارسنجی فایل‌ها
+    const validFiles = files.filter(file => {
+      const ext = '.' + file.name.split('.').pop().toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        toast.error(`فرمت ${file.name} مجاز نیست. فقط PDF/JPG/JPEG`);
+        return false;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`حجم ${file.name} بیشتر از 200MB است`);
+        return false;
+      }
+      return true;
+    });
+
     setFormData(prev => ({
       ...prev,
-      files: [...prev.files, ...files]
+      files: [...prev.files, ...validFiles]
     }));
   };
 
