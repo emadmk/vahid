@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   FaHome, FaUsers, FaExchangeAlt, FaGlobe, FaUser, FaSignOutAlt,
   FaBars, FaTimes, FaBell, FaCalculator, FaCoins, FaMoneyBillWave, FaStore, FaWallet,
@@ -7,11 +7,10 @@ import {
   FaHandshake, FaLayerGroup
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
-import { notificationAPI } from '../../services/api';
+import NotificationDropdown from '../common/NotificationDropdown';
 
 const SarafiLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -34,18 +33,6 @@ const SarafiLayout = () => {
     { path: '/sarafi/audit-logs', label: 'لاگ عملیات', icon: FaHistory },
     { path: '/sarafi/profile', label: 'پروفایل', icon: FaUser }
   ];
-
-  useEffect(() => {
-    const fetchUnread = async () => {
-      try {
-        const res = await notificationAPI.getUnreadCount();
-        setUnreadCount(res.data.data.count);
-      } catch (e) {}
-    };
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleLogout = () => {
     logout();
@@ -121,14 +108,8 @@ const SarafiLayout = () => {
           </button>
 
           <div className="flex items-center gap-4">
-            <button className="relative text-dark-400 hover:text-gold-500 transition-colors">
-              <FaBell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
+            {/* اعلانات */}
+            <NotificationDropdown basePath="/sarafi" />
           </div>
         </header>
 

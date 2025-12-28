@@ -1,17 +1,16 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   FaHome, FaPlus, FaList, FaGlobe, FaUser, FaSignOutAlt,
-  FaBars, FaTimes, FaBell, FaWallet, FaStar, FaStore, FaExchangeAlt, FaBook,
-  FaComments
+  FaBars, FaTimes, FaWallet, FaStar, FaStore, FaExchangeAlt, FaBook,
+  FaComments, FaBell
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
-import { notificationAPI } from '../../services/api';
 import ViewModeToggle from '../common/ViewModeToggle';
+import NotificationDropdown from '../common/NotificationDropdown';
 
 const UserLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,18 +28,6 @@ const UserLayout = () => {
     { path: '/dashboard/messages', label: 'پیام‌ها', icon: FaComments, isNew: true },
     { path: '/dashboard/profile', label: 'پروفایل', icon: FaUser }
   ];
-
-  useEffect(() => {
-    const fetchUnread = async () => {
-      try {
-        const res = await notificationAPI.getUnreadCount();
-        setUnreadCount(res.data.data.count);
-      } catch (e) {}
-    };
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleLogout = () => {
     logout();
@@ -137,14 +124,8 @@ const UserLayout = () => {
             {/* تاگل نمای ساده/حرفه‌ای */}
             <ViewModeToggle />
 
-            <button className="relative text-dark-400 hover:text-gold-500 transition-colors">
-              <FaBell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
+            {/* اعلانات */}
+            <NotificationDropdown basePath="/dashboard" />
           </div>
         </header>
 

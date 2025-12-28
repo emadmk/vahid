@@ -53,6 +53,7 @@ import SarafiReceipts from './pages/sarafi/Receipts';
 import SarafiTradingPanel from './pages/sarafi/TradingPanel';
 import SarafiSettlementPanel from './pages/sarafi/SettlementPanel';
 import MessagesPage from './pages/shared/Messages';
+import NotificationsPage from './pages/shared/Notifications';
 
 // صفحات ادمین
 import AdminDashboard from './pages/admin/Dashboard';
@@ -160,6 +161,7 @@ function App() {
           <Route path="public-requests" element={<PublicRequests />} />
           <Route path="profile" element={<UserProfile />} />
           <Route path="messages" element={<MessagesPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
 
         {/* پنل صراف */}
@@ -189,6 +191,7 @@ function App() {
           <Route path="trading" element={<SarafiTradingPanel />} />
           <Route path="settlements" element={<SarafiSettlementPanel />} />
           <Route path="messages" element={<MessagesPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
 
         {/* پنل ادمین */}
@@ -215,6 +218,7 @@ function App() {
           <Route path="audit-logs" element={<AdminAuditLogs />} />
           <Route path="rate-scraper" element={<AdminRateScraper />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
 
         {/* 404 */}

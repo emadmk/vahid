@@ -6,6 +6,7 @@ import {
   FaBook, FaReceipt, FaHistory, FaChartLine
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
+import NotificationDropdown from '../common/NotificationDropdown';
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -102,12 +103,8 @@ const AdminLayout = () => {
           </button>
 
           <div className="flex items-center gap-4">
-            <button className="relative text-dark-400 hover:text-gold-500 transition-colors">
-              <FaBell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                3
-              </span>
-            </button>
+            {/* اعلانات */}
+            <NotificationDropdown basePath="/admin" />
           </div>
         </header>
 
