@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   FaUserTie, FaPlus, FaEdit, FaTrash, FaTimes, FaToggleOn, FaToggleOff,
-  FaCalculator, FaCoins, FaMoneyBillWave, FaUsers, FaChartLine, FaShieldAlt
+  FaCalculator, FaCoins, FaMoneyBillWave, FaUsers, FaChartLine, FaShieldAlt,
+  FaKey, FaEye, FaEyeSlash, FaSync, FaCopy, FaCheck
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -11,6 +12,11 @@ const SarafiStaff = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedStaffForPassword, setSelectedStaffForPassword] = useState(null);
+  const [resetting, setResetting] = useState(false);
 
   const roleLabels = {
     accountant: { label: 'حسابدار', icon: FaCalculator, color: 'text-blue-500' },
@@ -54,6 +60,8 @@ const SarafiStaff = () => {
     firstName: '',
     lastName: '',
     phone: '',
+    password: '',
+    mustChangePassword: true,
     role: 'operator',
     permissions: {}
   });
@@ -73,9 +81,37 @@ const SarafiStaff = () => {
     }
   };
 
+  // تولید رمز عبور تصادفی
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%';
+    let password = '';
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setFormData({ ...formData, password });
+    return password;
+  };
+
+  // کپی کردن رمز
+  const copyPassword = (password) => {
+    navigator.clipboard.writeText(password);
+    toast.success('رمز عبور کپی شد');
+  };
+
   const handleSubmit = async () => {
     if (!formData.email || !formData.firstName || !formData.lastName) {
       toast.error('اطلاعات کامل نیست');
+      return;
+    }
+
+    // بررسی رمز عبور برای کارمند جدید
+    if (!editingStaff && !formData.password) {
+      toast.error('رمز عبور الزامی است');
+      return;
+    }
+
+    if (!editingStaff && formData.password.length < 6) {
+      toast.error('رمز عبور باید حداقل ۶ کاراکتر باشد');
       return;
     }
 
@@ -84,13 +120,39 @@ const SarafiStaff = () => {
         await api.put(`/sarafi/staff/${editingStaff._id}`, formData);
         toast.success('کارمند به‌روزرسانی شد');
       } else {
-        await api.post('/sarafi/staff', formData);
+        const res = await api.post('/sarafi/staff', formData);
         toast.success('کارمند اضافه شد');
+
+        // نمایش رمز عبور تولید شده
+        if (res.data.data?.temporaryPassword || formData.password) {
+          setGeneratedPassword(res.data.data?.temporaryPassword || formData.password);
+          setShowPasswordModal(true);
+        }
       }
       fetchStaff();
       closeModal();
     } catch (error) {
       toast.error(error.response?.data?.message || 'خطا در ذخیره');
+    }
+  };
+
+  // ریست رمز عبور کارمند
+  const handleResetPassword = async (staffMember) => {
+    setSelectedStaffForPassword(staffMember);
+    setResetting(true);
+
+    try {
+      const res = await api.post(`/sarafi/staff/${staffMember._id}/reset-password`);
+      if (res.data.data?.temporaryPassword) {
+        setGeneratedPassword(res.data.data.temporaryPassword);
+        setShowPasswordModal(true);
+      }
+      toast.success('رمز عبور جدید تنظیم شد');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'خطا در ریست رمز عبور');
+    } finally {
+      setResetting(false);
+      setSelectedStaffForPassword(null);
     }
   };
 
@@ -122,6 +184,8 @@ const SarafiStaff = () => {
       firstName: staffMember.user?.firstName || '',
       lastName: staffMember.user?.lastName || '',
       phone: staffMember.user?.phone || '',
+      password: '',
+      mustChangePassword: false,
       role: staffMember.role,
       permissions: staffMember.permissions || {}
     });
@@ -136,9 +200,12 @@ const SarafiStaff = () => {
       firstName: '',
       lastName: '',
       phone: '',
+      password: '',
+      mustChangePassword: true,
       role: 'operator',
       permissions: {}
     });
+    setShowPassword(false);
   };
 
   const togglePermission = (key) => {
@@ -285,6 +352,14 @@ const SarafiStaff = () => {
                   )}
                 </div>
 
+                {/* نشانگر الزام تغییر رمز */}
+                {member.user?.mustChangePassword && (
+                  <div className="mb-3 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-2">
+                    <FaKey className="text-yellow-500 text-sm" />
+                    <span className="text-yellow-500 text-xs">در انتظار تغییر رمز</span>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap gap-1 mb-4">
                   {Object.entries(member.permissions || {})
                     .filter(([_, v]) => v)
@@ -313,6 +388,18 @@ const SarafiStaff = () => {
                     ویرایش
                   </button>
                   <button
+                    onClick={() => handleResetPassword(member)}
+                    disabled={resetting && selectedStaffForPassword?._id === member._id}
+                    className="p-2 rounded-lg bg-blue-500/20 text-blue-500 hover:bg-blue-500/30"
+                    title="ریست رمز عبور"
+                  >
+                    {resetting && selectedStaffForPassword?._id === member._id ? (
+                      <FaSync className="animate-spin" />
+                    ) : (
+                      <FaKey />
+                    )}
+                  </button>
+                  <button
                     onClick={() => handleDelete(member._id)}
                     className="p-2 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500/30"
                   >
@@ -325,7 +412,7 @@ const SarafiStaff = () => {
         )}
       </div>
 
-      {/* مودال */}
+      {/* مودال افزودن/ویرایش */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -341,7 +428,7 @@ const SarafiStaff = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-dark-300 mb-2">نام</label>
+                  <label className="block text-dark-300 mb-2">نام *</label>
                   <input
                     type="text"
                     value={formData.firstName}
@@ -350,7 +437,7 @@ const SarafiStaff = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-dark-300 mb-2">نام خانوادگی</label>
+                  <label className="block text-dark-300 mb-2">نام خانوادگی *</label>
                   <input
                     type="text"
                     value={formData.lastName}
@@ -362,7 +449,7 @@ const SarafiStaff = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-dark-300 mb-2">ایمیل</label>
+                  <label className="block text-dark-300 mb-2">ایمیل *</label>
                   <input
                     type="email"
                     value={formData.email}
@@ -381,6 +468,62 @@ const SarafiStaff = () => {
                   />
                 </div>
               </div>
+
+              {/* بخش رمز عبور - فقط برای کارمند جدید */}
+              {!editingStaff && (
+                <div className="bg-dark-800 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-2 text-gold mb-2">
+                    <FaKey />
+                    <span className="font-bold">تنظیمات رمز عبور</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-dark-300 mb-2">رمز عبور *</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="input w-full pl-24"
+                        placeholder="حداقل ۶ کاراکتر"
+                      />
+                      <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="text-dark-400 hover:text-white p-1"
+                        >
+                          {showPassword ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={generatePassword}
+                          className="text-gold hover:text-gold/80 p-1"
+                          title="تولید رمز تصادفی"
+                        >
+                          <FaSync />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-dark-500 text-xs mt-1">
+                      رمز عبور باید حداقل ۶ کاراکتر باشد
+                    </p>
+                  </div>
+
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.mustChangePassword}
+                      onChange={(e) => setFormData({ ...formData, mustChangePassword: e.target.checked })}
+                      className="w-5 h-5 rounded"
+                    />
+                    <div>
+                      <span className="text-dark-300">الزام تغییر رمز در اولین ورود</span>
+                      <p className="text-dark-500 text-xs">کارمند در اولین ورود باید رمز خود را تغییر دهد</p>
+                    </div>
+                  </label>
+                </div>
+              )}
 
               <div>
                 <label className="block text-dark-300 mb-2">نقش</label>
@@ -427,6 +570,53 @@ const SarafiStaff = () => {
                 انصراف
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* مودال نمایش رمز عبور */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="card w-full max-w-md text-center">
+            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+              <FaCheck className="text-green-500 text-2xl" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">رمز عبور تنظیم شد</h2>
+            <p className="text-dark-400 text-sm mb-6">
+              لطفاً این رمز عبور را یادداشت کنید. پس از بستن این پنجره امکان مشاهده مجدد وجود ندارد.
+            </p>
+
+            <div className="bg-dark-800 rounded-xl p-4 mb-6">
+              <p className="text-dark-500 text-sm mb-2">رمز عبور موقت:</p>
+              <div className="flex items-center justify-center gap-3">
+                <code className="text-2xl font-mono text-gold tracking-wider">
+                  {generatedPassword}
+                </code>
+                <button
+                  onClick={() => copyPassword(generatedPassword)}
+                  className="p-2 rounded-lg bg-gold/20 text-gold hover:bg-gold/30"
+                  title="کپی"
+                >
+                  <FaCopy />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg mb-6 text-right">
+              <p className="text-yellow-500 text-sm">
+                ⚠️ کارمند در اولین ورود باید رمز عبور خود را تغییر دهد.
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowPasswordModal(false);
+                setGeneratedPassword('');
+              }}
+              className="btn-gold w-full"
+            >
+              متوجه شدم
+            </button>
           </div>
         </div>
       )}

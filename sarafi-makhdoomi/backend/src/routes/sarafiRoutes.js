@@ -209,21 +209,28 @@ router.get('/staff', async (req, res) => {
 // افزودن کارمند جدید
 router.post('/staff', async (req, res) => {
   try {
-    const { email, firstName, lastName, phone, role, permissions } = req.body;
+    const { email, firstName, lastName, phone, role, permissions, password, mustChangePassword = true } = req.body;
 
     // بررسی وجود کاربر
     let user = await User.findOne({ email });
+    let temporaryPassword = null;
+
     if (!user) {
+      // استفاده از رمز ارسالی یا تولید رمز موقت
+      temporaryPassword = password || generateTemporaryPassword();
+
       // ایجاد کاربر جدید
       user = await User.create({
         email,
         firstName,
         lastName,
         phone,
-        password: 'Staff@123456', // رمز پیش‌فرض
+        password: temporaryPassword,
         role: 'staff',
         status: 'approved',
-        isEmailVerified: true
+        isEmailVerified: true,
+        mustChangePassword: mustChangePassword,
+        isTemporaryPassword: !password // اگر رمز ارسال نشده، موقتی است
       });
     }
 
@@ -255,7 +262,13 @@ router.post('/staff', async (req, res) => {
       ipAddress: req.ip
     });
 
-    res.status(201).json({ success: true, data: staff });
+    res.status(201).json({
+      success: true,
+      data: {
+        ...staff.toObject(),
+        temporaryPassword: temporaryPassword // برگرداندن رمز موقت برای نمایش به صراف
+      }
+    });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -339,6 +352,64 @@ router.put('/staff/:id/toggle-status', async (req, res) => {
     });
 
     res.json({ success: true, data: staff });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ریست رمز عبور کارمند
+router.post('/staff/:id/reset-password', async (req, res) => {
+  try {
+    const { sendEmail = false } = req.body;
+
+    const staff = await SarafiStaff.findOne({
+      _id: req.params.id,
+      sarafi: req.user._id
+    }).populate('user');
+
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'کارمند یافت نشد' });
+    }
+
+    // تولید رمز موقت جدید
+    const temporaryPassword = generateTemporaryPassword();
+
+    // به‌روزرسانی رمز کاربر
+    staff.user.password = temporaryPassword;
+    staff.user.mustChangePassword = true;
+    staff.user.isTemporaryPassword = true;
+    await staff.user.save();
+
+    // ارسال ایمیل (اختیاری)
+    if (sendEmail) {
+      try {
+        await emailService.sendTemporaryPassword(staff.user.email, staff.user.firstName, temporaryPassword);
+      } catch (emailError) {
+        console.error('خطا در ارسال ایمیل:', emailError);
+      }
+    }
+
+    // ثبت لاگ
+    await AuditLog.log({
+      action: 'staff.password_reset',
+      category: 'staff',
+      user: req.user._id,
+      userRole: 'sarafi',
+      sarafi: req.user._id,
+      targetType: 'SarafiStaff',
+      targetId: staff._id,
+      description: `بازنشانی رمز عبور کارمند ${staff.user.firstName} ${staff.user.lastName}`,
+      severity: 'medium',
+      ipAddress: req.ip
+    });
+
+    res.json({
+      success: true,
+      message: 'رمز عبور موقت جدید تولید شد',
+      data: {
+        temporaryPassword: temporaryPassword // همیشه برمی‌گردانیم برای نمایش در مودال
+      }
+    });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
