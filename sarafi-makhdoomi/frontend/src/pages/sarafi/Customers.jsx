@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { FaSearch, FaCheck, FaQuestion, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaCheck, FaQuestion, FaTimes, FaUserPlus, FaKey, FaSpinner, FaCopy } from 'react-icons/fa';
 import { sarafiAPI } from '../../services/api';
+import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jalaliMoment from 'jalali-moment';
 
@@ -8,6 +9,17 @@ const Customers = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ status: '', search: '' });
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteData, setInviteData] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    nationalCode: '',
+    sendEmail: true
+  });
+  const [generatedPassword, setGeneratedPassword] = useState('');
 
   useEffect(() => {
     fetchCustomers();
@@ -57,6 +69,74 @@ const Customers = () => {
     }
   };
 
+  const handleInviteCustomer = async (e) => {
+    e.preventDefault();
+    if (!inviteData.email || !inviteData.firstName || !inviteData.lastName) {
+      toast.error('ایمیل، نام و نام خانوادگی الزامی است');
+      return;
+    }
+
+    setInviteLoading(true);
+    try {
+      const res = await api.post('/sarafi/invite-customer', inviteData);
+      if (res.data.success) {
+        toast.success('مشتری با موفقیت دعوت شد');
+        if (res.data.data.temporaryPassword) {
+          setGeneratedPassword(res.data.data.temporaryPassword);
+        } else {
+          setShowInviteModal(false);
+          setInviteData({
+            email: '',
+            firstName: '',
+            lastName: '',
+            phone: '',
+            nationalCode: '',
+            sendEmail: true
+          });
+        }
+        fetchCustomers();
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'خطا در دعوت مشتری');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (customerId) => {
+    if (!confirm('آیا از بازنشانی رمز عبور این مشتری اطمینان دارید؟')) return;
+
+    try {
+      const res = await api.post(`/sarafi/customers/${customerId}/reset-password`, { sendEmail: true });
+      if (res.data.success) {
+        toast.success('رمز عبور موقت ارسال شد');
+        if (res.data.data.temporaryPassword) {
+          alert(`رمز عبور موقت: ${res.data.data.temporaryPassword}`);
+        }
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'خطا');
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success('کپی شد');
+  };
+
+  const closeInviteModal = () => {
+    setShowInviteModal(false);
+    setGeneratedPassword('');
+    setInviteData({
+      email: '',
+      firstName: '',
+      lastName: '',
+      phone: '',
+      nationalCode: '',
+      sendEmail: true
+    });
+  };
+
   const getStatusBadge = (status) => {
     const map = {
       pending: { label: 'در انتظار تایید', class: 'badge-warning' },
@@ -70,7 +150,16 @@ const Customers = () => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-white mb-6">مشتریان من</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-white">مشتریان من</h1>
+        <button
+          onClick={() => setShowInviteModal(true)}
+          className="btn-gold flex items-center gap-2"
+        >
+          <FaUserPlus />
+          دعوت مشتری جدید
+        </button>
+      </div>
 
       {/* فیلترها */}
       <div className="card-dark mb-6">
@@ -141,34 +230,165 @@ const Customers = () => {
               <div className="flex justify-between items-center pt-4 border-t border-dark-700">
                 {getStatusBadge(customer.sarafiApprovalStatus)}
 
-                {customer.sarafiApprovalStatus === 'pending' && (
-                  <div className="flex gap-2">
+                <div className="flex gap-2">
+                  {customer.sarafiApprovalStatus === 'approved' && (
                     <button
-                      onClick={() => handleApprove(customer._id)}
-                      className="w-8 h-8 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20"
-                      title="تایید"
+                      onClick={() => handleResetPassword(customer._id)}
+                      className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center hover:bg-amber-500/20"
+                      title="بازنشانی رمز عبور"
                     >
-                      <FaCheck />
+                      <FaKey />
                     </button>
-                    <button
-                      onClick={() => handleUnknown(customer._id)}
-                      className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20"
-                      title="نمیشناسم"
-                    >
-                      <FaQuestion />
-                    </button>
-                    <button
-                      onClick={() => handleReject(customer._id)}
-                      className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500/20"
-                      title="رد"
-                    >
-                      <FaTimes />
-                    </button>
-                  </div>
-                )}
+                  )}
+                  {customer.sarafiApprovalStatus === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleApprove(customer._id)}
+                        className="w-8 h-8 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20"
+                        title="تایید"
+                      >
+                        <FaCheck />
+                      </button>
+                      <button
+                        onClick={() => handleUnknown(customer._id)}
+                        className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20"
+                        title="نمیشناسم"
+                      >
+                        <FaQuestion />
+                      </button>
+                      <button
+                        onClick={() => handleReject(customer._id)}
+                        className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500/20"
+                        title="رد"
+                      >
+                        <FaTimes />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* مودال دعوت مشتری */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="card-dark w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-white">دعوت مشتری جدید</h2>
+              <button onClick={closeInviteModal} className="text-dark-400 hover:text-white">
+                <FaTimes />
+              </button>
+            </div>
+
+            {generatedPassword ? (
+              <div className="text-center">
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-4">
+                  <p className="text-green-500 mb-2">مشتری با موفقیت ایجاد شد!</p>
+                  <p className="text-dark-400 text-sm">رمز عبور موقت:</p>
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <code className="text-gold-500 text-xl font-mono">{generatedPassword}</code>
+                    <button
+                      onClick={() => copyToClipboard(generatedPassword)}
+                      className="text-dark-400 hover:text-gold-500"
+                    >
+                      <FaCopy />
+                    </button>
+                  </div>
+                  <p className="text-dark-500 text-xs mt-2">این رمز را به مشتری اطلاع دهید</p>
+                </div>
+                <button onClick={closeInviteModal} className="btn-gold w-full">
+                  بستن
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleInviteCustomer} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-dark-400 text-sm mb-2">نام *</label>
+                    <input
+                      type="text"
+                      className="input-dark"
+                      value={inviteData.firstName}
+                      onChange={(e) => setInviteData({...inviteData, firstName: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-dark-400 text-sm mb-2">نام خانوادگی *</label>
+                    <input
+                      type="text"
+                      className="input-dark"
+                      value={inviteData.lastName}
+                      onChange={(e) => setInviteData({...inviteData, lastName: e.target.value})}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-dark-400 text-sm mb-2">ایمیل *</label>
+                  <input
+                    type="email"
+                    className="input-dark"
+                    value={inviteData.email}
+                    onChange={(e) => setInviteData({...inviteData, email: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-dark-400 text-sm mb-2">تلفن</label>
+                  <input
+                    type="tel"
+                    className="input-dark"
+                    value={inviteData.phone}
+                    onChange={(e) => setInviteData({...inviteData, phone: e.target.value})}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-dark-400 text-sm mb-2">کد ملی</label>
+                  <input
+                    type="text"
+                    className="input-dark"
+                    value={inviteData.nationalCode}
+                    onChange={(e) => setInviteData({...inviteData, nationalCode: e.target.value})}
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 text-dark-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={inviteData.sendEmail}
+                    onChange={(e) => setInviteData({...inviteData, sendEmail: e.target.checked})}
+                    className="rounded bg-dark-700 border-dark-600"
+                  />
+                  <span className="text-sm">ارسال ایمیل با رمز عبور موقت</span>
+                </label>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={closeInviteModal}
+                    className="flex-1 btn-dark"
+                  >
+                    انصراف
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={inviteLoading}
+                    className="flex-1 btn-gold flex items-center justify-center gap-2"
+                  >
+                    {inviteLoading ? <FaSpinner className="animate-spin" /> : <FaUserPlus />}
+                    {inviteLoading ? 'در حال ثبت...' : 'دعوت'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       )}
     </div>

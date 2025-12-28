@@ -48,7 +48,7 @@ const settingsSchema = new mongoose.Schema({
   requestSettings: {
     timerDuration: {
       type: Number,
-      default: 60 // دقیقه
+      default: 1 // دقیقه - طبق نیاز پروژه 1 دقیقه
     },
     minAmount: {
       type: Number,

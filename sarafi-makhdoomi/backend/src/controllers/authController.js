@@ -187,9 +187,13 @@ exports.login = async (req, res, next) => {
 
     const token = user.getSignedJwtToken();
 
+    // بررسی الزام تغییر رمز
+    const requirePasswordChange = user.mustChangePassword || user.isTemporaryPassword;
+
     res.status(200).json({
       success: true,
       token,
+      requirePasswordChange, // اگر true باشد، فرانت باید به صفحه تغییر رمز هدایت کند
       data: {
         user: {
           id: user._id,
@@ -200,7 +204,9 @@ exports.login = async (req, res, next) => {
           role: user.role,
           status: user.status,
           isEmailVerified: user.isEmailVerified,
-          telegramNotifications: user.telegramNotifications
+          telegramNotifications: user.telegramNotifications,
+          mustChangePassword: user.mustChangePassword,
+          isTemporaryPassword: user.isTemporaryPassword
         }
       }
     });
@@ -267,6 +273,10 @@ exports.changePassword = async (req, res, next) => {
     }
 
     user.password = newPassword;
+    // پاک کردن فلگ‌های رمز موقت بعد از تغییر رمز
+    user.mustChangePassword = false;
+    user.isTemporaryPassword = false;
+    user.passwordChangedAt = new Date();
     await user.save();
 
     res.status(200).json({

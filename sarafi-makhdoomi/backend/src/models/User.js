@@ -32,6 +32,27 @@ const userSchema = new mongoose.Schema({
     select: false
   },
 
+  // الزام تغییر رمز در اولین ورود
+  mustChangePassword: {
+    type: Boolean,
+    default: false
+  },
+
+  // رمز موقت (توسط صراف تعیین شده)
+  isTemporaryPassword: {
+    type: Boolean,
+    default: false
+  },
+
+  // تاریخ آخرین تغییر رمز
+  passwordChangedAt: Date,
+
+  // معرفی‌کننده (صراف)
+  introducedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+
   // نقش کاربر
   role: {
     type: String,

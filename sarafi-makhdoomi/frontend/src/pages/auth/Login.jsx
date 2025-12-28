@@ -20,8 +20,16 @@ const Login = () => {
     const result = await login(data.email, data.password);
 
     if (result.success) {
-      toast.success('ورود موفقیت‌آمیز بود');
       const user = useAuthStore.getState().user;
+
+      // بررسی الزام تغییر رمز عبور
+      if (result.requirePasswordChange || user?.mustChangePassword || user?.isTemporaryPassword) {
+        toast.success('لطفا رمز عبور خود را تغییر دهید');
+        navigate('/change-password', { state: { required: true } });
+        return;
+      }
+
+      toast.success('ورود موفقیت‌آمیز بود');
       switch (user?.role) {
         case 'admin':
           navigate('/admin');

@@ -1,6 +1,7 @@
 const axios = require('axios');
 const Settings = require('../models/Settings');
 const Currency = require('../models/Currency');
+const socketService = require('./socketService');
 
 /**
  * سرویس اسکرپر TGJU برای دریافت نرخ ارز، طلا و کریپتو از سایت tgju.org
@@ -283,6 +284,10 @@ class TgjuScraperService {
 
       if (currency) {
         console.log(`✅ ${code}: خرید ${buyRate.toLocaleString()} / فروش ${sellRate.toLocaleString()}`);
+
+        // ارسال به‌روزرسانی لحظه‌ای به کلاینت‌ها
+        socketService.emitRateUpdate(currency, { buyRate, sellRate });
+
         return true;
       }
       return false;

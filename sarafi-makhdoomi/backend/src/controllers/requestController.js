@@ -54,8 +54,8 @@ exports.createRequest = async (req, res, next) => {
 
     const finalPrice = totalPrice + fee;
 
-    // زمان انقضای تایمر
-    const timerDuration = settings.requestSettings.timerDuration || 60;
+    // زمان انقضای تایمر (پیش‌فرض 1 دقیقه)
+    const timerDuration = settings.requestSettings?.timerDuration || 1;
     const timerExpiry = new Date(Date.now() + timerDuration * 60 * 1000);
 
     // ایجاد درخواست

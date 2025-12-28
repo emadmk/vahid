@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const Request = require('../models/Request');
 const User = require('../models/User');
 const notificationService = require('../services/notificationService');
+const socketService = require('../services/socketService');
 
 // چک کردن درخواست‌های منقضی شده هر دقیقه
 const startTimerJob = () => {
@@ -32,13 +33,18 @@ const startTimerJob = () => {
         // اعلان به کاربر
         if (request.user) {
           await notificationService.notifyRequestPublic(request, request.user);
+          // اعلان real-time به کاربر
+          socketService.emitRequestStatusChange(request, request.user._id, 'public');
         }
+
+        // اعلان real-time به همه صراف‌ها
+        socketService.emitRequestPublic(request);
 
         console.log(`درخواست ${request._id} به بخش عمومی منتقل شد (انقضای تایمر)`);
       }
 
-      // هشدار به صراف‌ها برای درخواست‌هایی که 15 دقیقه تا انقضا مانده
-      const warningTime = new Date(now.getTime() + 15 * 60 * 1000);
+      // هشدار به صراف‌ها برای درخواست‌هایی که 30 ثانیه تا انقضا مانده
+      const warningTime = new Date(now.getTime() + 30 * 1000); // 30 ثانیه
       const warningRequests = await Request.find({
         status: 'pending',
         timerExpiry: { $lte: warningTime, $gt: now },
@@ -47,18 +53,18 @@ const startTimerJob = () => {
       }).populate('originalSarafi');
 
       for (const request of warningRequests) {
-        if (request.originalSarafi?.telegramChatId) {
+        if (request.originalSarafi) {
           await notificationService.create({
             user: request.originalSarafi._id,
-            title: 'هشدار: تایمر درخواست',
-            message: `کمتر از 15 دقیقه تا انقضای تایمر درخواست #${request._id.toString().slice(-6)} باقی مانده. لطفا تصمیم خود را اعلام کنید.`,
-            type: 'timer_warning',
-            request: request._id,
-            channels: {
-              inApp: true,
-              telegram: true
-            }
+            title: 'هشدار فوری: تایمر درخواست',
+            message: `کمتر از 30 ثانیه تا انقضای تایمر درخواست #${request._id.toString().slice(-6)} باقی مانده!`,
+            type: 'warning',
+            link: `/sarafi/requests/${request._id}`
           });
+
+          // اعلان real-time
+          const remainingSeconds = Math.floor((request.timerExpiry - now) / 1000);
+          socketService.emitTimerWarning(request, request.originalSarafi._id, remainingSeconds);
         }
 
         request.notificationsSent = request.notificationsSent || {};

@@ -102,6 +102,34 @@ class EmailService {
     return this.sendEmail(email, 'رد درخواست - صرافی گلدن 2026', html);
   }
 
+  async sendTemporaryPassword(email, name, temporaryPassword) {
+    const html = `
+      <div dir="rtl" style="font-family: Tahoma, Arial; padding: 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; border-radius: 10px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #d4af37;">صرافی گلدن 2026</h1>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
+          <h2 style="color: #d4af37;">خوش آمدید ${name} عزیز!</h2>
+          <p>حساب کاربری شما در صرافی گلدن 2026 ایجاد شد.</p>
+          <div style="background: rgba(212, 175, 55, 0.2); padding: 15px; border-radius: 8px; margin: 15px 0; text-align: center;">
+            <p style="margin: 0; color: #ccc;">رمز عبور موقت شما:</p>
+            <p style="font-size: 24px; color: #d4af37; font-weight: bold; letter-spacing: 3px; margin: 10px 0;">${temporaryPassword}</p>
+          </div>
+          <div style="background: rgba(255, 152, 0, 0.2); padding: 10px; border-radius: 5px; margin-top: 15px;">
+            <p style="color: #ffcc80; margin: 0; font-size: 14px;">
+              <strong>توجه:</strong> این رمز موقت است. لطفا پس از اولین ورود، رمز عبور خود را تغییر دهید.
+            </p>
+          </div>
+        </div>
+        <p style="text-align: center; color: #888; margin-top: 20px; font-size: 12px;">
+          در صورتی که این درخواست توسط شما نبوده، لطفا با پشتیبانی تماس بگیرید.
+        </p>
+      </div>
+    `;
+
+    return this.sendEmail(email, 'دعوت به صرافی گلدن 2026 - رمز عبور موقت', html);
+  }
+
   async sendRequestNotification(email, name, requestType, status, details = {}) {
     const statusTexts = {
       'pending': 'در انتظار بررسی',

@@ -95,7 +95,7 @@ const requestSchema = new mongoose.Schema({
     default: Date.now
   },
 
-  // زمان انقضای تایمر (1 ساعت بعد از ثبت)
+  // زمان انقضای تایمر (1 دقیقه بعد از ثبت - قابل تنظیم)
   timerExpiry: {
     type: Date,
     required: true

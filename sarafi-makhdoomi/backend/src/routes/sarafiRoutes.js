@@ -32,6 +32,165 @@ router.put('/customers/:id/approve', approveCustomer);
 router.put('/customers/:id/unknown', unknownCustomer);
 router.put('/customers/:id/reject', rejectCustomer);
 
+// ==================== دعوت مشتری با رمز موقت ====================
+
+const crypto = require('crypto');
+const emailService = require('../services/emailService');
+
+// تولید رمز موقت تصادفی
+function generateTemporaryPassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let password = '';
+  for (let i = 0; i < 8; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password + '!'; // اضافه کردن کاراکتر خاص برای امنیت
+}
+
+// دعوت مشتری جدید با رمز موقت
+router.post('/invite-customer', async (req, res) => {
+  try {
+    const { email, firstName, lastName, phone, nationalCode, sendEmail = true } = req.body;
+
+    // اعتبارسنجی
+    if (!email || !firstName || !lastName) {
+      return res.status(400).json({
+        success: false,
+        message: 'ایمیل، نام و نام خانوادگی الزامی است'
+      });
+    }
+
+    // بررسی وجود کاربر
+    let user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({
+        success: false,
+        message: 'این ایمیل قبلا ثبت شده است'
+      });
+    }
+
+    // تولید رمز موقت
+    const temporaryPassword = generateTemporaryPassword();
+
+    // ایجاد کاربر با رمز موقت
+    user = await User.create({
+      email,
+      firstName,
+      lastName,
+      phone,
+      nationalCode,
+      password: temporaryPassword,
+      role: 'user',
+      status: 'approved',
+      isEmailVerified: true,
+      mustChangePassword: true,
+      isTemporaryPassword: true,
+      introducedBy: req.user._id,
+      selectedSarafi: req.user._id
+    });
+
+    // ارسال ایمیل با رمز موقت
+    if (sendEmail) {
+      try {
+        await emailService.sendTemporaryPassword(email, firstName, temporaryPassword);
+      } catch (emailError) {
+        console.error('خطا در ارسال ایمیل:', emailError);
+      }
+    }
+
+    // ثبت لاگ
+    await AuditLog.log({
+      action: 'customer.invite',
+      category: 'customer',
+      user: req.user._id,
+      userRole: 'sarafi',
+      sarafi: req.user._id,
+      targetType: 'User',
+      targetId: user._id,
+      description: `دعوت مشتری ${firstName} ${lastName} با رمز موقت`,
+      ipAddress: req.ip
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'مشتری با موفقیت دعوت شد',
+      data: {
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone
+        },
+        temporaryPassword: sendEmail ? undefined : temporaryPassword // فقط اگر ایمیل ارسال نشد، رمز را برگردان
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// تولید رمز موقت جدید برای مشتری موجود
+router.post('/customers/:id/reset-password', async (req, res) => {
+  try {
+    const { sendEmail = true } = req.body;
+
+    const user = await User.findOne({
+      _id: req.params.id,
+      selectedSarafi: req.user._id,
+      role: 'user'
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'مشتری یافت نشد'
+      });
+    }
+
+    // تولید رمز موقت جدید
+    const temporaryPassword = generateTemporaryPassword();
+
+    user.password = temporaryPassword;
+    user.mustChangePassword = true;
+    user.isTemporaryPassword = true;
+    await user.save();
+
+    // ارسال ایمیل
+    if (sendEmail) {
+      try {
+        await emailService.sendTemporaryPassword(user.email, user.firstName, temporaryPassword);
+      } catch (emailError) {
+        console.error('خطا در ارسال ایمیل:', emailError);
+      }
+    }
+
+    // ثبت لاگ
+    await AuditLog.log({
+      action: 'customer.password_reset',
+      category: 'customer',
+      user: req.user._id,
+      userRole: 'sarafi',
+      sarafi: req.user._id,
+      targetType: 'User',
+      targetId: user._id,
+      description: `بازنشانی رمز عبور مشتری ${user.firstName} ${user.lastName}`,
+      severity: 'medium',
+      ipAddress: req.ip
+    });
+
+    res.json({
+      success: true,
+      message: 'رمز عبور موقت جدید تولید شد',
+      data: {
+        temporaryPassword: sendEmail ? undefined : temporaryPassword
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 // ==================== مدیریت کارکنان ====================
 
 // دریافت لیست کارکنان

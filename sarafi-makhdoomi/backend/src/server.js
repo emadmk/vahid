@@ -11,6 +11,7 @@ const errorHandler = require('./middlewares/errorHandler');
 const startTimerJob = require('./jobs/timerJob');
 const { startRateScraperJob } = require('./jobs/rateScraperJob');
 const telegramBot = require('./bot/index');
+const socketService = require('./services/socketService');
 
 // روت‌ها
 const authRoutes = require('./routes/authRoutes');
@@ -31,6 +32,9 @@ const spreadRoutes = require('./routes/spreadRoutes');
 // روت‌های جدید
 const settlementRoutes = require('./routes/settlementRoutes');
 const messageRoutes = require('./routes/messageRoutes');
+const sarafiRateRoutes = require('./routes/sarafiRateRoutes');
+const accountingRoutes = require('./routes/accountingRoutes');
+const sarafiGroupRoutes = require('./routes/sarafiGroupRoutes');
 
 const app = express();
 
@@ -93,6 +97,9 @@ app.use('/api/spreads', spreadRoutes);
 // روت‌های Settlement و Message
 app.use('/api/settlements', settlementRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/sarafi-rates', sarafiRateRoutes);
+app.use('/api/accounting', accountingRoutes);
+app.use('/api/sarafi-groups', sarafiGroupRoutes);
 
 // روت سلامت
 app.get('/api/health', (req, res) => {
@@ -111,6 +118,9 @@ const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, async () => {
   console.log(`🚀 سرور روی پورت ${PORT} راه‌اندازی شد`);
+
+  // راه‌اندازی WebSocket
+  socketService.init(server);
 
   // شروع job تایمر
   startTimerJob();

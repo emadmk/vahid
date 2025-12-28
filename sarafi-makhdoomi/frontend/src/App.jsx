@@ -21,6 +21,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import VerifyEmail from './pages/auth/VerifyEmail';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import ChangePassword from './pages/auth/ChangePassword';
 
 // صفحات کاربر
 import UserDashboard from './pages/user/Dashboard';
@@ -52,6 +53,7 @@ import SarafiAuditLogs from './pages/sarafi/AuditLogs';
 import SarafiReceipts from './pages/sarafi/Receipts';
 import SarafiTradingPanel from './pages/sarafi/TradingPanel';
 import SarafiSettlementPanel from './pages/sarafi/SettlementPanel';
+import SarafiRates from './pages/sarafi/Rates';
 import MessagesPage from './pages/shared/Messages';
 import NotificationsPage from './pages/shared/Notifications';
 
@@ -139,6 +141,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/change-password" element={<ChangePassword />} />
         </Route>
 
         {/* پنل کاربر */}
@@ -190,6 +193,7 @@ function App() {
           <Route path="profile" element={<SarafiProfile />} />
           <Route path="trading" element={<SarafiTradingPanel />} />
           <Route path="settlements" element={<SarafiSettlementPanel />} />
+          <Route path="rates" element={<SarafiRates />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
         </Route>
