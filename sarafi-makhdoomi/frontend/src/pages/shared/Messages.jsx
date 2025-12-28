@@ -267,7 +267,7 @@ const MessagesPage = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-dark-950/50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gradient-to-b from-dark-950 to-dark-900">
               {messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
@@ -280,64 +280,61 @@ const MessagesPage = () => {
                   const isMine = message.sender?._id === user?._id;
                   const showAvatar = !isMine && (idx === 0 || messages[idx - 1]?.sender?._id !== message.sender?._id);
                   const isFirstInGroup = idx === 0 || messages[idx - 1]?.sender?._id !== message.sender?._id;
-                  const isLastInGroup = idx === messages.length - 1 || messages[idx + 1]?.sender?._id !== message.sender?._id;
 
                   return (
                     <div
                       key={message._id}
-                      className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''} ${isFirstInGroup ? 'mt-4' : 'mt-1'}`}
+                      className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-4' : 'mt-0.5'}`}
                     >
-                      {/* آواتار */}
-                      {!isMine && showAvatar ? (
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-lg">
-                          {message.sender?.firstName?.[0] || '?'}
-                        </div>
-                      ) : !isMine ? (
-                        <div className="w-8" />
-                      ) : null}
-
-                      {/* حباب پیام */}
-                      <div
-                        className={`max-w-[75%] shadow-md ${
-                          isMine
-                            ? `bg-gradient-to-br from-gold to-yellow-500 text-dark-900
-                               ${isFirstInGroup ? 'rounded-t-2xl rounded-bl-2xl rounded-br-md' : ''}
-                               ${!isFirstInGroup && !isLastInGroup ? 'rounded-l-2xl rounded-r-md' : ''}
-                               ${isLastInGroup && !isFirstInGroup ? 'rounded-b-2xl rounded-tl-2xl rounded-tr-md' : ''}
-                               ${isFirstInGroup && isLastInGroup ? 'rounded-2xl rounded-br-md' : ''}`
-                            : `bg-dark-800 border border-dark-700
-                               ${isFirstInGroup ? 'rounded-t-2xl rounded-br-2xl rounded-bl-md' : ''}
-                               ${!isFirstInGroup && !isLastInGroup ? 'rounded-r-2xl rounded-l-md' : ''}
-                               ${isLastInGroup && !isFirstInGroup ? 'rounded-b-2xl rounded-tr-2xl rounded-tl-md' : ''}
-                               ${isFirstInGroup && isLastInGroup ? 'rounded-2xl rounded-bl-md' : ''}`
-                        } px-4 py-3`}
-                      >
-                        {/* نام فرستنده برای پیام‌های دیگران */}
-                        {!isMine && isFirstInGroup && (
-                          <p className="text-xs font-bold text-blue-400 mb-1">
-                            {message.sender?.firstName} {message.sender?.lastName}
-                          </p>
+                      <div className={`flex items-end gap-2 max-w-[80%] ${isMine ? 'flex-row-reverse' : ''}`}>
+                        {/* آواتار */}
+                        {!isMine && showAvatar && (
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-lg flex-shrink-0">
+                            {message.sender?.firstName?.[0] || '?'}
+                          </div>
                         )}
+                        {!isMine && !showAvatar && <div className="w-8 flex-shrink-0" />}
 
-                        {/* محتوای پیام */}
-                        <p className={`whitespace-pre-wrap break-words text-[15px] leading-relaxed ${
-                          isMine ? 'text-dark-900' : 'text-gray-100'
-                        }`}>
-                          {message.content}
-                        </p>
-
-                        {/* زمان و وضعیت */}
-                        <div className={`flex items-center gap-1.5 mt-2 text-[11px] ${
-                          isMine ? 'justify-end text-dark-800' : 'justify-end text-dark-400'
-                        }`}>
-                          <span>{formatTime(message.createdAt)}</span>
-                          {isMine && (
-                            message.readBy?.length > 1 ? (
-                              <FaCheckDouble className="text-green-600" />
-                            ) : (
-                              <FaCheck className="opacity-70" />
-                            )
+                        {/* حباب پیام */}
+                        <div
+                          className={`relative px-4 py-2.5 shadow-lg ${
+                            isMine
+                              ? 'bg-gradient-to-r from-amber-500 to-yellow-400 rounded-2xl rounded-br-sm'
+                              : 'bg-slate-700 border border-slate-600 rounded-2xl rounded-bl-sm'
+                          }`}
+                        >
+                          {/* نام فرستنده */}
+                          {!isMine && isFirstInGroup && (
+                            <p className="text-xs font-semibold text-emerald-400 mb-1">
+                              {message.sender?.firstName} {message.sender?.lastName}
+                            </p>
                           )}
+
+                          {/* محتوای پیام */}
+                          <p
+                            className="whitespace-pre-wrap break-words text-[15px] leading-relaxed"
+                            style={{ color: isMine ? '#1a1a1a' : '#f1f5f9' }}
+                          >
+                            {message.content}
+                          </p>
+
+                          {/* زمان و وضعیت */}
+                          <div
+                            className="flex items-center gap-1.5 mt-1.5 text-[10px]"
+                            style={{
+                              color: isMine ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.5)',
+                              justifyContent: 'flex-end'
+                            }}
+                          >
+                            <span>{formatTime(message.createdAt)}</span>
+                            {isMine && (
+                              message.readBy?.length > 1 ? (
+                                <FaCheckDouble style={{ color: '#16a34a' }} />
+                              ) : (
+                                <FaCheck style={{ opacity: 0.7 }} />
+                              )
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
