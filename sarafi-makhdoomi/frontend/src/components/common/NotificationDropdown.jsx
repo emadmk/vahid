@@ -154,7 +154,7 @@ const NotificationDropdown = ({ basePath = '/dashboard' }) => {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-dark-850 border border-dark-700 rounded-xl shadow-2xl z-[100] overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-dark-900 border border-dark-700 rounded-xl shadow-2xl z-[100] overflow-hidden">
           {/* Header */}
           <div className="px-4 py-3 border-b border-dark-700 flex items-center justify-between bg-dark-800">
             <h3 className="font-bold text-white flex items-center gap-2">
@@ -195,8 +195,8 @@ const NotificationDropdown = ({ basePath = '/dashboard' }) => {
                 <div
                   key={notification._id}
                   onClick={() => handleNotificationClick(notification)}
-                  className={`px-4 py-3 border-b border-dark-700/50 cursor-pointer transition-all hover:bg-dark-800 ${
-                    !notification.isRead ? 'bg-dark-800/50' : ''
+                  className={`px-4 py-3 border-b border-dark-700 cursor-pointer transition-all hover:bg-dark-800 ${
+                    !notification.isRead ? 'bg-dark-850' : 'bg-dark-900'
                   }`}
                 >
                   <div className="flex items-start gap-3">
