@@ -56,6 +56,7 @@ import SarafiSettlementPanel from './pages/sarafi/SettlementPanel';
 import SarafiRates from './pages/sarafi/Rates';
 import MessagesPage from './pages/shared/Messages';
 import NotificationsPage from './pages/shared/Notifications';
+import SarafiGroups from './pages/sarafi/Groups';
 
 // صفحات ادمین
 import AdminDashboard from './pages/admin/Dashboard';
@@ -194,6 +195,7 @@ function App() {
           <Route path="trading" element={<SarafiTradingPanel />} />
           <Route path="settlements" element={<SarafiSettlementPanel />} />
           <Route path="rates" element={<SarafiRates />} />
+          <Route path="groups" element={<SarafiGroups />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
         </Route>

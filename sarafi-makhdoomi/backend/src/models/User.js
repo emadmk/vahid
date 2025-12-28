@@ -56,7 +56,7 @@ const userSchema = new mongoose.Schema({
   // نقش کاربر
   role: {
     type: String,
-    enum: ['user', 'sarafi', 'admin'],
+    enum: ['user', 'sarafi', 'admin', 'staff'],
     default: 'user'
   },
 

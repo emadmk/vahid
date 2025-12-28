@@ -4,7 +4,7 @@ import {
   FaHome, FaUsers, FaExchangeAlt, FaGlobe, FaUser, FaSignOutAlt,
   FaBars, FaTimes, FaBell, FaCalculator, FaCoins, FaMoneyBillWave, FaStore, FaWallet,
   FaPercent, FaBook, FaUserTie, FaHistory, FaReceipt, FaChartLine, FaComments,
-  FaHandshake, FaLayerGroup
+  FaHandshake, FaLayerGroup, FaDollarSign, FaUserFriends
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
 import NotificationDropdown from '../common/NotificationDropdown';
@@ -20,6 +20,7 @@ const SarafiLayout = () => {
     { path: '/sarafi/trading', label: 'پنل معاملاتی', icon: FaChartLine, isNew: true },
     { path: '/sarafi/trades', label: 'معاملات', icon: FaExchangeAlt },
     { path: '/sarafi/order-book', label: 'دفتر سفارشات', icon: FaBook },
+    { path: '/sarafi/rates', label: 'مدیریت نرخ‌ها', icon: FaDollarSign, isNew: true },
     { path: '/sarafi/settlements', label: 'پنل وصول', icon: FaHandshake, isNew: true },
     { path: '/sarafi/spreads', label: 'مدیریت اسپرد', icon: FaPercent },
     { path: '/sarafi/receipts', label: 'رسیدها', icon: FaReceipt },
@@ -28,6 +29,7 @@ const SarafiLayout = () => {
     { path: '/sarafi/rial-collection', label: 'وصول ریالی', icon: FaMoneyBillWave },
     { path: '/sarafi/customer-wallets', label: 'کیف پول مشتریان', icon: FaWallet },
     { path: '/sarafi/customers', label: 'مشتریان', icon: FaUsers },
+    { path: '/sarafi/groups', label: 'گروه‌های صراف', icon: FaUserFriends, isNew: true },
     { path: '/sarafi/staff', label: 'کارکنان', icon: FaUserTie },
     { path: '/sarafi/messages', label: 'پیام‌ها', icon: FaComments, isNew: true },
     { path: '/sarafi/audit-logs', label: 'لاگ عملیات', icon: FaHistory },
