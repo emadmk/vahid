@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import {
   FaHome, FaUsers, FaExchangeAlt, FaGlobe, FaUser, FaSignOutAlt,
   FaBars, FaTimes, FaBell, FaCalculator, FaCoins, FaMoneyBillWave, FaStore, FaWallet,
-  FaPercent, FaBook, FaUserTie, FaHistory, FaReceipt, FaChartLine
+  FaPercent, FaBook, FaUserTie, FaHistory, FaReceipt, FaChartLine, FaComments,
+  FaHandshake, FaLayerGroup
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
 import { notificationAPI } from '../../services/api';
@@ -17,8 +18,10 @@ const SarafiLayout = () => {
 
   const menuItems = [
     { path: '/sarafi', label: 'داشبورد', icon: FaHome },
+    { path: '/sarafi/trading', label: 'پنل معاملاتی', icon: FaChartLine, isNew: true },
     { path: '/sarafi/trades', label: 'معاملات', icon: FaExchangeAlt },
     { path: '/sarafi/order-book', label: 'دفتر سفارشات', icon: FaBook },
+    { path: '/sarafi/settlements', label: 'پنل وصول', icon: FaHandshake, isNew: true },
     { path: '/sarafi/spreads', label: 'مدیریت اسپرد', icon: FaPercent },
     { path: '/sarafi/receipts', label: 'رسیدها', icon: FaReceipt },
     { path: '/sarafi/accountant', label: 'حسابداری', icon: FaCalculator },
@@ -27,8 +30,8 @@ const SarafiLayout = () => {
     { path: '/sarafi/customer-wallets', label: 'کیف پول مشتریان', icon: FaWallet },
     { path: '/sarafi/customers', label: 'مشتریان', icon: FaUsers },
     { path: '/sarafi/staff', label: 'کارکنان', icon: FaUserTie },
+    { path: '/sarafi/messages', label: 'پیام‌ها', icon: FaComments, isNew: true },
     { path: '/sarafi/audit-logs', label: 'لاگ عملیات', icon: FaHistory },
-    { path: '/sarafi/requests', label: 'درخواست‌ها (قدیم)', icon: FaGlobe },
     { path: '/sarafi/profile', label: 'پروفایل', icon: FaUser }
   ];
 
@@ -77,6 +80,9 @@ const SarafiLayout = () => {
               >
                 <item.icon className="w-5 h-5" />
                 <span>{item.label}</span>
+                {item.isNew && (
+                  <span className="mr-auto text-xs bg-green-500 text-white px-1.5 py-0.5 rounded">جدید</span>
+                )}
               </Link>
             ))}
           </nav>

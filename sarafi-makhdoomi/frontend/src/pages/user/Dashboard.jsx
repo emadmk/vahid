@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import {
   FaPlus, FaList, FaCheckCircle, FaClock, FaGlobe,
   FaWallet, FaStar, FaExchangeAlt, FaStore, FaMedal,
-  FaArrowUp, FaArrowDown, FaCreditCard
+  FaArrowUp, FaArrowDown, FaCreditCard, FaChartLine,
+  FaBook, FaChartBar, FaPercent
 } from 'react-icons/fa';
 import { requestAPI, publicAPI } from '../../services/api';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
+import useViewStore from '../../store/viewStore';
 import jalaliMoment from 'jalali-moment';
 
 const tierColors = {
@@ -19,27 +21,31 @@ const tierColors = {
 
 const Dashboard = () => {
   const { user } = useAuthStore();
+  const { viewMode, showAdvancedStats, showCharts, showMarketDepth, compactMode } = useViewStore();
   const [stats, setStats] = useState({ pending: 0, completed: 0, total: 0 });
   const [recentRequests, setRecentRequests] = useState([]);
   const [rates, setRates] = useState([]);
   const [wallets, setWallets] = useState({ cash: null, credit: null });
   const [recentTrades, setRecentTrades] = useState([]);
+  const [marketStats, setMarketStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [requestsRes, ratesRes, walletsRes, tradesRes] = await Promise.all([
+        const [requestsRes, ratesRes, walletsRes, tradesRes, statsRes] = await Promise.all([
           requestAPI.getMyRequests({ limit: 5 }),
           publicAPI.getRates(),
           api.get('/wallets/my-wallets').catch(() => ({ data: { data: [] } })),
-          api.get('/trades/my-trades', { params: { limit: 3 } }).catch(() => ({ data: { data: [] } }))
+          api.get('/trades/my-trades', { params: { limit: 3 } }).catch(() => ({ data: { data: [] } })),
+          api.get('/public/market-stats').catch(() => ({ data: { data: null } }))
         ]);
 
         const requestsData = requestsRes.data.data || [];
         setRecentRequests(requestsData);
         setRates(ratesRes.data.data || []);
         setRecentTrades(tradesRes.data.data || []);
+        setMarketStats(statsRes.data.data);
 
         // تنظیم کیف پول‌ها - API یک object با cash و credit برمی‌گردونه
         const walletsData = walletsRes.data.data || {};
@@ -255,7 +261,110 @@ const Dashboard = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* بخش حرفه‌ای - آمار پیشرفته */}
+      {viewMode === 'professional' && showAdvancedStats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="card p-4 bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
+            <div className="flex items-center gap-2 mb-2">
+              <FaChartLine className="text-blue-500" />
+              <span className="text-dark-400 text-sm">حجم معاملات 24h</span>
+            </div>
+            <p className="text-xl font-bold text-white">
+              {formatNumber(marketStats?.volume24h || 0)}
+              <span className="text-xs text-dark-400 mr-1">ریال</span>
+            </p>
+          </div>
+          <div className="card p-4 bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
+            <div className="flex items-center gap-2 mb-2">
+              <FaChartBar className="text-green-500" />
+              <span className="text-dark-400 text-sm">تعداد معاملات</span>
+            </div>
+            <p className="text-xl font-bold text-white">
+              {formatNumber(marketStats?.tradesCount || 0)}
+            </p>
+          </div>
+          <div className="card p-4 bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
+            <div className="flex items-center gap-2 mb-2">
+              <FaPercent className="text-purple-500" />
+              <span className="text-dark-400 text-sm">تغییر 24h</span>
+            </div>
+            <p className={`text-xl font-bold ${(marketStats?.change24h || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {(marketStats?.change24h || 0) >= 0 ? '+' : ''}{(marketStats?.change24h || 0).toFixed(2)}%
+            </p>
+          </div>
+          <div className="card p-4 bg-gradient-to-br from-gold/10 to-gold/5 border-gold/20">
+            <div className="flex items-center gap-2 mb-2">
+              <FaBook className="text-gold" />
+              <span className="text-dark-400 text-sm">سفارشات باز</span>
+            </div>
+            <p className="text-xl font-bold text-white">
+              {formatNumber(marketStats?.openOrders || 0)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* بخش حرفه‌ای - عمق بازار */}
+      {viewMode === 'professional' && showMarketDepth && rates.length > 0 && (
+        <div className="card-dark">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <FaChartBar className="text-gold" />
+            عمق بازار - {rates[0]?.nameFa}
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            {/* سمت خرید */}
+            <div>
+              <p className="text-green-500 text-sm mb-2 font-medium">سفارشات خرید</p>
+              <div className="space-y-1">
+                {[...Array(5)].map((_, i) => {
+                  const basePrice = rates[0]?.buyRate || 0;
+                  const price = basePrice - (i * 100);
+                  const amount = Math.floor(Math.random() * 500 + 100);
+                  const width = 100 - (i * 15);
+                  return (
+                    <div key={i} className="relative h-8 rounded overflow-hidden">
+                      <div
+                        className="absolute inset-y-0 right-0 bg-green-500/20"
+                        style={{ width: `${width}%` }}
+                      />
+                      <div className="relative z-10 flex justify-between items-center px-2 h-full text-sm">
+                        <span className="text-dark-400">{formatNumber(amount)}</span>
+                        <span className="text-green-500">{formatNumber(price)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {/* سمت فروش */}
+            <div>
+              <p className="text-red-500 text-sm mb-2 font-medium">سفارشات فروش</p>
+              <div className="space-y-1">
+                {[...Array(5)].map((_, i) => {
+                  const basePrice = rates[0]?.sellRate || 0;
+                  const price = basePrice + (i * 100);
+                  const amount = Math.floor(Math.random() * 500 + 100);
+                  const width = 100 - (i * 15);
+                  return (
+                    <div key={i} className="relative h-8 rounded overflow-hidden">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-red-500/20"
+                        style={{ width: `${width}%` }}
+                      />
+                      <div className="relative z-10 flex justify-between items-center px-2 h-full text-sm">
+                        <span className="text-red-500">{formatNumber(price)}</span>
+                        <span className="text-dark-400">{formatNumber(amount)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`grid grid-cols-1 ${compactMode ? '' : 'lg:grid-cols-2'} gap-6`}>
         {/* آخرین معاملات */}
         <div className="card-dark">
           <div className="flex justify-between items-center mb-4">

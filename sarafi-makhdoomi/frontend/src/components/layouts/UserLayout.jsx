@@ -2,10 +2,12 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import {
   FaHome, FaPlus, FaList, FaGlobe, FaUser, FaSignOutAlt,
-  FaBars, FaTimes, FaBell, FaWallet, FaStar, FaStore, FaExchangeAlt, FaBook
+  FaBars, FaTimes, FaBell, FaWallet, FaStar, FaStore, FaExchangeAlt, FaBook,
+  FaComments
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
 import { notificationAPI } from '../../services/api';
+import ViewModeToggle from '../common/ViewModeToggle';
 
 const UserLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -24,6 +26,7 @@ const UserLayout = () => {
     { path: '/dashboard/new-request', label: 'درخواست جدید', icon: FaPlus },
     { path: '/dashboard/requests', label: 'درخواست‌های من', icon: FaList },
     { path: '/dashboard/public-requests', label: 'درخواست‌های عمومی', icon: FaGlobe },
+    { path: '/dashboard/messages', label: 'پیام‌ها', icon: FaComments, isNew: true },
     { path: '/dashboard/profile', label: 'پروفایل', icon: FaUser }
   ];
 
@@ -86,6 +89,9 @@ const UserLayout = () => {
               >
                 <item.icon className="w-5 h-5" />
                 <span>{item.label}</span>
+                {item.isNew && (
+                  <span className="mr-auto text-xs bg-green-500 text-white px-1.5 py-0.5 rounded">جدید</span>
+                )}
               </Link>
             ))}
           </nav>
@@ -128,6 +134,9 @@ const UserLayout = () => {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* تاگل نمای ساده/حرفه‌ای */}
+            <ViewModeToggle />
+
             <button className="relative text-dark-400 hover:text-gold-500 transition-colors">
               <FaBell className="w-5 h-5" />
               {unreadCount > 0 && (

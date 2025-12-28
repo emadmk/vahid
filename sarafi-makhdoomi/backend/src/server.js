@@ -28,6 +28,9 @@ const scoringRoutes = require('./routes/scoringRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const receiptRoutes = require('./routes/receiptRoutes');
 const spreadRoutes = require('./routes/spreadRoutes');
+// روت‌های جدید
+const settlementRoutes = require('./routes/settlementRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 
 const app = express();
 
@@ -87,6 +90,9 @@ app.use('/api/scoring', scoringRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/receipts', receiptRoutes);
 app.use('/api/spreads', spreadRoutes);
+// روت‌های Settlement و Message
+app.use('/api/settlements', settlementRoutes);
+app.use('/api/messages', messageRoutes);
 
 // روت سلامت
 app.get('/api/health', (req, res) => {

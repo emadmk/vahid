@@ -50,6 +50,9 @@ import SarafiOrderBook from './pages/sarafi/OrderBook';
 import SarafiStaff from './pages/sarafi/Staff';
 import SarafiAuditLogs from './pages/sarafi/AuditLogs';
 import SarafiReceipts from './pages/sarafi/Receipts';
+import SarafiTradingPanel from './pages/sarafi/TradingPanel';
+import SarafiSettlementPanel from './pages/sarafi/SettlementPanel';
+import MessagesPage from './pages/shared/Messages';
 
 // صفحات ادمین
 import AdminDashboard from './pages/admin/Dashboard';
@@ -156,6 +159,7 @@ function App() {
           <Route path="new-request" element={<NewRequest />} />
           <Route path="public-requests" element={<PublicRequests />} />
           <Route path="profile" element={<UserProfile />} />
+          <Route path="messages" element={<MessagesPage />} />
         </Route>
 
         {/* پنل صراف */}
@@ -182,6 +186,9 @@ function App() {
           <Route path="audit-logs" element={<SarafiAuditLogs />} />
           <Route path="public-requests" element={<SarafiPublicRequests />} />
           <Route path="profile" element={<SarafiProfile />} />
+          <Route path="trading" element={<SarafiTradingPanel />} />
+          <Route path="settlements" element={<SarafiSettlementPanel />} />
+          <Route path="messages" element={<MessagesPage />} />
         </Route>
 
         {/* پنل ادمین */}
