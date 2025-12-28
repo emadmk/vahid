@@ -70,7 +70,7 @@ const ViewModeToggle = () => {
 
       {/* منوی تنظیمات */}
       {showSettings && (
-        <div className="absolute left-0 top-full mt-2 w-64 bg-dark-800 border border-dark-700 rounded-xl shadow-xl z-50">
+        <div className="absolute right-0 top-full mt-2 w-64 bg-dark-800 border border-dark-700 rounded-xl shadow-xl z-[100]">
           <div className="p-4">
             <h4 className="text-white font-medium mb-3">تنظیمات نمایش</h4>
 

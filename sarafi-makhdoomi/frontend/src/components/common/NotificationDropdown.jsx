@@ -154,7 +154,7 @@ const NotificationDropdown = ({ basePath = '/dashboard' }) => {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 top-full mt-2 w-80 sm:w-96 bg-dark-850 border border-dark-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-dark-850 border border-dark-700 rounded-xl shadow-2xl z-[100] overflow-hidden">
           {/* Header */}
           <div className="px-4 py-3 border-b border-dark-700 flex items-center justify-between bg-dark-800">
             <h3 className="font-bold text-white flex items-center gap-2">
