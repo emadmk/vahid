@@ -3,6 +3,8 @@ const router = express.Router();
 const Currency = require('../models/Currency');
 const Settings = require('../models/Settings');
 const User = require('../models/User');
+const Trade = require('../models/Trade');
+const Order = require('../models/Order');
 
 // دریافت نرخ ارزها (عمومی)
 router.get('/rates', async (req, res, next) => {
@@ -74,6 +76,74 @@ router.get('/sarafis', async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: sarafis
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// آمار بازار (برای نمای حرفه‌ای)
+router.get('/market-stats', async (req, res, next) => {
+  try {
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // حجم معاملات 24 ساعت گذشته
+    const trades24h = await Trade.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: yesterday },
+          status: 'completed'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalVolume: { $sum: '$totalAmount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // معاملات 48 ساعت گذشته برای محاسبه تغییرات
+    const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const tradesPrev24h = await Trade.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: twoDaysAgo, $lt: yesterday },
+          status: 'completed'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalVolume: { $sum: '$totalAmount' }
+        }
+      }
+    ]);
+
+    // تعداد سفارشات باز
+    let openOrders = 0;
+    try {
+      openOrders = await Order.countDocuments({ status: { $in: ['pending', 'partial'] } });
+    } catch (e) {
+      openOrders = 0;
+    }
+
+    const volume24h = trades24h[0]?.totalVolume || 0;
+    const volumePrev24h = tradesPrev24h[0]?.totalVolume || 0;
+    const change24h = volumePrev24h > 0
+      ? ((volume24h - volumePrev24h) / volumePrev24h) * 100
+      : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        volume24h,
+        tradesCount: trades24h[0]?.count || 0,
+        change24h: parseFloat(change24h.toFixed(2)),
+        openOrders
+      }
     });
   } catch (error) {
     next(error);

@@ -267,47 +267,83 @@ const MessagesPage = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((message, idx) => {
-                const isMine = message.sender?._id === user?._id;
-                const showAvatar = !isMine && (idx === 0 || messages[idx - 1]?.sender?._id !== message.sender?._id);
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-dark-950/50">
+              {messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <FaComments className="text-dark-700 text-5xl mx-auto mb-3" />
+                    <p className="text-dark-500">هنوز پیامی ارسال نشده</p>
+                  </div>
+                </div>
+              ) : (
+                messages.map((message, idx) => {
+                  const isMine = message.sender?._id === user?._id;
+                  const showAvatar = !isMine && (idx === 0 || messages[idx - 1]?.sender?._id !== message.sender?._id);
+                  const isFirstInGroup = idx === 0 || messages[idx - 1]?.sender?._id !== message.sender?._id;
+                  const isLastInGroup = idx === messages.length - 1 || messages[idx + 1]?.sender?._id !== message.sender?._id;
 
-                return (
-                  <div
-                    key={message._id}
-                    className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''}`}
-                  >
-                    {showAvatar ? (
-                      <div className="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center text-dark-400 text-xs">
-                        {message.sender?.firstName?.[0]}
-                      </div>
-                    ) : (
-                      <div className="w-8" />
-                    )}
+                  return (
                     <div
-                      className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                        isMine
-                          ? 'bg-gold text-dark-900 rounded-br-sm'
-                          : 'bg-dark-800 text-white rounded-bl-sm'
-                      }`}
+                      key={message._id}
+                      className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : ''} ${isFirstInGroup ? 'mt-4' : 'mt-1'}`}
                     >
-                      <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                      <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
-                        isMine ? 'text-dark-700' : 'text-dark-500'
-                      }`}>
-                        <span>{formatTime(message.createdAt)}</span>
-                        {isMine && (
-                          message.readBy?.length > 1 ? (
-                            <FaCheckDouble className="text-blue-500" />
-                          ) : (
-                            <FaCheck />
-                          )
+                      {/* آواتار */}
+                      {!isMine && showAvatar ? (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                          {message.sender?.firstName?.[0] || '?'}
+                        </div>
+                      ) : !isMine ? (
+                        <div className="w-8" />
+                      ) : null}
+
+                      {/* حباب پیام */}
+                      <div
+                        className={`max-w-[75%] shadow-md ${
+                          isMine
+                            ? `bg-gradient-to-br from-gold to-yellow-500 text-dark-900
+                               ${isFirstInGroup ? 'rounded-t-2xl rounded-bl-2xl rounded-br-md' : ''}
+                               ${!isFirstInGroup && !isLastInGroup ? 'rounded-l-2xl rounded-r-md' : ''}
+                               ${isLastInGroup && !isFirstInGroup ? 'rounded-b-2xl rounded-tl-2xl rounded-tr-md' : ''}
+                               ${isFirstInGroup && isLastInGroup ? 'rounded-2xl rounded-br-md' : ''}`
+                            : `bg-dark-800 border border-dark-700
+                               ${isFirstInGroup ? 'rounded-t-2xl rounded-br-2xl rounded-bl-md' : ''}
+                               ${!isFirstInGroup && !isLastInGroup ? 'rounded-r-2xl rounded-l-md' : ''}
+                               ${isLastInGroup && !isFirstInGroup ? 'rounded-b-2xl rounded-tr-2xl rounded-tl-md' : ''}
+                               ${isFirstInGroup && isLastInGroup ? 'rounded-2xl rounded-bl-md' : ''}`
+                        } px-4 py-3`}
+                      >
+                        {/* نام فرستنده برای پیام‌های دیگران */}
+                        {!isMine && isFirstInGroup && (
+                          <p className="text-xs font-bold text-blue-400 mb-1">
+                            {message.sender?.firstName} {message.sender?.lastName}
+                          </p>
                         )}
+
+                        {/* محتوای پیام */}
+                        <p className={`whitespace-pre-wrap break-words text-[15px] leading-relaxed ${
+                          isMine ? 'text-dark-900' : 'text-gray-100'
+                        }`}>
+                          {message.content}
+                        </p>
+
+                        {/* زمان و وضعیت */}
+                        <div className={`flex items-center gap-1.5 mt-2 text-[11px] ${
+                          isMine ? 'justify-end text-dark-800' : 'justify-end text-dark-400'
+                        }`}>
+                          <span>{formatTime(message.createdAt)}</span>
+                          {isMine && (
+                            message.readBy?.length > 1 ? (
+                              <FaCheckDouble className="text-green-600" />
+                            ) : (
+                              <FaCheck className="opacity-70" />
+                            )
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
               <div ref={messagesEndRef} />
             </div>
 
