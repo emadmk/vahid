@@ -281,6 +281,62 @@ userSchema.virtual('isCurrentlySuspended').get(function() {
   return new Date() < this.suspension.suspendedUntil;
 });
 
+// ========== Client Health Indicator ==========
+// شاخص سلامت مشتری - سبز/زرد/قرمز
+userSchema.virtual('healthIndicator').get(function() {
+  // محاسبه امتیاز سلامت (0-100)
+  let healthScore = 100;
+
+  // کسر امتیاز بر اساس بلک‌پوینت
+  healthScore -= this.blackPoints * 10;
+
+  // کسر امتیاز بر اساس تعداد لغوها
+  healthScore -= this.cancellationCount * 5;
+
+  // کسر امتیاز اگر تعلیق شده
+  if (this.isCurrentlySuspended) {
+    healthScore -= 50;
+  }
+
+  // بررسی نسبت لغو به معاملات
+  if (this.totalRequests > 0) {
+    const cancelRate = this.cancellationCount / this.totalRequests;
+    if (cancelRate > 0.3) healthScore -= 20;
+    else if (cancelRate > 0.1) healthScore -= 10;
+  }
+
+  // تعیین رنگ
+  healthScore = Math.max(0, Math.min(100, healthScore));
+
+  let status, color, label;
+  if (healthScore >= 70) {
+    status = 'green';
+    color = '#22c55e';
+    label = 'خوش‌حساب';
+  } else if (healthScore >= 40) {
+    status = 'yellow';
+    color = '#eab308';
+    label = 'نیاز به توجه';
+  } else {
+    status = 'red';
+    color = '#ef4444';
+    label = 'پرریسک';
+  }
+
+  return {
+    score: healthScore,
+    status,
+    color,
+    label,
+    factors: {
+      blackPoints: this.blackPoints,
+      cancellationCount: this.cancellationCount,
+      isSuspended: this.isCurrentlySuspended,
+      tier: this.tier
+    }
+  };
+});
+
 // متد به‌روزرسانی دسته بر اساس امتیاز
 userSchema.methods.updateTier = async function() {
   let newTier = 'new';

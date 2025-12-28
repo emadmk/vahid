@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   FaUsers, FaExchangeAlt, FaGlobe, FaClock, FaCheckCircle,
   FaMoneyBillWave, FaCoins, FaCalculator, FaChartLine,
-  FaStar, FaArrowUp, FaArrowDown, FaBell
+  FaStar, FaArrowUp, FaArrowDown, FaBell, FaShieldAlt,
+  FaExclamationTriangle, FaInfoCircle, FaStore
 } from 'react-icons/fa';
 import { sarafiAPI } from '../../services/api';
 import api from '../../services/api';
@@ -13,20 +14,26 @@ const SarafiDashboard = () => {
   const { user } = useAuthStore();
   const [stats, setStats] = useState(null);
   const [tradeStats, setTradeStats] = useState(null);
+  const [riskSummary, setRiskSummary] = useState(null);
+  const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [recentTrades, setRecentTrades] = useState([]);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [dashRes, tradeStatsRes, tradesRes] = await Promise.all([
+        const [dashRes, tradeStatsRes, tradesRes, riskRes, alertsRes] = await Promise.all([
           sarafiAPI.getDashboard(),
           api.get('/trades/sarafi/stats').catch(() => ({ data: { data: {} } })),
-          api.get('/trades/sarafi/trades', { params: { limit: 5 } }).catch(() => ({ data: { data: [] } }))
+          api.get('/trades/sarafi/trades', { params: { limit: 5 } }).catch(() => ({ data: { data: [] } })),
+          api.get('/sarafi/risk-summary').catch(() => ({ data: { data: {} } })),
+          api.get('/notifications/unread', { params: { limit: 5 } }).catch(() => ({ data: { data: [] } }))
         ]);
         setStats(dashRes.data.data);
         setTradeStats(tradeStatsRes.data.data || {});
         setRecentTrades(tradesRes.data.data || []);
+        setRiskSummary(riskRes.data.data || {});
+        setAlerts(alertsRes.data.data || []);
       } catch (e) {
         console.error(e);
       } finally {
@@ -91,7 +98,109 @@ const SarafiDashboard = () => {
         </div>
       </div>
 
-      {/* آمار اصلی معاملات */}
+      {/* ========== ویجت‌های ریسک و هشدار ========== */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* وضعیت Exposure */}
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <FaShieldAlt className="text-blue-500" />
+              <span className="font-bold">سقف تعهد</span>
+            </div>
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              (riskSummary?.exposure?.percentage || 0) > 90
+                ? 'bg-red-500/20 text-red-500'
+                : (riskSummary?.exposure?.percentage || 0) > 70
+                  ? 'bg-yellow-500/20 text-yellow-500'
+                  : 'bg-green-500/20 text-green-500'
+            }`}>
+              {(riskSummary?.exposure?.percentage || 0).toFixed(1)}%
+            </span>
+          </div>
+          <div className="w-full bg-dark-700 rounded-full h-2 mb-2">
+            <div
+              className={`h-2 rounded-full ${
+                (riskSummary?.exposure?.percentage || 0) > 90
+                  ? 'bg-red-500'
+                  : (riskSummary?.exposure?.percentage || 0) > 70
+                    ? 'bg-yellow-500'
+                    : 'bg-green-500'
+              }`}
+              style={{ width: `${Math.min(100, riskSummary?.exposure?.percentage || 0)}%` }}
+            ></div>
+          </div>
+          <p className="text-xs text-dark-400">
+            {formatNumber(riskSummary?.exposure?.current || 0)} از {formatNumber(riskSummary?.exposure?.max || 0)} ریال
+          </p>
+        </div>
+
+        {/* وضعیت بازار */}
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <FaStore className="text-purple-500" />
+              <span className="font-bold">وضعیت بازار</span>
+            </div>
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              riskSummary?.session?.isOpen
+                ? 'bg-green-500/20 text-green-500'
+                : 'bg-red-500/20 text-red-500'
+            }`}>
+              {riskSummary?.session?.isOpen ? 'باز' : 'بسته'}
+            </span>
+          </div>
+          {riskSummary?.session?.isOpen && (
+            <>
+              <p className="text-sm text-dark-300">
+                ساعت کاری: {riskSummary?.session?.openTime} - {riskSummary?.session?.closeTime}
+              </p>
+              <p className={`text-xs mt-1 ${
+                riskSummary?.session?.isBeforeCutoff ? 'text-green-500' : 'text-yellow-500'
+              }`}>
+                {riskSummary?.session?.isBeforeCutoff
+                  ? `Cut-off: ${riskSummary?.session?.cutoff}`
+                  : 'پس از Cut-off - تسویه فردا'}
+              </p>
+            </>
+          )}
+          {!riskSummary?.session?.isOpen && (
+            <p className="text-sm text-dark-400">{riskSummary?.session?.reason || 'خارج از ساعت کاری'}</p>
+          )}
+        </div>
+
+        {/* خلاصه هشدارها */}
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <FaBell className="text-gold" />
+              <span className="font-bold">هشدارها</span>
+            </div>
+            {alerts.length > 0 && (
+              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                {alerts.length}
+              </span>
+            )}
+          </div>
+          {riskSummary?.alerts?.length > 0 ? (
+            <div className="space-y-2">
+              {riskSummary.alerts.slice(0, 2).map((alert, idx) => (
+                <div key={idx} className={`text-xs p-2 rounded flex items-center gap-2 ${
+                  alert.type === 'danger' ? 'bg-red-500/20 text-red-400' :
+                  alert.type === 'warning' ? 'bg-yellow-500/20 text-yellow-400' :
+                  'bg-blue-500/20 text-blue-400'
+                }`}>
+                  {alert.type === 'danger' ? <FaExclamationTriangle /> : <FaInfoCircle />}
+                  <span className="truncate">{alert.message}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-green-500">همه چیز عالی است!</p>
+          )}
+        </div>
+      </div>
+
+      {/* ========== آمار اصلی معاملات ========== */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Link to="/sarafi/trades" className="card p-4 text-center hover:border-gold/50 transition-all border-l-4 border-yellow-500">
           <FaBell className="text-yellow-500 text-xl mx-auto mb-2" />

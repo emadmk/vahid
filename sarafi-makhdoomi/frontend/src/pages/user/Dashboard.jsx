@@ -139,9 +139,22 @@ const Dashboard = () => {
             <FaArrowUp className="text-dark-400 group-hover:text-gold transition-colors" />
           </div>
           <p className="text-3xl font-bold text-green-500">
-            {formatNumber(wallets.cash?.balance || 0)}
+            {formatNumber(wallets.cash?.availableBalance || wallets.cash?.balance || 0)}
             <span className="text-sm text-dark-400 mr-1">ریال</span>
           </p>
+          {/* Shadow Balance */}
+          {(wallets.cash?.committedBalance > 0) && (
+            <div className="mt-2 pt-2 border-t border-dark-700">
+              <p className="text-xs text-dark-400 flex justify-between">
+                <span>در تعهد:</span>
+                <span className="text-yellow-500">{formatNumber(wallets.cash?.committedBalance)} ریال</span>
+              </p>
+              <p className="text-xs text-dark-400 flex justify-between">
+                <span>کل موجودی:</span>
+                <span>{formatNumber(wallets.cash?.balance || 0)} ریال</span>
+              </p>
+            </div>
+          )}
         </Link>
 
         {/* کیف پول اعتباری */}
@@ -161,7 +174,7 @@ const Dashboard = () => {
           <div className="flex items-end justify-between">
             <div>
               <p className="text-3xl font-bold text-blue-500">
-                {formatNumber((wallets.credit?.creditLimit || 0) - (wallets.credit?.usedCredit || 0))}
+                {formatNumber(wallets.credit?.availableBalance || ((wallets.credit?.creditLimit || 0) - (wallets.credit?.usedCredit || 0)))}
                 <span className="text-sm text-dark-400 mr-1">ریال</span>
               </p>
               <p className="text-xs text-dark-400 mt-1">
@@ -173,6 +186,15 @@ const Dashboard = () => {
               <p className="text-orange-500 font-bold">{formatNumber(wallets.credit?.usedCredit || 0)}</p>
             </div>
           </div>
+          {/* Shadow Balance */}
+          {(wallets.credit?.committedBalance > 0) && (
+            <div className="mt-2 pt-2 border-t border-dark-700">
+              <p className="text-xs text-dark-400 flex justify-between">
+                <span>در تعهد:</span>
+                <span className="text-yellow-500">{formatNumber(wallets.credit?.committedBalance)} ریال</span>
+              </p>
+            </div>
+          )}
         </Link>
       </div>
 

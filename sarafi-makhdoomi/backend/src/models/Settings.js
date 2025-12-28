@@ -145,7 +145,161 @@ const settingsSchema = new mongoose.Schema({
     message: String
   },
 
-  // تنظیمات اسکرپر نرخ
+  // ========== تنظیمات ریسک (Risk Management) ==========
+  riskSettings: {
+    // Exposure Limit - سقف تعهد باز صراف
+    exposureLimit: {
+      enabled: {
+        type: Boolean,
+        default: true
+      },
+      // حداکثر تعهد باز کل (ریال)
+      maxTotalExposure: {
+        type: Number,
+        default: 100000000000 // 100 میلیارد ریال
+      },
+      // حداکثر تعهد ارزی به تفکیک ارز
+      maxCurrencyExposure: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
+      },
+      // اقدام در صورت رسیدن به سقف
+      actionOnLimit: {
+        type: String,
+        enum: ['block_new_orders', 'block_market_orders', 'warn_only'],
+        default: 'block_new_orders'
+      }
+    },
+
+    // Pre-Trade Risk Check
+    preTrade: {
+      enabled: {
+        type: Boolean,
+        default: true
+      },
+      // بررسی سقف مجاز مشتری
+      checkCustomerLimit: {
+        type: Boolean,
+        default: true
+      },
+      // بررسی بلک‌پوینت
+      checkBlackPoints: {
+        type: Boolean,
+        default: true
+      },
+      // حداکثر بلک‌پوینت مجاز
+      maxBlackPoints: {
+        type: Number,
+        default: 100
+      },
+      // بررسی نوسان
+      checkVolatility: {
+        type: Boolean,
+        default: true
+      },
+      // بررسی Exposure صراف
+      checkExposure: {
+        type: Boolean,
+        default: true
+      }
+    },
+
+    // Circuit Breaker - توقف در نوسانات شدید
+    circuitBreaker: {
+      enabled: {
+        type: Boolean,
+        default: true
+      },
+      // درصد تغییر قیمت که باعث توقف می‌شود
+      priceChangeThreshold: {
+        type: Number,
+        default: 5 // 5 درصد
+      },
+      // بازه زمانی بررسی (ثانیه)
+      timeWindow: {
+        type: Number,
+        default: 60 // 1 دقیقه
+      },
+      // مدت زمان توقف (ثانیه)
+      freezeDuration: {
+        type: Number,
+        default: 30 // 30 ثانیه
+      },
+      // وضعیت فعلی
+      isTriggered: {
+        type: Boolean,
+        default: false
+      },
+      triggeredAt: Date,
+      triggeredCurrency: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Currency'
+      }
+    }
+  },
+
+  // ========== تنظیمات جلسه معاملاتی (Session & Cut-Off) ==========
+  sessionSettings: {
+    // ساعت شروع بازار
+    marketOpenTime: {
+      type: String,
+      default: '08:00'
+    },
+    // ساعت پایان بازار
+    marketCloseTime: {
+      type: String,
+      default: '18:00'
+    },
+    // Cut-off تسویه
+    settlementCutoff: {
+      type: String,
+      default: '16:00'
+    },
+    // نوع تسویه
+    settlementType: {
+      type: String,
+      enum: ['T+0', 'T+1', 'T+2'],
+      default: 'T+0'
+    },
+    // روزهای کاری (0=یکشنبه ... 6=شنبه)
+    workingDays: {
+      type: [Number],
+      default: [0, 1, 2, 3, 4, 5] // شنبه تا پنجشنبه
+    },
+    // تعطیلات رسمی
+    holidays: [{
+      date: Date,
+      description: String
+    }]
+  },
+
+  // ========== تنظیمات سقف خرید هوشمند ==========
+  smartLimits: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    // سقف متفاوت در ساعات پیک
+    peakHours: {
+      enabled: Boolean,
+      startTime: String,
+      endTime: String,
+      limitMultiplier: {
+        type: Number,
+        default: 0.5 // نصف سقف عادی
+      }
+    },
+    // سقف متفاوت در نوسان
+    volatilityAdjust: {
+      enabled: Boolean,
+      highVolatilityMultiplier: {
+        type: Number,
+        default: 0.3
+      }
+    }
+  },
+
+  // ========== تنظیمات اسکرپر نرخ ==========
   rateScraperSettings: {
     enabled: {
       type: Boolean,

@@ -259,4 +259,57 @@ router.get('/audit-logs/high-risk', async (req, res) => {
   }
 });
 
+// ==================== مدیریت ریسک ====================
+
+const riskService = require('../services/riskService');
+
+// دریافت خلاصه وضعیت ریسک
+router.get('/risk-summary', async (req, res) => {
+  try {
+    const summary = await riskService.getSarafiRiskSummary(req.user._id);
+    res.json({ success: true, data: summary });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// بررسی وضعیت بازار
+router.get('/market-session', async (req, res) => {
+  try {
+    const session = await riskService.checkMarketSession();
+    res.json({ success: true, data: session });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// محاسبه VWAP
+router.get('/vwap/:currencyId', async (req, res) => {
+  try {
+    const { period } = req.query;
+    const vwap = await riskService.calculateVWAP(req.params.currencyId, period || 'day');
+    res.json({ success: true, data: vwap });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Pre-Trade Risk Check
+router.post('/risk-check', async (req, res) => {
+  try {
+    const { customerId, currencyId, amount, totalAmount, orderType } = req.body;
+    const result = await riskService.performPreTradeCheck({
+      customerId,
+      sarafiId: req.user._id,
+      currencyId,
+      amount,
+      totalAmount,
+      orderType
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
