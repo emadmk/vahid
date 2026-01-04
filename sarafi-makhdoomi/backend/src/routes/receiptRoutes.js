@@ -80,6 +80,9 @@ router.get('/', authorize('sarafi'), async (req, res) => {
 // ایجاد رسید جدید
 router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res) => {
   try {
+    console.log('Receipt POST body:', JSON.stringify(req.body, null, 2));
+    console.log('Receipt POST files:', req.files?.length || 0);
+
     const {
       tradeId, type, collectionMethod, amount, bankTrackingNumber,
       transactionDate, description, accountHolder, customerId, currencyId,
@@ -90,8 +93,10 @@ router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res
     if (!type || !['rial', 'currency'].includes(type)) {
       return res.status(400).json({ success: false, message: 'نوع وصول الزامی است' });
     }
-    if (!collectionMethod) {
-      return res.status(400).json({ success: false, message: 'روش وصول الزامی است' });
+    // اگه collectionMethod نیامده، پیش‌فرض bank_transfer
+    const finalCollectionMethod = collectionMethod || 'bank_transfer';
+    if (!['bank_transfer', 'cash', 'hawala', 'check', 'barter', 'swift', 'internal_transfer', 'other'].includes(finalCollectionMethod)) {
+      return res.status(400).json({ success: false, message: 'روش وصول نامعتبر است' });
     }
     if (!amount || parseFloat(amount) <= 0) {
       return res.status(400).json({ success: false, message: 'مبلغ نامعتبر است' });
@@ -126,7 +131,7 @@ router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res
       customer: customerId || trade.customer,
       currency: currencyId || trade.currency,
       type,
-      collectionMethod,
+      collectionMethod: finalCollectionMethod,
       amount: parseFloat(amount),
       trackingNumber: trackingNumber || bankTrackingNumber,
       collectionDate: transactionDate ? new Date(transactionDate) : new Date(),
@@ -289,127 +294,6 @@ router.get('/currency/pending', authorize('sarafi'), async (req, res) => {
 });
 
 // ========== عملیات مشترک ==========
-
-// ایجاد رسید وصول جدید
-router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res) => {
-  try {
-    const {
-      tradeId,
-      type,
-      currencyId,
-      amount,
-      collectionDate,
-      collectionMethod,
-      methodDescription,
-      accountHolderName,
-      accountHolderBank,
-      accountNumber,
-      iban,
-      trackingNumber,
-      swiftReference,
-      notes,
-      customerId,
-      saveAsDraft
-    } = req.body;
-
-    // بررسی معامله
-    const trade = await Trade.findOne({
-      _id: tradeId,
-      sarafi: req.user._id
-    });
-
-    if (!trade) {
-      return res.status(404).json({ success: false, message: 'معامله یافت نشد' });
-    }
-
-    // اعتبارسنجی فایل‌ها (الزامی اگر draft نیست)
-    if (!saveAsDraft && (!req.files || req.files.length === 0)) {
-      return res.status(400).json({ success: false, message: 'آپلود فایل الزامی است' });
-    }
-
-    // اعتبارسنجی نام صاحب حساب (الزامی)
-    if (!saveAsDraft && !accountHolderName) {
-      return res.status(400).json({ success: false, message: 'نام صاحب حساب الزامی است' });
-    }
-
-    // اعتبارسنجی شماره پیگیری
-    if (!saveAsDraft && ['bank_transfer', 'hawala', 'swift', 'check'].includes(collectionMethod) && !trackingNumber) {
-      return res.status(400).json({ success: false, message: 'شماره پیگیری الزامی است' });
-    }
-
-    // پردازش فایل‌ها
-    const files = req.files ? req.files.map(f => ({
-      filename: f.filename,
-      originalName: f.originalname,
-      mimetype: f.mimetype,
-      size: f.size,
-      uploadedAt: new Date(),
-      uploadedBy: req.user._id
-    })) : [];
-
-    const receipt = new Receipt({
-      receiptNumber: Receipt.generateReceiptNumber(type),
-      trade: tradeId,
-      type,
-      currency: type === 'currency' ? currencyId : undefined,
-      amount: parseFloat(amount),
-      collectionDate: collectionDate || new Date(),
-      collectionMethod,
-      methodDescription,
-      accountHolder: {
-        name: accountHolderName,
-        bank: accountHolderBank,
-        accountNumber,
-        iban
-      },
-      trackingNumber,
-      swiftReference,
-      files,
-      status: saveAsDraft ? 'draft' : 'submitted',
-      createdBy: req.user._id,
-      sarafi: req.user._id,
-      customer: customerId || trade.customer,
-      notes,
-      statusHistory: [{
-        status: saveAsDraft ? 'draft' : 'submitted',
-        changedAt: new Date(),
-        changedBy: req.user._id
-      }]
-    });
-
-    await receipt.save();
-
-    // ثبت لاگ
-    await AuditLog.log({
-      action: 'receipt.create',
-      category: 'receipt',
-      user: req.user._id,
-      userRole: 'sarafi',
-      sarafi: req.user._id,
-      targetType: 'Receipt',
-      targetId: receipt._id,
-      targetReference: receipt.receiptNumber,
-      description: `ثبت وصول ${type === 'rial' ? 'ریالی' : 'ارزی'} - ${amount}`,
-      newValues: {
-        type,
-        amount,
-        collectionMethod,
-        accountHolderName,
-        filesCount: files.length
-      },
-      attachments: files.map(f => ({ filename: f.filename, fileId: f._id })),
-      ipAddress: req.ip
-    });
-
-    res.status(201).json({
-      success: true,
-      data: receipt,
-      message: saveAsDraft ? 'پیش‌نویس ذخیره شد' : 'وصول ثبت شد'
-    });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
 
 // آپلود فایل اضافی به رسید
 router.post('/:id/files', authorize('sarafi'), upload.array('files', 10), async (req, res) => {
@@ -583,6 +467,46 @@ router.put('/:id/reject', authorize('sarafi'), async (req, res) => {
       data: receipt,
       message: 'وصول رد شد'
     });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// تغییر وضعیت عمومی (برای فرانت‌اند)
+router.put('/:id/status', authorize('sarafi'), async (req, res) => {
+  try {
+    const { action, reason } = req.body;
+    const receipt = await Receipt.findOne({
+      _id: req.params.id,
+      sarafi: req.user._id
+    });
+
+    if (!receipt) {
+      return res.status(404).json({ success: false, message: 'رسید یافت نشد' });
+    }
+
+    if (action === 'confirm') {
+      if (!['submitted', 'pending'].includes(receipt.status)) {
+        return res.status(400).json({ success: false, message: 'این رسید قابل تایید نیست' });
+      }
+      await receipt.changeStatus('confirmed', req.user._id, 'تایید توسط صراف');
+      res.json({ success: true, data: receipt, message: 'وصول تایید شد' });
+    } else if (action === 'reject') {
+      if (!['submitted', 'pending'].includes(receipt.status)) {
+        return res.status(400).json({ success: false, message: 'این رسید قابل رد نیست' });
+      }
+      receipt.rejectionReason = reason || 'بدون دلیل';
+      await receipt.changeStatus('rejected', req.user._id, reason || 'رد توسط صراف');
+      res.json({ success: true, data: receipt, message: 'وصول رد شد' });
+    } else if (action === 'finalize') {
+      if (receipt.status !== 'confirmed') {
+        return res.status(400).json({ success: false, message: 'فقط رسیدهای تایید شده قابل نهایی‌سازی هستند' });
+      }
+      await receipt.changeStatus('final', req.user._id, 'نهایی‌سازی');
+      res.json({ success: true, data: receipt, message: 'وصول نهایی شد' });
+    } else {
+      res.status(400).json({ success: false, message: 'عملیات نامعتبر' });
+    }
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
