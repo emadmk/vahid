@@ -63,7 +63,7 @@ const SarafiReceipts = () => {
       const params = Object.fromEntries(Object.entries(filter).filter(([_, v]) => v));
       const [receiptsRes, tradesRes] = await Promise.all([
         api.get('/receipts', { params }),
-        api.get('/trades/sarafi/trades', { params: { status: 'approved,processing,awaiting_currency,awaiting_rial' } })
+        api.get('/trades/sarafi/trades', { params: { status: 'pending,approved,pending_collection,processing,awaiting_currency,awaiting_rial' } })
       ]);
       setReceipts(receiptsRes.data.data || []);
       setTrades(tradesRes.data.data || []);

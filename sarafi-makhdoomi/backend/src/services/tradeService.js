@@ -551,7 +551,14 @@ class TradeService {
     } = options;
 
     const query = { sarafi: sarafiId };
-    if (status) query.status = status;
+    // پشتیبانی از وضعیت‌های جدا شده با کاما
+    if (status) {
+      if (status.includes(',')) {
+        query.status = { $in: status.split(',').map(s => s.trim()) };
+      } else {
+        query.status = status;
+      }
+    }
     if (type) query.type = type;
 
     // فیلتر بر اساس نوع وصول
