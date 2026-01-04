@@ -29,6 +29,13 @@ class TradeService {
 
     const totalAmount = amount * rate;
 
+    // اعتبارسنجی و تبدیل paymentMethod
+    const validPaymentMethods = ['cash_wallet', 'credit_wallet', 'mixed'];
+    let finalPaymentMethod = paymentMethod;
+    if (!finalPaymentMethod || !validPaymentMethods.includes(finalPaymentMethod)) {
+      finalPaymentMethod = 'cash_wallet';
+    }
+
     // دریافت ارز
     const currency = await Currency.findById(currencyId);
     if (!currency) {
@@ -63,7 +70,7 @@ class TradeService {
       sarafi: sarafiId,
       validUntil: validUntil ? new Date(validUntil) : null,
       walletStatus,
-      paymentMethod: paymentMethod || 'cash_wallet',
+      paymentMethod: finalPaymentMethod,
       status: 'pending',
       notes: notes ? [{ content: notes, addedBy: createdBy, addedAt: new Date() }] : []
     });
