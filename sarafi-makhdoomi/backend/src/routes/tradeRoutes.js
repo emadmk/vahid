@@ -11,17 +11,37 @@ router.post('/instant', protect, async (req, res) => {
   try {
     const { currencyId, side, amount, rate, validUntil, notes, paymentMethod, walletStatus, customerId } = req.body;
 
+    // اعتبارسنجی
+    if (!currencyId) {
+      return res.status(400).json({ success: false, message: 'ارز انتخاب نشده است' });
+    }
+    if (!side || !['buy', 'sell'].includes(side)) {
+      return res.status(400).json({ success: false, message: 'نوع معامله نامعتبر است' });
+    }
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'مقدار نامعتبر است' });
+    }
+    if (!rate || rate <= 0) {
+      return res.status(400).json({ success: false, message: 'نرخ نامعتبر است' });
+    }
+
+    // دریافت صراف
+    const sarafiId = req.user.role === 'sarafi' ? req.user._id : req.user.selectedSarafi;
+    if (!sarafiId) {
+      return res.status(400).json({ success: false, message: 'صراف مشخص نشده است. لطفا ابتدا صراف خود را انتخاب کنید.' });
+    }
+
     const trade = await tradeService.createInstantTrade({
       currencyId,
       side,
-      amount,
-      rate,
+      amount: parseFloat(amount),
+      rate: parseFloat(rate),
       validUntil,
       notes,
       paymentMethod,
       walletStatus,
       customerId: customerId || req.user._id,
-      sarafiId: req.user.role === 'sarafi' ? req.user._id : req.user.selectedSarafi,
+      sarafiId,
       createdBy: req.user._id
     });
 
