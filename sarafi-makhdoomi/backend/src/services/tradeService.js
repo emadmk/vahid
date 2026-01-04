@@ -77,7 +77,7 @@ class TradeService {
 
     // ارسال نوتیفیکیشن به صراف
     await notificationService.create({
-      recipient: sarafiId,
+      user: sarafiId,
       type: 'trade_new',
       title: 'معامله فوری جدید',
       message: `یک درخواست ${side === 'buy' ? 'خرید' : 'فروش'} ${amount} ${currency.code} ثبت شد`,
@@ -144,7 +144,7 @@ class TradeService {
 
     // ارسال نوتیفیکیشن به کاربر
     await notificationService.create({
-      recipient: trade.customer,
+      user: trade.customer,
       type: 'trade_approved',
       title: 'معامله تایید شد',
       message: `معامله ${trade.tradeNumber} توسط صراف تایید شد`,
@@ -184,7 +184,7 @@ class TradeService {
 
     // ارسال نوتیفیکیشن به کاربر
     await notificationService.create({
-      recipient: trade.customer,
+      user: trade.customer,
       type: 'trade_rejected',
       title: 'معامله رد شد',
       message: `معامله ${trade.tradeNumber} رد شد. دلیل: ${reason}`,

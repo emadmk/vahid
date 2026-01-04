@@ -307,7 +307,7 @@ router.put('/instant/:id/confirm-collection', protect, authorize('sarafi'), asyn
 
     // ارسال نوتیفیکیشن به حسابداری
     await notificationService.create({
-      recipient: req.user._id, // یا ادمین حسابداری
+      user: req.user._id, // یا ادمین حسابداری
       type: 'trade_pending_accounting',
       title: 'معامله جدید در انتظار تایید حسابداری',
       message: `معامله ${trade.tradeNumber} وصول شده و منتظر تایید حسابداری است`,
@@ -398,7 +398,7 @@ router.put('/instant/:id/accounting-approve', protect, authorize('sarafi'), asyn
 
     // ارسال نوتیفیکیشن به مشتری
     await notificationService.create({
-      recipient: trade.customer._id,
+      user: trade.customer._id,
       type: 'trade_completed',
       title: 'معامله تکمیل شد',
       message: `معامله ${trade.tradeNumber} با موفقیت تکمیل شد`,
@@ -467,7 +467,7 @@ router.put('/instant/:id/accounting-reject', protect, authorize('sarafi'), async
 
     // ارسال نوتیفیکیشن به مشتری
     await notificationService.create({
-      recipient: trade.customer._id,
+      user: trade.customer._id,
       type: 'trade_rejected',
       title: 'معامله رد شد',
       message: `معامله ${trade.tradeNumber} توسط حسابداری رد شد. دلیل: ${reason}`,

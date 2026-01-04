@@ -60,7 +60,11 @@ const notificationSchema = new mongoose.Schema({
       // ========== قیمت ==========
       'price_alert',           // هشدار قیمت
       // ========== معاملات ==========
+      'trade_new',             // معامله جدید
+      'trade_approved',        // معامله تایید شد
+      'trade_rejected',        // معامله رد شد
       'trade_completed',       // معامله تکمیل شد
+      'trade_pending_accounting', // در انتظار حسابداری
       'collection_pending'     // وصول در انتظار
     ],
     default: 'system'
