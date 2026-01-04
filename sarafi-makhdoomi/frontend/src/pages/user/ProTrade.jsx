@@ -48,7 +48,8 @@ const ProTrade = () => {
         api.get('/wallets/my')
       ]);
 
-      const activeCurrencies = currRes.data.data?.filter(c => c.isActive) || [];
+      // API فقط ارزهای فعال رو برمیگردونه
+      const activeCurrencies = currRes.data.data || [];
       setCurrencies(activeCurrencies);
       setWallet(walletRes.data.data);
 

@@ -37,7 +37,8 @@ const InstantTrade = () => {
         api.get('/trades/my-instant-trades')
       ]);
 
-      const activeCurrencies = currRes.data.data?.filter(c => c.isActive) || [];
+      // API فقط ارزهای فعال رو برمیگردونه، نیازی به فیلتر نیست
+      const activeCurrencies = currRes.data.data || [];
       setCurrencies(activeCurrencies);
       setWallet(walletRes.data.data);
       setMyTrades(tradesRes.data.data || []);

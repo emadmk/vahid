@@ -56,7 +56,7 @@ const InstantTrade = () => {
         api.get('/sarafi/customers')
       ]);
 
-      const activeCurrencies = currRes.data.data?.filter(c => c.isActive) || [];
+      const activeCurrencies = currRes.data.data || [];
       setCurrencies(activeCurrencies);
       setCustomers(custRes.data.data || []);
 

@@ -76,7 +76,7 @@ const ProTrade = () => {
         api.get('/sarafi/customers').catch(() => ({ data: { data: [] } }))
       ]);
 
-      const activeCurrencies = currRes.data.data?.filter(c => c.isActive) || [];
+      const activeCurrencies = currRes.data.data || [];
       setCurrencies(activeCurrencies);
       setCustomers(custRes.data.data || []);
 

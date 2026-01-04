@@ -32,6 +32,44 @@ router.put('/customers/:id/approve', approveCustomer);
 router.put('/customers/:id/unknown', unknownCustomer);
 router.put('/customers/:id/reject', rejectCustomer);
 
+// دریافت کیف پول مشتری
+const walletService = require('../services/walletService');
+router.get('/customers/:id/wallet', async (req, res) => {
+  try {
+    // بررسی دسترسی صراف به این مشتری
+    const customer = await User.findOne({
+      _id: req.params.id,
+      selectedSarafi: req.user._id
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'مشتری یافت نشد'
+      });
+    }
+
+    const wallets = await walletService.getUserWallets(req.params.id);
+
+    res.json({
+      success: true,
+      data: {
+        cashBalance: wallets.cash?.balance || 0,
+        creditLimit: wallets.credit?.creditLimit || 0,
+        creditUsed: wallets.credit?.usedCredit || 0,
+        availableCredit: (wallets.credit?.creditLimit || 0) - (wallets.credit?.usedCredit || 0),
+        cash: wallets.cash,
+        credit: wallets.credit
+      }
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // ==================== دعوت مشتری با رمز موقت ====================
 
 const crypto = require('crypto');
