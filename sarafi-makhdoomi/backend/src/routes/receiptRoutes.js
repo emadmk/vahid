@@ -77,6 +77,32 @@ router.get('/', authorize('sarafi'), async (req, res) => {
   }
 });
 
+// آپلود فایل‌های رسید (جدا از ایجاد رسید)
+router.post('/upload', authorize('sarafi'), upload.array('files', 10), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: 'فایلی انتخاب نشده' });
+    }
+
+    const files = req.files.map(file => ({
+      filename: file.filename,
+      originalName: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      uploadedAt: new Date(),
+      uploadedBy: req.user._id
+    }));
+
+    res.json({
+      success: true,
+      files,
+      message: `${files.length} فایل آپلود شد`
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 // ایجاد رسید جدید
 router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res) => {
   try {
@@ -166,9 +192,12 @@ router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res
       status: 'submitted'
     });
 
-    // اضافه کردن فایل‌ها
+    // اضافه کردن فایل‌ها - هم از multipart و هم از attachments قبلی
+    let allFiles = [];
+
+    // فایل‌های آپلود شده در این درخواست (multipart)
     if (req.files && req.files.length > 0) {
-      receipt.files = req.files.map(file => ({
+      allFiles = req.files.map(file => ({
         filename: file.filename,
         originalName: file.originalname,
         mimetype: file.mimetype,
@@ -176,6 +205,26 @@ router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res
         uploadedAt: new Date(),
         uploadedBy: req.user._id
       }));
+    }
+
+    // فایل‌های آپلود شده قبلی (از /receipts/upload)
+    const { attachments } = req.body;
+    if (attachments) {
+      let parsedAttachments = attachments;
+      if (typeof attachments === 'string') {
+        try {
+          parsedAttachments = JSON.parse(attachments);
+        } catch {
+          parsedAttachments = [];
+        }
+      }
+      if (Array.isArray(parsedAttachments) && parsedAttachments.length > 0) {
+        allFiles = [...allFiles, ...parsedAttachments];
+      }
+    }
+
+    if (allFiles.length > 0) {
+      receipt.files = allFiles;
     }
 
     await receipt.save();
