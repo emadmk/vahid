@@ -4,6 +4,34 @@ const walletService = require('../services/walletService');
 const { protect, authorize } = require('../middlewares/auth');
 
 // دریافت کیف پول‌های کاربر
+router.get('/my', protect, async (req, res) => {
+  try {
+    const wallets = await walletService.getUserWallets(req.user._id);
+
+    // فرمت فلت برای frontend
+    res.json({
+      success: true,
+      data: {
+        cashBalance: wallets.cash?.balance || 0,
+        creditLimit: wallets.credit?.creditLimit || 0,
+        creditUsed: wallets.credit?.usedCredit || 0,
+        availableCredit: (wallets.credit?.creditLimit || 0) - (wallets.credit?.usedCredit || 0),
+        cashWalletActive: wallets.cash?.isActive ?? true,
+        creditWalletActive: wallets.credit?.isActive ?? true,
+        // داده‌های کامل هم ارسال بشه
+        cash: wallets.cash,
+        credit: wallets.credit
+      }
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Alias برای سازگاری
 router.get('/my-wallets', protect, async (req, res) => {
   try {
     const wallets = await walletService.getUserWallets(req.user._id);

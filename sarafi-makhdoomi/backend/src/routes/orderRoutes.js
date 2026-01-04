@@ -175,6 +175,33 @@ router.post('/', async (req, res) => {
 });
 
 // دریافت سفارش‌های من
+router.get('/my', async (req, res) => {
+  try {
+    const { status, side, limit = 20, skip = 0 } = req.query;
+
+    const query = { createdBy: req.user._id };
+    if (status) query.status = status;
+    if (side) query.side = side;
+
+    const orders = await Order.find(query)
+      .populate('currency', 'code name nameFa')
+      .sort({ createdAt: -1 })
+      .skip(parseInt(skip))
+      .limit(parseInt(limit));
+
+    const total = await Order.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: orders,
+      total
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Alias برای سازگاری
 router.get('/my-orders', async (req, res) => {
   try {
     const { status, side, limit = 20, skip = 0 } = req.query;
