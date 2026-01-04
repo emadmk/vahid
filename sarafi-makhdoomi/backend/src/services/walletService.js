@@ -1,5 +1,6 @@
 const Wallet = require('../models/Wallet');
 const WalletTransaction = require('../models/WalletTransaction');
+const Currency = require('../models/Currency');
 const mongoose = require('mongoose');
 
 class WalletService {
@@ -450,10 +451,18 @@ class WalletService {
       }
     ]);
 
+    // محاسبه ارزش ریالی کل
+    let totalRialValue = 0;
+    if (wallets.cash) {
+      totalRialValue = await wallets.cash.calculateTotalRialValue();
+    }
+
     return {
       wallets: {
         cash: {
           balance: wallets.cash?.balance || 0,
+          currencyBalances: wallets.cash?.currencyBalances || [],
+          totalRialValue: totalRialValue,
           isActive: wallets.cash?.isActive || false
         },
         credit: {
@@ -465,6 +474,252 @@ class WalletService {
       },
       last30Days: recentTransactions
     };
+  }
+
+  // ========== متدهای مدیریت ارزها ==========
+
+  /**
+   * واریز ارز به کیف پول
+   */
+  async depositCurrency(userId, currencyId, amount, description = '', processedBy = null) {
+    // دریافت اطلاعات ارز
+    const currency = await Currency.findById(currencyId);
+    if (!currency) {
+      throw new Error('ارز یافت نشد');
+    }
+
+    let wallet = await Wallet.findOne({ user: userId, type: 'cash' });
+
+    // اگر کیف پول وجود نداشت، ایجاد کن
+    if (!wallet) {
+      const wallets = await this.createWalletsForUser(userId, processedBy);
+      wallet = wallets.cashWallet;
+    }
+
+    if (!wallet.isActive) {
+      throw new Error('کیف پول غیرفعال است');
+    }
+
+    // دریافت موجودی قبلی ارز
+    const balanceBefore = wallet.getCurrencyBalance(currencyId);
+
+    // واریز ارز
+    await wallet.depositCurrency(currencyId, currency.code, currency.nameFa, amount);
+
+    // موجودی جدید
+    const balanceAfter = wallet.getCurrencyBalance(currencyId);
+
+    // ثبت تراکنش
+    const transaction = await WalletTransaction.create({
+      wallet: wallet._id,
+      user: userId,
+      type: 'deposit',
+      amount,
+      balanceBefore,
+      balanceAfter,
+      currency: currencyId,
+      description: description || `واریز ${amount} ${currency.nameFa}`,
+      referenceNumber: WalletTransaction.generateReferenceNumber(),
+      processedBy,
+      metadata: {
+        currencyCode: currency.code,
+        currencyName: currency.nameFa
+      }
+    });
+
+    return { wallet, transaction, currency };
+  }
+
+  /**
+   * برداشت ارز از کیف پول
+   */
+  async withdrawCurrency(userId, currencyId, amount, description = '', processedBy = null) {
+    const currency = await Currency.findById(currencyId);
+    if (!currency) {
+      throw new Error('ارز یافت نشد');
+    }
+
+    const wallet = await Wallet.findOne({ user: userId, type: 'cash' });
+
+    if (!wallet) {
+      throw new Error('کیف پول یافت نشد');
+    }
+
+    if (!wallet.isActive) {
+      throw new Error('کیف پول غیرفعال است');
+    }
+
+    // دریافت موجودی قبلی
+    const balanceBefore = wallet.getCurrencyBalance(currencyId);
+
+    if (balanceBefore < amount) {
+      throw new Error(`موجودی ${currency.nameFa} کافی نیست`);
+    }
+
+    // برداشت ارز
+    await wallet.withdrawCurrency(currencyId, amount);
+
+    const balanceAfter = wallet.getCurrencyBalance(currencyId);
+
+    // ثبت تراکنش
+    const transaction = await WalletTransaction.create({
+      wallet: wallet._id,
+      user: userId,
+      type: 'withdraw',
+      amount: -amount,
+      balanceBefore,
+      balanceAfter,
+      currency: currencyId,
+      description: description || `برداشت ${amount} ${currency.nameFa}`,
+      referenceNumber: WalletTransaction.generateReferenceNumber(),
+      processedBy,
+      metadata: {
+        currencyCode: currency.code,
+        currencyName: currency.nameFa
+      }
+    });
+
+    return { wallet, transaction, currency };
+  }
+
+  /**
+   * دریافت موجودی ارزها با ارزش ریالی
+   */
+  async getCurrencyBalances(userId) {
+    const wallet = await Wallet.findOne({ user: userId, type: 'cash' });
+
+    if (!wallet) {
+      return {
+        rialBalance: 0,
+        currencyBalances: [],
+        totalRialValue: 0
+      };
+    }
+
+    // دریافت همه ارزها برای محاسبه ارزش ریالی
+    const currencies = await Currency.find({ isActive: true });
+    const currencyRates = {};
+    currencies.forEach(c => {
+      currencyRates[c._id.toString()] = {
+        sellRate: c.sellRate,
+        buyRate: c.buyRate,
+        code: c.code,
+        nameFa: c.nameFa
+      };
+    });
+
+    // محاسبه ارزش ریالی هر ارز
+    const currencyBalancesWithValue = wallet.currencyBalances.map(cb => {
+      const rate = currencyRates[cb.currency.toString()];
+      const rialValue = rate ? cb.amount * rate.sellRate : 0;
+      return {
+        currency: cb.currency,
+        currencyCode: cb.currencyCode || (rate ? rate.code : ''),
+        currencyName: cb.currencyName || (rate ? rate.nameFa : ''),
+        amount: cb.amount,
+        sellRate: rate ? rate.sellRate : 0,
+        buyRate: rate ? rate.buyRate : 0,
+        rialValue: rialValue,
+        lastUpdated: cb.lastUpdated
+      };
+    });
+
+    // محاسبه ارزش ریالی کل
+    const totalCurrencyRialValue = currencyBalancesWithValue.reduce(
+      (sum, cb) => sum + cb.rialValue, 0
+    );
+    const totalRialValue = (wallet.balance || 0) + totalCurrencyRialValue;
+
+    return {
+      rialBalance: wallet.balance || 0,
+      currencyBalances: currencyBalancesWithValue,
+      totalRialValue: totalRialValue
+    };
+  }
+
+  /**
+   * انتقال ارز بین کاربران
+   */
+  async transferCurrency(fromUserId, toUserId, currencyId, amount, description = '', processedBy = null) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const currency = await Currency.findById(currencyId);
+      if (!currency) {
+        throw new Error('ارز یافت نشد');
+      }
+
+      // کیف پول مبدا
+      const fromWallet = await Wallet.findOne({ user: fromUserId, type: 'cash' }).session(session);
+      if (!fromWallet) {
+        throw new Error('کیف پول مبدا یافت نشد');
+      }
+
+      const fromBalanceBefore = fromWallet.getCurrencyBalance(currencyId);
+      if (fromBalanceBefore < amount) {
+        throw new Error(`موجودی ${currency.nameFa} کافی نیست`);
+      }
+
+      // کیف پول مقصد
+      let toWallet = await Wallet.findOne({ user: toUserId, type: 'cash' }).session(session);
+      if (!toWallet) {
+        toWallet = await Wallet.create([{
+          user: toUserId,
+          type: 'cash',
+          balance: 0,
+          managedBy: processedBy
+        }], { session });
+        toWallet = toWallet[0];
+      }
+
+      const toBalanceBefore = toWallet.getCurrencyBalance(currencyId);
+
+      // برداشت از مبدا
+      await fromWallet.withdrawCurrency(currencyId, amount);
+      // واریز به مقصد
+      await toWallet.depositCurrency(currencyId, currency.code, currency.nameFa, amount);
+
+      // ثبت تراکنش‌ها
+      const refNumber = WalletTransaction.generateReferenceNumber();
+
+      await WalletTransaction.create([{
+        wallet: fromWallet._id,
+        user: fromUserId,
+        type: 'transfer_out',
+        amount: -amount,
+        balanceBefore: fromBalanceBefore,
+        balanceAfter: fromWallet.getCurrencyBalance(currencyId),
+        currency: currencyId,
+        description: description || `انتقال ${amount} ${currency.nameFa}`,
+        referenceNumber: refNumber + '-OUT',
+        processedBy,
+        metadata: { toUserId, currencyCode: currency.code }
+      }], { session });
+
+      await WalletTransaction.create([{
+        wallet: toWallet._id,
+        user: toUserId,
+        type: 'transfer_in',
+        amount: amount,
+        balanceBefore: toBalanceBefore,
+        balanceAfter: toWallet.getCurrencyBalance(currencyId),
+        currency: currencyId,
+        description: description || `دریافت ${amount} ${currency.nameFa}`,
+        referenceNumber: refNumber + '-IN',
+        processedBy,
+        metadata: { fromUserId, currencyCode: currency.code }
+      }], { session });
+
+      await session.commitTransaction();
+
+      return { fromWallet, toWallet, currency, amount };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 }
 

@@ -16,12 +16,42 @@ const walletSchema = new mongoose.Schema({
     required: true
   },
 
-  // موجودی فعلی (به ریال)
+  // موجودی ریالی (برای سازگاری با کد قبلی)
   balance: {
     type: Number,
     default: 0,
     min: 0
   },
+
+  // ========== موجودی ارزها ==========
+  // موجودی هر ارز به صورت جداگانه
+  currencyBalances: [{
+    currency: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Currency',
+      required: true
+    },
+    // کد ارز (برای دسترسی سریع)
+    currencyCode: {
+      type: String,
+      required: true
+    },
+    // نام فارسی ارز
+    currencyName: {
+      type: String
+    },
+    // موجودی این ارز
+    amount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    // آخرین تغییر موجودی
+    lastUpdated: {
+      type: Date,
+      default: Date.now
+    }
+  }],
 
   // سقف اعتبار (فقط برای کیف پول اعتباری)
   creditLimit: {
@@ -170,8 +200,78 @@ walletSchema.methods.executeCommitment = async function(orderId, executedAmount)
   return this;
 };
 
+// ========== متدهای مدیریت ارزها ==========
+
+// دریافت موجودی یک ارز خاص
+walletSchema.methods.getCurrencyBalance = function(currencyId) {
+  const balance = this.currencyBalances.find(
+    b => b.currency.toString() === currencyId.toString()
+  );
+  return balance ? balance.amount : 0;
+};
+
+// افزایش موجودی ارز
+walletSchema.methods.depositCurrency = async function(currencyId, currencyCode, currencyName, amount) {
+  let balance = this.currencyBalances.find(
+    b => b.currency.toString() === currencyId.toString()
+  );
+
+  if (balance) {
+    balance.amount += amount;
+    balance.lastUpdated = new Date();
+  } else {
+    this.currencyBalances.push({
+      currency: currencyId,
+      currencyCode: currencyCode,
+      currencyName: currencyName,
+      amount: amount,
+      lastUpdated: new Date()
+    });
+  }
+
+  this.lastTransaction = new Date();
+  await this.save();
+  return this;
+};
+
+// کاهش موجودی ارز
+walletSchema.methods.withdrawCurrency = async function(currencyId, amount) {
+  const balance = this.currencyBalances.find(
+    b => b.currency.toString() === currencyId.toString()
+  );
+
+  if (!balance || balance.amount < amount) {
+    throw new Error('موجودی ارز کافی نیست');
+  }
+
+  balance.amount -= amount;
+  balance.lastUpdated = new Date();
+  this.lastTransaction = new Date();
+  await this.save();
+  return this;
+};
+
+// محاسبه ارزش ریالی کل کیف پول (نیاز به populate با نرخ ارزها)
+walletSchema.methods.calculateTotalRialValue = async function() {
+  const Currency = mongoose.model('Currency');
+  let totalRial = this.balance || 0; // موجودی ریالی پایه
+
+  for (const cb of this.currencyBalances) {
+    if (cb.amount > 0) {
+      const currency = await Currency.findById(cb.currency);
+      if (currency && currency.sellRate > 0) {
+        // استفاده از نرخ فروش برای محاسبه ارزش ریالی
+        totalRial += cb.amount * currency.sellRate;
+      }
+    }
+  }
+
+  return totalRial;
+};
+
 // ایندکس برای جستجوی سریع
 walletSchema.index({ user: 1, type: 1 }, { unique: true });
+walletSchema.index({ 'currencyBalances.currency': 1 });
 
 walletSchema.set('toJSON', { virtuals: true });
 walletSchema.set('toObject', { virtuals: true });

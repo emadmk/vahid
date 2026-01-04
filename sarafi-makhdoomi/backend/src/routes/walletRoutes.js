@@ -8,6 +8,9 @@ router.get('/my', protect, async (req, res) => {
   try {
     const wallets = await walletService.getUserWallets(req.user._id);
 
+    // دریافت موجودی ارزها با ارزش ریالی
+    const currencyData = await walletService.getCurrencyBalances(req.user._id);
+
     // فرمت فلت برای frontend
     res.json({
       success: true,
@@ -18,6 +21,9 @@ router.get('/my', protect, async (req, res) => {
         availableCredit: (wallets.credit?.creditLimit || 0) - (wallets.credit?.usedCredit || 0),
         cashWalletActive: wallets.cash?.isActive ?? true,
         creditWalletActive: wallets.credit?.isActive ?? true,
+        // موجودی ارزها
+        currencyBalances: currencyData.currencyBalances,
+        totalRialValue: currencyData.totalRialValue,
         // داده‌های کامل هم ارسال بشه
         cash: wallets.cash,
         credit: wallets.credit
@@ -269,6 +275,142 @@ router.get('/customer/:customerId/transactions', protect, authorize('sarafi'), a
       success: true,
       data: result.transactions,
       total: result.total
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// =============== روت‌های ارزی ===============
+
+// دریافت موجودی ارزها با ارزش ریالی
+router.get('/currencies', protect, async (req, res) => {
+  try {
+    const currencyBalances = await walletService.getCurrencyBalances(req.user._id);
+
+    res.json({
+      success: true,
+      data: currencyBalances
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// دریافت موجودی ارزهای مشتری (صراف)
+router.get('/customer/:customerId/currencies', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const currencyBalances = await walletService.getCurrencyBalances(req.params.customerId);
+
+    res.json({
+      success: true,
+      data: currencyBalances
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// واریز ارز به کیف پول مشتری (صراف)
+router.post('/currency/deposit', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const { customerId, currencyId, amount, description } = req.body;
+
+    if (!customerId || !currencyId || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'شناسه مشتری، ارز و مبلغ الزامی است'
+      });
+    }
+
+    const result = await walletService.depositCurrency(
+      customerId,
+      currencyId,
+      amount,
+      description,
+      req.user._id
+    );
+
+    res.json({
+      success: true,
+      data: result,
+      message: `${amount} ${result.currency.nameFa} به کیف پول واریز شد`
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// برداشت ارز از کیف پول مشتری (صراف)
+router.post('/currency/withdraw', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const { customerId, currencyId, amount, description } = req.body;
+
+    if (!customerId || !currencyId || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'شناسه مشتری، ارز و مبلغ الزامی است'
+      });
+    }
+
+    const result = await walletService.withdrawCurrency(
+      customerId,
+      currencyId,
+      amount,
+      description,
+      req.user._id
+    );
+
+    res.json({
+      success: true,
+      data: result,
+      message: `${amount} ${result.currency.nameFa} از کیف پول برداشت شد`
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// انتقال ارز بین کاربران (صراف)
+router.post('/currency/transfer', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const { fromUserId, toUserId, currencyId, amount, description } = req.body;
+
+    if (!fromUserId || !toUserId || !currencyId || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'شناسه کاربران، ارز و مبلغ الزامی است'
+      });
+    }
+
+    const result = await walletService.transferCurrency(
+      fromUserId,
+      toUserId,
+      currencyId,
+      amount,
+      description,
+      req.user._id
+    );
+
+    res.json({
+      success: true,
+      data: result,
+      message: `${amount} ${result.currency.nameFa} منتقل شد`
     });
   } catch (error) {
     res.status(400).json({
