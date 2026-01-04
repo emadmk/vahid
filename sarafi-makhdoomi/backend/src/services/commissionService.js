@@ -48,11 +48,11 @@ class CommissionService {
     const rule = await this.findApplicableRule(tradeData, customer);
 
     if (!rule) {
-      // بدون کارمزد
+      // بدون کارمزد - استفاده از percentage با مقدار 0
       return {
         amount: 0,
         rate: 0,
-        type: 'none',
+        type: 'percentage',
         ruleId: null,
         ruleName: 'بدون کارمزد'
       };
