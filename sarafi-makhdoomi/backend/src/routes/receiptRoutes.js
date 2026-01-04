@@ -84,29 +84,54 @@ router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res
     console.log('Receipt POST files:', req.files?.length || 0);
 
     const {
-      tradeId, type, collectionMethod, amount, bankTrackingNumber,
-      transactionDate, description, accountHolder, customerId, currencyId,
-      trackingNumber
+      tradeId, relatedTrade, // پشتیبانی از هر دو نام
+      type,
+      collectionMethod, paymentMethod, // پشتیبانی از هر دو نام
+      amount,
+      bankTrackingNumber, trackingNumber,
+      transactionDate,
+      description, notes,
+      accountHolder,
+      customerId, customer,
+      currencyId
     } = req.body;
+
+    // استفاده از فیلدهای صحیح یا جایگزین
+    const finalTradeId = tradeId || relatedTrade;
+    const finalCustomerId = customerId || customer;
+    const finalNotes = description || notes || '';
+    const finalTrackingNumber = trackingNumber || bankTrackingNumber;
 
     // اعتبارسنجی اولیه
     if (!type || !['rial', 'currency'].includes(type)) {
       return res.status(400).json({ success: false, message: 'نوع وصول الزامی است' });
     }
-    // اگه collectionMethod نیامده، پیش‌فرض bank_transfer
-    const finalCollectionMethod = collectionMethod || 'bank_transfer';
-    if (!['bank_transfer', 'cash', 'hawala', 'check', 'barter', 'swift', 'internal_transfer', 'other'].includes(finalCollectionMethod)) {
-      return res.status(400).json({ success: false, message: 'روش وصول نامعتبر است' });
+
+    // تبدیل paymentMethod به collectionMethod معتبر
+    const methodMapping = {
+      'pos': 'bank_transfer',
+      'cash': 'cash',
+      'bank': 'bank_transfer',
+      'transfer': 'bank_transfer',
+      'card': 'bank_transfer'
+    };
+    let finalCollectionMethod = collectionMethod || methodMapping[paymentMethod] || paymentMethod || 'bank_transfer';
+
+    // اعتبارسنجی collectionMethod
+    const validMethods = ['bank_transfer', 'cash', 'hawala', 'check', 'barter', 'swift', 'internal_transfer', 'other'];
+    if (!validMethods.includes(finalCollectionMethod)) {
+      finalCollectionMethod = 'bank_transfer';
     }
+
     if (!amount || parseFloat(amount) <= 0) {
       return res.status(400).json({ success: false, message: 'مبلغ نامعتبر است' });
     }
-    if (!tradeId) {
+    if (!finalTradeId) {
       return res.status(400).json({ success: false, message: 'معامله مرتبط الزامی است' });
     }
 
     // بررسی معامله
-    const trade = await Trade.findOne({ _id: tradeId, sarafi: req.user._id });
+    const trade = await Trade.findOne({ _id: finalTradeId, sarafi: req.user._id });
     if (!trade) {
       return res.status(404).json({ success: false, message: 'معامله یافت نشد' });
     }
@@ -127,15 +152,15 @@ router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res
     const receipt = new Receipt({
       receiptNumber: Receipt.generateReceiptNumber ? Receipt.generateReceiptNumber(type) : `RC-${Date.now()}`,
       sarafi: req.user._id,
-      trade: tradeId,
-      customer: customerId || trade.customer,
+      trade: finalTradeId,
+      customer: finalCustomerId || trade.customer,
       currency: currencyId || trade.currency,
       type,
       collectionMethod: finalCollectionMethod,
       amount: parseFloat(amount),
-      trackingNumber: trackingNumber || bankTrackingNumber,
+      trackingNumber: finalTrackingNumber,
       collectionDate: transactionDate ? new Date(transactionDate) : new Date(),
-      notes: description,
+      notes: finalNotes,
       accountHolder: parsedAccountHolder,
       createdBy: req.user._id,
       status: 'submitted'
