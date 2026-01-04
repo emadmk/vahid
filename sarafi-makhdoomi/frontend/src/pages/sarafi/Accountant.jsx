@@ -195,7 +195,6 @@ const Accountant = () => {
     c.phone?.includes(search)
   );
 
-  const formatNumber = (num) => new Intl.NumberFormat('fa-IR').format(num || 0);
   const formatDate = (date) => new Date(date).toLocaleDateString('fa-IR');
 
   return (
