@@ -174,25 +174,7 @@ router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res
       }
     }
 
-    // ساخت رسید
-    const receipt = new Receipt({
-      receiptNumber: Receipt.generateReceiptNumber ? Receipt.generateReceiptNumber(type) : `RC-${Date.now()}`,
-      sarafi: req.user._id,
-      trade: finalTradeId,
-      customer: finalCustomerId || trade.customer,
-      currency: currencyId || trade.currency,
-      type,
-      collectionMethod: finalCollectionMethod,
-      amount: parseFloat(amount),
-      trackingNumber: finalTrackingNumber,
-      collectionDate: transactionDate ? new Date(transactionDate) : new Date(),
-      notes: finalNotes,
-      accountHolder: parsedAccountHolder,
-      createdBy: req.user._id,
-      status: 'submitted'
-    });
-
-    // اضافه کردن فایل‌ها - هم از multipart و هم از attachments قبلی
+    // جمع‌آوری فایل‌ها - هم از multipart و هم از attachments قبلی
     let allFiles = [];
 
     // فایل‌های آپلود شده در این درخواست (multipart)
@@ -223,9 +205,27 @@ router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res
       }
     }
 
-    if (allFiles.length > 0) {
-      receipt.files = allFiles;
-    }
+    // تعیین وضعیت بر اساس وجود فایل (اگه فایل نباشه draft میشه)
+    const receiptStatus = allFiles.length > 0 ? 'submitted' : 'draft';
+
+    // ساخت رسید
+    const receipt = new Receipt({
+      receiptNumber: Receipt.generateReceiptNumber ? Receipt.generateReceiptNumber(type) : `RC-${Date.now()}`,
+      sarafi: req.user._id,
+      trade: finalTradeId,
+      customer: finalCustomerId || trade.customer,
+      currency: currencyId || trade.currency,
+      type,
+      collectionMethod: finalCollectionMethod,
+      amount: parseFloat(amount),
+      trackingNumber: finalTrackingNumber,
+      collectionDate: transactionDate ? new Date(transactionDate) : new Date(),
+      notes: finalNotes,
+      accountHolder: parsedAccountHolder,
+      createdBy: req.user._id,
+      status: receiptStatus,
+      files: allFiles
+    });
 
     await receipt.save();
 
