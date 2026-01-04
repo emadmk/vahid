@@ -82,44 +82,69 @@ router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res
   try {
     const {
       tradeId, type, collectionMethod, amount, bankTrackingNumber,
-      transactionDate, description, accountHolder, customerId, currencyId
+      transactionDate, description, accountHolder, customerId, currencyId,
+      trackingNumber
     } = req.body;
 
+    // اعتبارسنجی اولیه
+    if (!type || !['rial', 'currency'].includes(type)) {
+      return res.status(400).json({ success: false, message: 'نوع وصول الزامی است' });
+    }
+    if (!collectionMethod) {
+      return res.status(400).json({ success: false, message: 'روش وصول الزامی است' });
+    }
+    if (!amount || parseFloat(amount) <= 0) {
+      return res.status(400).json({ success: false, message: 'مبلغ نامعتبر است' });
+    }
+    if (!tradeId) {
+      return res.status(400).json({ success: false, message: 'معامله مرتبط الزامی است' });
+    }
+
     // بررسی معامله
-    let trade = null;
-    if (tradeId) {
-      trade = await Trade.findOne({ _id: tradeId, sarafi: req.user._id });
-      if (!trade) {
-        return res.status(404).json({ success: false, message: 'معامله یافت نشد' });
+    const trade = await Trade.findOne({ _id: tradeId, sarafi: req.user._id });
+    if (!trade) {
+      return res.status(404).json({ success: false, message: 'معامله یافت نشد' });
+    }
+
+    // پارس کردن accountHolder - میتونه JSON string یا متن ساده باشه
+    let parsedAccountHolder = { name: '' };
+    if (accountHolder) {
+      try {
+        // اگه JSON بود پارس کن
+        parsedAccountHolder = JSON.parse(accountHolder);
+      } catch {
+        // اگه متن ساده بود، به عنوان نام استفاده کن
+        parsedAccountHolder = { name: accountHolder };
       }
     }
 
     // ساخت رسید
     const receipt = new Receipt({
-      receiptNumber: Receipt.generateReceiptNumber ? Receipt.generateReceiptNumber() : `RC-${Date.now()}`,
+      receiptNumber: Receipt.generateReceiptNumber ? Receipt.generateReceiptNumber(type) : `RC-${Date.now()}`,
       sarafi: req.user._id,
-      trade: tradeId || null,
-      customer: customerId || trade?.customer,
-      currency: currencyId || trade?.currency,
+      trade: tradeId,
+      customer: customerId || trade.customer,
+      currency: currencyId || trade.currency,
       type,
       collectionMethod,
       amount: parseFloat(amount),
-      bankTrackingNumber,
+      trackingNumber: trackingNumber || bankTrackingNumber,
       collectionDate: transactionDate ? new Date(transactionDate) : new Date(),
-      description,
-      accountHolder: accountHolder ? JSON.parse(accountHolder) : {},
+      notes: description,
+      accountHolder: parsedAccountHolder,
       createdBy: req.user._id,
       status: 'submitted'
     });
 
     // اضافه کردن فایل‌ها
     if (req.files && req.files.length > 0) {
-      receipt.attachments = req.files.map(file => ({
+      receipt.files = req.files.map(file => ({
         filename: file.filename,
         originalName: file.originalname,
-        path: `/uploads/receipts/${file.filename}`,
-        mimeType: file.mimetype,
-        size: file.size
+        mimetype: file.mimetype,
+        size: file.size,
+        uploadedAt: new Date(),
+        uploadedBy: req.user._id
       }));
     }
 
