@@ -1,18 +1,26 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FaUsers, FaUserTie, FaExchangeAlt, FaCoins, FaClock, FaCheckCircle } from 'react-icons/fa';
+import { FaUsers, FaUserTie, FaExchangeAlt, FaCoins, FaClock, FaCheckCircle, FaChartLine, FaBolt } from 'react-icons/fa';
 import { adminAPI } from '../../services/api';
-import jalaliMoment from 'jalali-moment';
+import api from '../../services/api';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
+  const [tradeStats, setTradeStats] = useState(null);
+  const [recentTrades, setRecentTrades] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await adminAPI.getDashboard();
-        setStats(res.data.data);
+        const [dashRes, instantRes, recentRes] = await Promise.all([
+          adminAPI.getDashboard(),
+          api.get('/admin/instant-trades/stats').catch(() => ({ data: { data: {} } })),
+          api.get('/admin/instant-trades', { params: { limit: 5 } }).catch(() => ({ data: { data: [] } }))
+        ]);
+        setStats(dashRes.data.data);
+        setTradeStats(instantRes.data.data || {});
+        setRecentTrades(recentRes.data.data || []);
       } catch (e) {
         console.error(e);
       } finally {
@@ -33,8 +41,8 @@ const AdminDashboard = () => {
   const statCards = [
     { icon: FaUsers, label: 'کاربران', value: stats?.users?.total, pending: stats?.users?.pending, color: 'blue', link: '/admin/users' },
     { icon: FaUserTie, label: 'صراف‌ها', value: stats?.sarafis?.total, pending: stats?.sarafis?.pending, color: 'purple', link: '/admin/sarafis' },
-    { icon: FaExchangeAlt, label: 'درخواست‌ها', value: stats?.requests?.total, pending: stats?.requests?.pending, color: 'green', link: '/admin/requests' },
-    { icon: FaCheckCircle, label: 'تکمیل شده', value: stats?.requests?.completed, color: 'gold', link: '/admin/requests' }
+    { icon: FaBolt, label: 'معاملات فوری', value: tradeStats?.total, pending: tradeStats?.pending, color: 'gold', link: '/admin/instant-trades' },
+    { icon: FaChartLine, label: 'معاملات حرفه‌ای', value: stats?.orders?.total || 0, color: 'green', link: '/admin/pro-trades' }
   ];
 
   const getStatusBadge = (status) => {
@@ -71,47 +79,56 @@ const AdminDashboard = () => {
         ))}
       </div>
 
-      {/* آمار امروز */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="stat-card">
-          <FaClock className="text-gold-500 text-2xl mb-2" />
-          <div className="stat-value">{stats?.requests?.today || 0}</div>
-          <div className="stat-label">درخواست امروز</div>
+      {/* آمار معاملات */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="stat-card border-r-4 border-yellow-500">
+          <FaClock className="text-yellow-500 text-2xl mb-2" />
+          <div className="stat-value">{tradeStats?.pending || 0}</div>
+          <div className="stat-label">در انتظار تایید</div>
         </div>
-        <div className="stat-card">
-          <FaExchangeAlt className="text-blue-500 text-2xl mb-2" />
-          <div className="stat-value">{stats?.requests?.public || 0}</div>
-          <div className="stat-label">درخواست عمومی</div>
+        <div className="stat-card border-r-4 border-orange-500">
+          <FaExchangeAlt className="text-orange-500 text-2xl mb-2" />
+          <div className="stat-value">{tradeStats?.pending_collection || 0}</div>
+          <div className="stat-label">در انتظار وصول</div>
         </div>
-        <div className="stat-card">
-          <FaCoins className="text-green-500 text-2xl mb-2" />
-          <div className="stat-value">{(stats?.transactions?.total || 0).toLocaleString()}</div>
-          <div className="stat-label">مجموع تراکنش‌ها (ریال)</div>
+        <div className="stat-card border-r-4 border-green-500">
+          <FaCheckCircle className="text-green-500 text-2xl mb-2" />
+          <div className="stat-value">{tradeStats?.completed || 0}</div>
+          <div className="stat-label">تکمیل شده</div>
+        </div>
+        <div className="stat-card border-r-4 border-gold">
+          <FaCoins className="text-gold text-2xl mb-2" />
+          <div className="stat-value">{(tradeStats?.totalVolume || 0).toLocaleString()}</div>
+          <div className="stat-label">حجم معاملات (ریال)</div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* آخرین درخواست‌ها */}
+        {/* آخرین معاملات */}
         <div className="card-dark">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-white">آخرین درخواست‌ها</h2>
-            <Link to="/admin/requests" className="text-gold-500 text-sm">مشاهده همه ←</Link>
+            <h2 className="text-lg font-bold text-white">آخرین معاملات فوری</h2>
+            <Link to="/admin/instant-trades" className="text-gold-500 text-sm">مشاهده همه ←</Link>
           </div>
           <div className="space-y-3">
-            {stats?.recentRequests?.map((req) => (
-              <div key={req._id} className="flex items-center justify-between p-3 bg-dark-800/50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{req.currency?.symbol}</span>
-                  <div>
-                    <p className="text-white text-sm">
-                      {req.type === 'buy' ? 'خرید' : 'فروش'} {req.currency?.nameFa}
-                    </p>
-                    <p className="text-dark-500 text-xs">{req.user?.firstName} {req.user?.lastName}</p>
+            {recentTrades.length === 0 ? (
+              <p className="text-dark-500 text-center py-4">معامله‌ای ثبت نشده</p>
+            ) : (
+              recentTrades.map((trade) => (
+                <div key={trade._id} className="flex items-center justify-between p-3 bg-dark-800/50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{trade.currency?.symbol || '💱'}</span>
+                    <div>
+                      <p className="text-white text-sm">
+                        {trade.type === 'buy' ? 'خرید' : 'فروش'} {trade.currency?.nameFa}
+                      </p>
+                      <p className="text-dark-500 text-xs">{trade.customer?.firstName} {trade.customer?.lastName}</p>
+                    </div>
                   </div>
+                  {getStatusBadge(trade.status)}
                 </div>
-                {getStatusBadge(req.status)}
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 

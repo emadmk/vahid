@@ -18,13 +18,10 @@ const UserLayout = () => {
   const menuItems = [
     { path: '/dashboard', label: 'داشبورد', icon: FaHome },
     { path: '/dashboard/wallet', label: 'کیف پول', icon: FaWallet },
-    { path: '/dashboard/trades', label: 'معاملات', icon: FaExchangeAlt },
-    { path: '/dashboard/orders', label: 'سفارشات', icon: FaBook },
+    { path: '/dashboard/instant-trade', label: 'خرید و فروش فوری', icon: FaExchangeAlt },
+    { path: '/dashboard/pro-trade', label: 'خرید و فروش حرفه‌ای', icon: FaBook },
     { path: '/dashboard/market', label: 'بازار', icon: FaStore },
     { path: '/dashboard/score', label: 'امتیاز', icon: FaStar },
-    { path: '/dashboard/new-request', label: 'درخواست جدید', icon: FaPlus },
-    { path: '/dashboard/requests', label: 'درخواست‌های من', icon: FaList },
-    { path: '/dashboard/public-requests', label: 'درخواست‌های عمومی', icon: FaGlobe },
     { path: '/dashboard/messages', label: 'پیام‌ها', icon: FaComments, isNew: true },
     { path: '/dashboard/profile', label: 'پروفایل', icon: FaUser }
   ];

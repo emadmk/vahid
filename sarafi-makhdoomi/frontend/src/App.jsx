@@ -25,33 +25,25 @@ import ChangePassword from './pages/auth/ChangePassword';
 
 // صفحات کاربر
 import UserDashboard from './pages/user/Dashboard';
-import UserRequests from './pages/user/Requests';
-import NewRequest from './pages/user/NewRequest';
 import UserProfile from './pages/user/Profile';
-import PublicRequests from './pages/user/PublicRequests';
 import UserWallet from './pages/user/Wallet';
 import UserScore from './pages/user/Score';
 import UserMarket from './pages/user/Market';
-import UserTrades from './pages/user/Trades';
-import UserOrders from './pages/user/Orders';
+import UserInstantTrade from './pages/user/InstantTrade';
+import UserProTrade from './pages/user/ProTrade';
 
 // صفحات صراف
 import SarafiDashboard from './pages/sarafi/Dashboard';
-import SarafiRequests from './pages/sarafi/Requests';
 import SarafiCustomers from './pages/sarafi/Customers';
-import SarafiPublicRequests from './pages/sarafi/PublicRequests';
 import SarafiProfile from './pages/sarafi/Profile';
-import SarafiTrades from './pages/sarafi/Trades';
+import SarafiInstantTrade from './pages/sarafi/InstantTrade';
+import SarafiProTrade from './pages/sarafi/ProTrade';
 import SarafiAccountant from './pages/sarafi/Accountant';
-import SarafiCurrencyCollection from './pages/sarafi/CurrencyCollection';
-import SarafiRialCollection from './pages/sarafi/RialCollection';
 import SarafiCustomerWallets from './pages/sarafi/CustomerWallets';
 import SarafiSpreads from './pages/sarafi/Spreads';
-import SarafiOrderBook from './pages/sarafi/OrderBook';
 import SarafiStaff from './pages/sarafi/Staff';
 import SarafiAuditLogs from './pages/sarafi/AuditLogs';
 import SarafiReceipts from './pages/sarafi/Receipts';
-import SarafiTradingPanel from './pages/sarafi/TradingPanel';
 import SarafiSettlementPanel from './pages/sarafi/SettlementPanel';
 import SarafiRates from './pages/sarafi/Rates';
 import MessagesPage from './pages/shared/Messages';
@@ -62,15 +54,14 @@ import SarafiGroups from './pages/sarafi/Groups';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminUsers from './pages/admin/Users';
 import AdminSarafis from './pages/admin/Sarafis';
-import AdminRequests from './pages/admin/Requests';
 import AdminCurrencies from './pages/admin/Currencies';
 import AdminSettings from './pages/admin/Settings';
-import AdminTrades from './pages/admin/Trades';
+import AdminInstantTrades from './pages/admin/InstantTrades';
+import AdminProTrades from './pages/admin/ProTrades';
 import AdminWallets from './pages/admin/Wallets';
 import AdminCustomerTiers from './pages/admin/CustomerTiers';
 import AdminCommissions from './pages/admin/Commissions';
 import AdminRateScraper from './pages/admin/RateScraper';
-import AdminOrders from './pages/admin/Orders';
 import AdminReceipts from './pages/admin/Receipts';
 import AdminAuditLogs from './pages/admin/AuditLogs';
 import AdminSpreads from './pages/admin/Spreads';
@@ -156,13 +147,10 @@ function App() {
         >
           <Route index element={<UserDashboard />} />
           <Route path="wallet" element={<UserWallet />} />
-          <Route path="trades" element={<UserTrades />} />
-          <Route path="orders" element={<UserOrders />} />
+          <Route path="instant-trade" element={<UserInstantTrade />} />
+          <Route path="pro-trade" element={<UserProTrade />} />
           <Route path="market" element={<UserMarket />} />
           <Route path="score" element={<UserScore />} />
-          <Route path="requests" element={<UserRequests />} />
-          <Route path="new-request" element={<NewRequest />} />
-          <Route path="public-requests" element={<PublicRequests />} />
           <Route path="profile" element={<UserProfile />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
@@ -178,21 +166,16 @@ function App() {
           }
         >
           <Route index element={<SarafiDashboard />} />
-          <Route path="trades" element={<SarafiTrades />} />
-          <Route path="order-book" element={<SarafiOrderBook />} />
+          <Route path="instant-trade" element={<SarafiInstantTrade />} />
+          <Route path="pro-trade" element={<SarafiProTrade />} />
           <Route path="spreads" element={<SarafiSpreads />} />
           <Route path="receipts" element={<SarafiReceipts />} />
           <Route path="accountant" element={<SarafiAccountant />} />
-          <Route path="currency-collection" element={<SarafiCurrencyCollection />} />
-          <Route path="rial-collection" element={<SarafiRialCollection />} />
           <Route path="customer-wallets" element={<SarafiCustomerWallets />} />
-          <Route path="requests" element={<SarafiRequests />} />
           <Route path="customers" element={<SarafiCustomers />} />
           <Route path="staff" element={<SarafiStaff />} />
           <Route path="audit-logs" element={<SarafiAuditLogs />} />
-          <Route path="public-requests" element={<SarafiPublicRequests />} />
           <Route path="profile" element={<SarafiProfile />} />
-          <Route path="trading" element={<SarafiTradingPanel />} />
           <Route path="settlements" element={<SarafiSettlementPanel />} />
           <Route path="rates" element={<SarafiRates />} />
           <Route path="groups" element={<SarafiGroups />} />
@@ -210,8 +193,8 @@ function App() {
           }
         >
           <Route index element={<AdminDashboard />} />
-          <Route path="trades" element={<AdminTrades />} />
-          <Route path="orders" element={<AdminOrders />} />
+          <Route path="instant-trades" element={<AdminInstantTrades />} />
+          <Route path="pro-trades" element={<AdminProTrades />} />
           <Route path="receipts" element={<AdminReceipts />} />
           <Route path="wallets" element={<AdminWallets />} />
           <Route path="customer-tiers" element={<AdminCustomerTiers />} />
@@ -219,7 +202,6 @@ function App() {
           <Route path="spreads" element={<AdminSpreads />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="sarafis" element={<AdminSarafis />} />
-          <Route path="requests" element={<AdminRequests />} />
           <Route path="currencies" element={<AdminCurrencies />} />
           <Route path="audit-logs" element={<AdminAuditLogs />} />
           <Route path="rate-scraper" element={<AdminRateScraper />} />

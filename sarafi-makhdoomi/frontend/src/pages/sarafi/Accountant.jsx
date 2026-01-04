@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
-import { FaCalculator, FaWallet, FaCreditCard, FaPlus, FaMinus, FaSpinner, FaSearch, FaHistory } from 'react-icons/fa';
+import {
+  FaCalculator, FaWallet, FaCreditCard, FaPlus, FaMinus, FaSpinner, FaSearch, FaHistory,
+  FaExchangeAlt, FaCheck, FaTimes, FaEye, FaArrowUp, FaArrowDown, FaClock
+} from 'react-icons/fa';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 
 const Accountant = () => {
+  const [activeTab, setActiveTab] = useState('trades'); // trades | wallets
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -15,9 +19,69 @@ const Accountant = () => {
   const [description, setDescription] = useState('');
   const [processing, setProcessing] = useState(false);
 
+  // معاملات در انتظار حسابداری
+  const [pendingTrades, setPendingTrades] = useState([]);
+  const [tradesLoading, setTradesLoading] = useState(true);
+  const [selectedTrade, setSelectedTrade] = useState(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
   useEffect(() => {
-    fetchCustomers();
-  }, []);
+    if (activeTab === 'wallets') {
+      fetchCustomers();
+    } else {
+      fetchPendingTrades();
+    }
+  }, [activeTab]);
+
+  const fetchPendingTrades = async () => {
+    try {
+      setTradesLoading(true);
+      const response = await api.get('/trades/sarafi/instant-trades', {
+        params: { status: 'pending_accounting' }
+      });
+      setPendingTrades(response.data.trades || response.data.data || []);
+    } catch (error) {
+      console.error('خطا در دریافت معاملات:', error);
+    } finally {
+      setTradesLoading(false);
+    }
+  };
+
+  const handleApproveTrade = async (tradeId) => {
+    try {
+      setProcessing(true);
+      await api.put(`/trades/instant/${tradeId}/accounting-approve`);
+      toast.success('معامله تایید و تکمیل شد');
+      fetchPendingTrades();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'خطا در تایید معامله');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleRejectTrade = async () => {
+    if (!rejectReason.trim()) {
+      toast.error('لطفا دلیل رد را وارد کنید');
+      return;
+    }
+    try {
+      setProcessing(true);
+      await api.put(`/trades/instant/${selectedTrade._id}/accounting-reject`, {
+        reason: rejectReason
+      });
+      toast.success('معامله رد شد');
+      setShowRejectModal(false);
+      setRejectReason('');
+      setSelectedTrade(null);
+      fetchPendingTrades();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'خطا در رد معامله');
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const fetchCustomers = async () => {
     try {
@@ -131,16 +195,153 @@ const Accountant = () => {
     c.phone?.includes(search)
   );
 
+  const formatNumber = (num) => new Intl.NumberFormat('fa-IR').format(num || 0);
+  const formatDate = (date) => new Date(date).toLocaleDateString('fa-IR');
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold flex items-center gap-3">
           <FaCalculator className="text-gold" />
           پنل حسابداری
         </h1>
+
+        {/* Tab Switcher */}
+        <div className="flex rounded-lg bg-dark-800 p-1">
+          <button
+            onClick={() => setActiveTab('trades')}
+            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
+              activeTab === 'trades'
+                ? 'bg-gold text-dark-900 font-bold'
+                : 'text-dark-400 hover:text-white'
+            }`}
+          >
+            <FaExchangeAlt />
+            تایید معاملات
+            {pendingTrades.length > 0 && (
+              <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                {pendingTrades.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('wallets')}
+            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
+              activeTab === 'wallets'
+                ? 'bg-gold text-dark-900 font-bold'
+                : 'text-dark-400 hover:text-white'
+            }`}
+          >
+            <FaWallet />
+            مدیریت کیف پول
+          </button>
+        </div>
       </div>
 
+      {/* بخش تایید معاملات */}
+      {activeTab === 'trades' && (
+        <div className="space-y-4">
+          {/* آمار */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="card p-4 border-r-4 border-yellow-500">
+              <div className="flex items-center gap-3">
+                <FaClock className="text-yellow-500 text-2xl" />
+                <div>
+                  <p className="text-dark-400 text-sm">در انتظار تایید</p>
+                  <p className="text-2xl font-bold text-yellow-500">{pendingTrades.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* جدول معاملات */}
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-dark-800">
+                  <tr>
+                    <th className="text-right p-4 text-dark-400 text-sm">شماره معامله</th>
+                    <th className="text-right p-4 text-dark-400 text-sm">مشتری</th>
+                    <th className="text-right p-4 text-dark-400 text-sm">نوع</th>
+                    <th className="text-right p-4 text-dark-400 text-sm">ارز</th>
+                    <th className="text-right p-4 text-dark-400 text-sm">مقدار</th>
+                    <th className="text-right p-4 text-dark-400 text-sm">مبلغ کل</th>
+                    <th className="text-right p-4 text-dark-400 text-sm">تاریخ</th>
+                    <th className="text-center p-4 text-dark-400 text-sm">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tradesLoading ? (
+                    <tr>
+                      <td colSpan="8" className="text-center p-8">
+                        <FaSpinner className="animate-spin text-gold text-2xl mx-auto" />
+                      </td>
+                    </tr>
+                  ) : pendingTrades.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="text-center p-8 text-dark-500">
+                        معامله‌ای در انتظار تایید نیست
+                      </td>
+                    </tr>
+                  ) : (
+                    pendingTrades.map(trade => (
+                      <tr key={trade._id} className="border-t border-dark-800 hover:bg-dark-800/30">
+                        <td className="p-4 text-gold font-medium">{trade.tradeNumber}</td>
+                        <td className="p-4 text-white">
+                          {trade.customer?.firstName} {trade.customer?.lastName}
+                        </td>
+                        <td className="p-4">
+                          <span className={`flex items-center gap-1 ${trade.type === 'buy' ? 'text-green-500' : 'text-red-500'}`}>
+                            {trade.type === 'buy' ? <FaArrowUp /> : <FaArrowDown />}
+                            {trade.type === 'buy' ? 'خرید' : 'فروش'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-white">{trade.currency?.code}</td>
+                        <td className="p-4 text-white">{formatNumber(trade.amount)}</td>
+                        <td className="p-4 text-white font-bold">{formatNumber(trade.totalAmount)} ریال</td>
+                        <td className="p-4 text-dark-400 text-sm">{formatDate(trade.createdAt)}</td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleApproveTrade(trade._id)}
+                              disabled={processing}
+                              className="p-2 rounded-lg bg-green-500/20 text-green-500 hover:bg-green-500/30"
+                              title="تایید و تکمیل"
+                            >
+                              <FaCheck />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedTrade(trade);
+                                setShowRejectModal(true);
+                              }}
+                              className="p-2 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500/30"
+                              title="رد"
+                            >
+                              <FaTimes />
+                            </button>
+                            <button
+                              onClick={() => setSelectedTrade(trade)}
+                              className="p-2 rounded-lg bg-dark-700 text-dark-400 hover:text-white"
+                              title="جزئیات"
+                            >
+                              <FaEye />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* بخش مدیریت کیف پول */}
+      {activeTab === 'wallets' && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Customer List */}
         <div className="card p-4">
@@ -294,6 +495,53 @@ const Accountant = () => {
           )}
         </div>
       </div>
+      )}
+
+      {/* مودال رد معامله */}
+      {showRejectModal && selectedTrade && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="card p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4 text-red-500">رد معامله</h2>
+
+            <div className="bg-dark-800 rounded-lg p-4 mb-4">
+              <p className="text-dark-400 text-sm">شماره معامله:</p>
+              <p className="text-gold font-bold">{selectedTrade.tradeNumber}</p>
+            </div>
+
+            <div>
+              <label className="block text-dark-300 mb-2">دلیل رد *</label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="input w-full"
+                rows="3"
+                placeholder="دلیل رد معامله را وارد کنید..."
+              />
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectReason('');
+                  setSelectedTrade(null);
+                }}
+                className="btn-outline flex-1"
+              >
+                انصراف
+              </button>
+              <button
+                onClick={handleRejectTrade}
+                disabled={processing}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex-1 flex items-center justify-center gap-2"
+              >
+                {processing ? <FaSpinner className="animate-spin" /> : <FaTimes />}
+                رد معامله
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Action Modal */}
       {showModal && (

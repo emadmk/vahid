@@ -4,6 +4,472 @@ const tradeService = require('../services/tradeService');
 const commissionService = require('../services/commissionService');
 const { protect, authorize } = require('../middlewares/auth');
 
+// =============== روت‌های معامله فوری (Instant Trade) ===============
+
+// ایجاد معامله فوری
+router.post('/instant', protect, async (req, res) => {
+  try {
+    const { currencyId, side, amount, rate, validUntil, notes, paymentMethod, walletStatus, customerId } = req.body;
+
+    const trade = await tradeService.createInstantTrade({
+      currencyId,
+      side,
+      amount,
+      rate,
+      validUntil,
+      notes,
+      paymentMethod,
+      walletStatus,
+      customerId: customerId || req.user._id,
+      sarafiId: req.user.role === 'sarafi' ? req.user._id : req.user.selectedSarafi,
+      createdBy: req.user._id
+    });
+
+    res.status(201).json({
+      success: true,
+      data: trade,
+      message: 'سفارش فوری ثبت شد و منتظر تایید است'
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// دریافت معاملات فوری کاربر
+router.get('/my-instant-trades', protect, async (req, res) => {
+  try {
+    const { status, limit, skip } = req.query;
+
+    const result = await tradeService.getInstantTrades({
+      customerId: req.user._id,
+      status,
+      limit: parseInt(limit) || 20,
+      skip: parseInt(skip) || 0
+    });
+
+    res.json({
+      success: true,
+      data: result.trades,
+      total: result.total
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// تایید معامله فوری (صراف)
+router.put('/instant/:id/approve', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const trade = await tradeService.approveInstantTrade(req.params.id, req.user._id);
+
+    res.json({
+      success: true,
+      data: trade,
+      message: 'معامله تایید شد'
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// رد معامله فوری با دلیل (صراف)
+router.put('/instant/:id/reject', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'دلیل رد الزامی است'
+      });
+    }
+
+    const trade = await tradeService.rejectInstantTrade(req.params.id, req.user._id, reason);
+
+    res.json({
+      success: true,
+      data: trade,
+      message: 'معامله رد شد'
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// لغو معامله فوری (کاربر)
+router.put('/instant/:id/cancel', protect, async (req, res) => {
+  try {
+    const trade = await tradeService.cancelInstantTrade(req.params.id, req.user._id);
+
+    res.json({
+      success: true,
+      data: trade,
+      message: 'معامله لغو شد'
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// دریافت معاملات فوری صراف
+router.get('/sarafi/instant-trades', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const { status, limit, skip } = req.query;
+
+    const result = await tradeService.getInstantTrades({
+      sarafiId: req.user._id,
+      status,
+      limit: parseInt(limit) || 20,
+      skip: parseInt(skip) || 0
+    });
+
+    res.json({
+      success: true,
+      trades: result.trades,
+      data: result.trades,
+      total: result.total
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// آمار پنل وصول صراف
+router.get('/sarafi/settlement-stats', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const Trade = require('../models/Trade');
+
+    const pendingCollection = await Trade.countDocuments({
+      sarafi: req.user._id,
+      tradeType: 'instant',
+      status: 'pending_collection'
+    });
+
+    const pendingAccounting = await Trade.countDocuments({
+      sarafi: req.user._id,
+      tradeType: 'instant',
+      status: 'pending_accounting'
+    });
+
+    // تفکیک ریالی و ارزی
+    const rialPending = await Trade.aggregate([
+      {
+        $match: {
+          sarafi: req.user._id,
+          tradeType: 'instant',
+          status: 'pending_collection',
+          type: 'buy' // خرید ارز = وصول ریال
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$totalAmount' }
+        }
+      }
+    ]);
+
+    const currencyPending = await Trade.countDocuments({
+      sarafi: req.user._id,
+      tradeType: 'instant',
+      status: 'pending_collection',
+      type: 'sell' // فروش ارز = وصول ارز
+    });
+
+    // تعداد تسویه شده امروز
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const completedToday = await Trade.countDocuments({
+      sarafi: req.user._id,
+      tradeType: 'instant',
+      status: 'completed',
+      completedAt: { $gte: today }
+    });
+
+    // موارد عقب‌افتاده (بیش از 24 ساعت)
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const overdueCount = await Trade.countDocuments({
+      sarafi: req.user._id,
+      tradeType: 'instant',
+      status: 'pending_collection',
+      createdAt: { $lt: yesterday }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        pendingRial: rialPending[0]?.totalAmount || 0,
+        pendingCurrency: currencyPending,
+        completedToday,
+        overdueCount,
+        pendingCollection,
+        pendingAccounting
+      }
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// تایید وصول از پنل وصول (ارسال به حسابداری)
+router.put('/instant/:id/confirm-collection', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const { collectionType, notes, referenceNumber } = req.body;
+    const Trade = require('../models/Trade');
+    const notificationService = require('../services/notificationService');
+
+    const trade = await Trade.findById(req.params.id).populate('currency customer');
+
+    if (!trade) {
+      return res.status(404).json({
+        success: false,
+        message: 'معامله یافت نشد'
+      });
+    }
+
+    if (trade.sarafi.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'دسترسی غیرمجاز'
+      });
+    }
+
+    if (trade.status !== 'pending_collection') {
+      return res.status(400).json({
+        success: false,
+        message: 'این معامله در وضعیت وصول نیست'
+      });
+    }
+
+    // بروزرسانی وضعیت وصول
+    if (collectionType === 'currency' || trade.type === 'sell') {
+      trade.currencyCollection = {
+        status: 'collected',
+        collectedBy: req.user._id,
+        collectedAt: new Date(),
+        notes
+      };
+    } else {
+      trade.rialCollection = {
+        status: 'collected',
+        collectedBy: req.user._id,
+        collectedAt: new Date(),
+        bankDetails: { trackingCode: referenceNumber },
+        notes
+      };
+    }
+
+    // تغییر وضعیت به در انتظار حسابداری
+    trade.status = 'pending_accounting';
+    await trade.save();
+
+    // ارسال نوتیفیکیشن به حسابداری
+    await notificationService.create({
+      recipient: req.user._id, // یا ادمین حسابداری
+      type: 'trade_pending_accounting',
+      title: 'معامله جدید در انتظار تایید حسابداری',
+      message: `معامله ${trade.tradeNumber} وصول شده و منتظر تایید حسابداری است`,
+      relatedModel: 'Trade',
+      relatedId: trade._id,
+      severity: 'info',
+      actionUrl: '/accountant'
+    });
+
+    res.json({
+      success: true,
+      data: trade,
+      message: 'وصول تایید شد و به حسابداری ارسال شد'
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// تایید معامله توسط حسابداری (تکمیل معامله)
+router.put('/instant/:id/accounting-approve', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const Trade = require('../models/Trade');
+    const walletService = require('../services/walletService');
+    const scoringService = require('../services/scoringService');
+    const notificationService = require('../services/notificationService');
+
+    const trade = await Trade.findById(req.params.id).populate('currency customer');
+
+    if (!trade) {
+      return res.status(404).json({
+        success: false,
+        message: 'معامله یافت نشد'
+      });
+    }
+
+    if (trade.sarafi.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'دسترسی غیرمجاز'
+      });
+    }
+
+    if (trade.status !== 'pending_accounting') {
+      return res.status(400).json({
+        success: false,
+        message: 'این معامله در وضعیت حسابداری نیست'
+      });
+    }
+
+    // اگر فروش ارز بود، باید به کیف پول مشتری واریز شود
+    if (trade.type === 'sell') {
+      await walletService.deposit(
+        trade.customer._id,
+        trade.netAmount,
+        `فروش ارز - معامله ${trade.tradeNumber}`,
+        req.user._id
+      );
+    }
+
+    // تکمیل معامله
+    trade.status = 'completed';
+    trade.completedAt = new Date();
+
+    // اعمال امتیازات
+    const customerScore = await scoringService.applyTradeScore(
+      trade.customer._id,
+      trade.totalAmount,
+      false
+    );
+
+    const sarafiScore = await scoringService.applyTradeScore(
+      trade.sarafi,
+      trade.totalAmount,
+      true
+    );
+
+    trade.scoring = {
+      customerScoreAwarded: customerScore?.pointsEarned || 0,
+      sarafiScoreAwarded: sarafiScore?.pointsEarned || 0,
+      scoredAt: new Date()
+    };
+
+    await trade.save();
+
+    // ارسال نوتیفیکیشن به مشتری
+    await notificationService.create({
+      recipient: trade.customer._id,
+      type: 'trade_completed',
+      title: 'معامله تکمیل شد',
+      message: `معامله ${trade.tradeNumber} با موفقیت تکمیل شد`,
+      relatedModel: 'Trade',
+      relatedId: trade._id,
+      severity: 'info',
+      actionUrl: '/dashboard/instant-trade'
+    });
+
+    res.json({
+      success: true,
+      data: trade,
+      message: 'معامله تایید و تکمیل شد'
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// رد معامله توسط حسابداری
+router.put('/instant/:id/accounting-reject', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const Trade = require('../models/Trade');
+    const notificationService = require('../services/notificationService');
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'دلیل رد الزامی است'
+      });
+    }
+
+    const trade = await Trade.findById(req.params.id).populate('currency customer');
+
+    if (!trade) {
+      return res.status(404).json({
+        success: false,
+        message: 'معامله یافت نشد'
+      });
+    }
+
+    if (trade.sarafi.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'دسترسی غیرمجاز'
+      });
+    }
+
+    if (trade.status !== 'pending_accounting') {
+      return res.status(400).json({
+        success: false,
+        message: 'این معامله در وضعیت حسابداری نیست'
+      });
+    }
+
+    trade.status = 'rejected';
+    trade.rejectionReason = `رد توسط حسابداری: ${reason}`;
+    trade.rejectedBy = req.user._id;
+    trade.rejectedAt = new Date();
+
+    await trade.save();
+
+    // ارسال نوتیفیکیشن به مشتری
+    await notificationService.create({
+      recipient: trade.customer._id,
+      type: 'trade_rejected',
+      title: 'معامله رد شد',
+      message: `معامله ${trade.tradeNumber} توسط حسابداری رد شد. دلیل: ${reason}`,
+      relatedModel: 'Trade',
+      relatedId: trade._id,
+      severity: 'warning',
+      actionUrl: '/dashboard/instant-trade'
+    });
+
+    res.json({
+      success: true,
+      data: trade,
+      message: 'معامله رد شد'
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // =============== روت‌های مشتری ===============
 
 // ایجاد معامله جدید

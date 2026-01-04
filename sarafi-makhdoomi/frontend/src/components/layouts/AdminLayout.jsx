@@ -16,8 +16,8 @@ const AdminLayout = () => {
 
   const menuItems = [
     { path: '/admin', label: 'داشبورد', icon: FaHome },
-    { path: '/admin/trades', label: 'معاملات', icon: FaExchangeAlt },
-    { path: '/admin/orders', label: 'سفارشات', icon: FaBook },
+    { path: '/admin/instant-trades', label: 'خرید و فروش فوری', icon: FaExchangeAlt },
+    { path: '/admin/pro-trades', label: 'خرید و فروش حرفه‌ای', icon: FaBook },
     { path: '/admin/receipts', label: 'رسیدها', icon: FaReceipt },
     { path: '/admin/wallets', label: 'کیف پول‌ها', icon: FaWallet },
     { path: '/admin/users', label: 'کاربران', icon: FaUsers },
@@ -28,7 +28,6 @@ const AdminLayout = () => {
     { path: '/admin/currencies', label: 'ارزها', icon: FaCoins },
     { path: '/admin/audit-logs', label: 'لاگ عملیات', icon: FaHistory },
     { path: '/admin/rate-scraper', label: 'اسکرپر نرخ', icon: FaTelegram },
-    { path: '/admin/requests', label: 'درخواست‌ها (قدیم)', icon: FaExchangeAlt },
     { path: '/admin/settings', label: 'تنظیمات', icon: FaCog }
   ];
 

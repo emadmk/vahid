@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  FaPlus, FaList, FaCheckCircle, FaClock, FaGlobe,
-  FaWallet, FaStar, FaExchangeAlt, FaStore, FaMedal,
+  FaList, FaCheckCircle, FaClock,
+  FaWallet, FaStar, FaExchangeAlt, FaMedal,
   FaArrowUp, FaArrowDown, FaCreditCard, FaChartLine,
-  FaBook, FaChartBar, FaPercent
+  FaBook, FaChartBar, FaPercent, FaBolt
 } from 'react-icons/fa';
-import { requestAPI, publicAPI } from '../../services/api';
+import { publicAPI } from '../../services/api';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
 import useViewStore from '../../store/viewStore';
@@ -23,7 +23,6 @@ const Dashboard = () => {
   const { user } = useAuthStore();
   const { viewMode, showAdvancedStats, showCharts, showMarketDepth, compactMode } = useViewStore();
   const [stats, setStats] = useState({ pending: 0, completed: 0, total: 0 });
-  const [recentRequests, setRecentRequests] = useState([]);
   const [rates, setRates] = useState([]);
   const [wallets, setWallets] = useState({ cash: null, credit: null });
   const [recentTrades, setRecentTrades] = useState([]);
@@ -33,18 +32,16 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [requestsRes, ratesRes, walletsRes, tradesRes, statsRes] = await Promise.all([
-          requestAPI.getMyRequests({ limit: 5 }),
+        const [ratesRes, walletsRes, tradesRes, statsRes] = await Promise.all([
           publicAPI.getRates(),
           api.get('/wallets/my-wallets').catch(() => ({ data: { data: [] } })),
-          api.get('/trades/my-trades', { params: { limit: 3 } }).catch(() => ({ data: { data: [] } })),
+          api.get('/trades/my-instant-trades', { params: { limit: 5 } }).catch(() => ({ data: { data: [] } })),
           api.get('/public/market-stats').catch(() => ({ data: { data: null } }))
         ]);
 
-        const requestsData = requestsRes.data.data || [];
-        setRecentRequests(requestsData);
         setRates(ratesRes.data.data || []);
-        setRecentTrades(tradesRes.data.data || []);
+        const tradesData = tradesRes.data.data || [];
+        setRecentTrades(tradesData);
         setMarketStats(statsRes.data.data);
 
         // تنظیم کیف پول‌ها - API یک object با cash و credit برمی‌گردونه
@@ -54,11 +51,11 @@ const Dashboard = () => {
           credit: walletsData.credit || null
         });
 
-        // محاسبه آمار
+        // محاسبه آمار از معاملات
         setStats({
-          total: requestsRes.data.total || 0,
-          pending: requestsData.filter(r => ['pending', 'waiting_public', 'public'].includes(r.status)).length,
-          completed: requestsData.filter(r => r.status === 'completed').length
+          total: tradesData.length,
+          pending: tradesData.filter(t => ['pending', 'approved', 'pending_collection', 'pending_accounting'].includes(t.status)).length,
+          completed: tradesData.filter(t => t.status === 'completed').length
         });
       } catch (e) {
         console.error(e);
@@ -206,56 +203,47 @@ const Dashboard = () => {
 
       {/* آمار سریع */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="stat-card">
-          <FaList className="text-gold text-2xl mb-2" />
+        <Link to="/dashboard/instant-trade" className="stat-card hover:border-gold/50">
+          <FaExchangeAlt className="text-gold text-2xl mb-2" />
           <div className="stat-value">{stats.total}</div>
-          <div className="stat-label">کل درخواست‌ها</div>
-        </div>
+          <div className="stat-label">کل معاملات</div>
+        </Link>
         <div className="stat-card">
           <FaClock className="text-yellow-500 text-2xl mb-2" />
           <div className="stat-value">{stats.pending}</div>
-          <div className="stat-label">در انتظار</div>
+          <div className="stat-label">در جریان</div>
         </div>
         <div className="stat-card">
           <FaCheckCircle className="text-green-500 text-2xl mb-2" />
           <div className="stat-value">{stats.completed}</div>
           <div className="stat-label">تکمیل شده</div>
         </div>
-        <div className="stat-card">
-          <FaExchangeAlt className="text-purple-500 text-2xl mb-2" />
-          <div className="stat-value">{recentTrades.length}</div>
-          <div className="stat-label">معاملات اخیر</div>
-        </div>
+        <Link to="/dashboard/pro-trade" className="stat-card hover:border-purple-500/50">
+          <FaChartLine className="text-purple-500 text-2xl mb-2" />
+          <div className="stat-value">PRO</div>
+          <div className="stat-label">معاملات حرفه‌ای</div>
+        </Link>
       </div>
 
       {/* دکمه‌های سریع */}
       {user?.status === 'approved' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link to="/dashboard/new-request" className="card-dark hover:border-gold-500/50 flex items-center gap-4 transition-all">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Link to="/dashboard/instant-trade" className="card-dark hover:border-gold-500/50 flex items-center gap-4 transition-all">
             <div className="w-12 h-12 rounded-full bg-gold-500/10 flex items-center justify-center text-gold-500">
-              <FaPlus className="w-5 h-5" />
+              <FaBolt className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-white font-bold">درخواست جدید</h3>
-              <p className="text-dark-400 text-sm">ثبت درخواست خرید یا فروش</p>
+              <h3 className="text-white font-bold">خرید و فروش فوری</h3>
+              <p className="text-dark-400 text-sm">معامله سریع با قیمت لحظه‌ای</p>
             </div>
           </Link>
-          <Link to="/dashboard/market" className="card-dark hover:border-gold-500/50 flex items-center gap-4 transition-all">
+          <Link to="/dashboard/pro-trade" className="card-dark hover:border-gold-500/50 flex items-center gap-4 transition-all">
             <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500">
-              <FaStore className="w-5 h-5" />
+              <FaChartLine className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-white font-bold">بازار</h3>
-              <p className="text-dark-400 text-sm">مشاهده و ثبت پیشنهاد</p>
-            </div>
-          </Link>
-          <Link to="/dashboard/trades" className="card-dark hover:border-gold-500/50 flex items-center gap-4 transition-all">
-            <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-500">
-              <FaExchangeAlt className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-white font-bold">معاملات من</h3>
-              <p className="text-dark-400 text-sm">پیگیری معاملات جاری</p>
+              <h3 className="text-white font-bold">خرید و فروش حرفه‌ای</h3>
+              <p className="text-dark-400 text-sm">سفارش‌گذاری پیشرفته</p>
             </div>
           </Link>
         </div>
@@ -372,7 +360,7 @@ const Dashboard = () => {
               <FaExchangeAlt className="text-gold" />
               آخرین معاملات
             </h2>
-            <Link to="/dashboard/trades" className="text-gold-500 text-sm hover:text-gold-400">
+            <Link to="/dashboard/instant-trade" className="text-gold-500 text-sm hover:text-gold-400">
               مشاهده همه
             </Link>
           </div>
@@ -442,38 +430,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* آخرین درخواست‌ها */}
-      <div className="card-dark">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold text-white">آخرین درخواست‌ها</h2>
-          <Link to="/dashboard/requests" className="text-gold-500 text-sm hover:text-gold-400">
-            مشاهده همه
-          </Link>
-        </div>
-
-        {recentRequests.length === 0 ? (
-          <p className="text-dark-500 text-center py-8">درخواستی ثبت نشده</p>
-        ) : (
-          <div className="space-y-3">
-            {recentRequests.map((request) => (
-              <div key={request._id} className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{request.currency?.symbol}</span>
-                  <div>
-                    <p className="text-white font-medium">
-                      {request.type === 'buy' ? 'خرید' : 'فروش'} {request.amount} {request.currency?.nameFa}
-                    </p>
-                    <p className="text-dark-500 text-xs">
-                      {jalaliMoment(request.createdAt).format('jYYYY/jMM/jDD - HH:mm')}
-                    </p>
-                  </div>
-                </div>
-                {getStatusBadge(request.status)}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 };

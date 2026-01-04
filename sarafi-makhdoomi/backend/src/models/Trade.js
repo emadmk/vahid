@@ -115,17 +115,54 @@ const tradeSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: [
-      'pending',           // در انتظار تایید
-      'approved',          // تایید شده
-      'processing',        // در حال پردازش
-      'awaiting_currency', // در انتظار وصول ارز
-      'awaiting_rial',     // در انتظار وصول ریال
-      'completed',         // تکمیل شده
-      'cancelled',         // لغو شده
-      'disputed'           // اختلاف
+      'pending',              // در انتظار تایید صراف
+      'approved',             // تایید صراف
+      'pending_collection',   // در انتظار وصول
+      'pending_accounting',   // در انتظار تایید حسابداری
+      'processing',           // در حال پردازش
+      'awaiting_currency',    // در انتظار وصول ارز
+      'awaiting_rial',        // در انتظار وصول ریال
+      'completed',            // تکمیل شده
+      'cancelled',            // لغو شده
+      'rejected',             // رد شده
+      'expired',              // منقضی شده
+      'disputed'              // اختلاف
     ],
     default: 'pending'
   },
+
+  // نوع معامله (فوری یا حرفه‌ای)
+  tradeType: {
+    type: String,
+    enum: ['instant', 'pro'],
+    default: 'instant'
+  },
+
+  // تاریخ انقضای سفارش
+  validUntil: {
+    type: Date
+  },
+
+  // وضعیت کیف پول
+  walletStatus: {
+    status: {
+      type: String,
+      enum: ['ok', 'mixed', 'insufficient']
+    },
+    message: String,
+    paymentMethod: String,
+    cashAmount: Number,
+    creditAmount: Number,
+    shortage: Number
+  },
+
+  // دلیل رد
+  rejectionReason: String,
+  rejectedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  rejectedAt: Date,
 
   // مرحله تصمیم صراف
   sarafiDecision: {

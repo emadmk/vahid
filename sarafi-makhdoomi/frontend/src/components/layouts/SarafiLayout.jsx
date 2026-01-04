@@ -17,21 +17,18 @@ const SarafiLayout = () => {
 
   const menuItems = [
     { path: '/sarafi', label: 'داشبورد', icon: FaHome },
-    { path: '/sarafi/trading', label: 'پنل معاملاتی', icon: FaChartLine, isNew: true },
-    { path: '/sarafi/trades', label: 'معاملات', icon: FaExchangeAlt },
-    { path: '/sarafi/order-book', label: 'دفتر سفارشات', icon: FaBook },
-    { path: '/sarafi/rates', label: 'مدیریت نرخ‌ها', icon: FaDollarSign, isNew: true },
-    { path: '/sarafi/settlements', label: 'پنل وصول', icon: FaHandshake, isNew: true },
+    { path: '/sarafi/instant-trade', label: 'خرید و فروش فوری', icon: FaExchangeAlt },
+    { path: '/sarafi/pro-trade', label: 'خرید و فروش حرفه‌ای', icon: FaChartLine },
+    { path: '/sarafi/rates', label: 'مدیریت نرخ‌ها', icon: FaDollarSign },
+    { path: '/sarafi/settlements', label: 'پنل وصول', icon: FaHandshake },
     { path: '/sarafi/spreads', label: 'مدیریت اسپرد', icon: FaPercent },
     { path: '/sarafi/receipts', label: 'رسیدها', icon: FaReceipt },
     { path: '/sarafi/accountant', label: 'حسابداری', icon: FaCalculator },
-    { path: '/sarafi/currency-collection', label: 'وصول ارزی', icon: FaCoins },
-    { path: '/sarafi/rial-collection', label: 'وصول ریالی', icon: FaMoneyBillWave },
     { path: '/sarafi/customer-wallets', label: 'کیف پول مشتریان', icon: FaWallet },
     { path: '/sarafi/customers', label: 'مشتریان', icon: FaUsers },
-    { path: '/sarafi/groups', label: 'گروه‌های صراف', icon: FaUserFriends, isNew: true },
+    { path: '/sarafi/groups', label: 'گروه‌های صراف', icon: FaUserFriends },
     { path: '/sarafi/staff', label: 'کارکنان', icon: FaUserTie },
-    { path: '/sarafi/messages', label: 'پیام‌ها', icon: FaComments, isNew: true },
+    { path: '/sarafi/messages', label: 'پیام‌ها', icon: FaComments },
     { path: '/sarafi/audit-logs', label: 'لاگ عملیات', icon: FaHistory },
     { path: '/sarafi/profile', label: 'پروفایل', icon: FaUser }
   ];

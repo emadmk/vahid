@@ -58,17 +58,49 @@ const SettlementPanel = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
+      // وضعیت‌های مربوط به هر تب
+      const statusMap = {
+        pending: 'pending_collection',
+        completed: 'completed',
+        overdue: 'pending_collection' // نمایش موارد عقب‌افتاده
+      };
+
       const [settlementsRes, statsRes] = await Promise.all([
-        api.get('/settlements/list', {
+        api.get('/trades/sarafi/instant-trades', {
           params: {
-            status: activeTab,
+            status: statusMap[activeTab],
             type: settlementType !== 'all' ? settlementType : undefined
           }
         }).catch(() => ({ data: { data: [] } })),
-        api.get('/settlements/stats').catch(() => ({ data: { data: {} } }))
+        api.get('/trades/sarafi/settlement-stats').catch(() => ({ data: { data: {} } }))
       ]);
 
-      setSettlements(settlementsRes.data.data || []);
+      // تبدیل داده‌های معاملات به فرمت مناسب برای SettlementPanel
+      const trades = settlementsRes.data.trades || settlementsRes.data.data || [];
+      const formattedSettlements = trades.map(trade => ({
+        _id: trade._id,
+        tradeNumber: trade.tradeNumber,
+        customer: trade.customer,
+        type: trade.type === 'sell' ? 'currency' : 'rial', // فروش ارز = وصول ارزی، خرید ارز = وصول ریالی
+        amount: trade.type === 'sell' ? trade.amount : trade.totalAmount,
+        currency: trade.currency,
+        dueDate: trade.validUntil || trade.createdAt,
+        status: activeTab === 'overdue' && new Date(trade.validUntil || trade.createdAt) < new Date(Date.now() - 24 * 60 * 60 * 1000)
+          ? 'overdue'
+          : (trade.status === 'completed' ? 'completed' : 'pending'),
+        trade: trade
+      }));
+
+      // فیلتر موارد عقب‌افتاده
+      if (activeTab === 'overdue') {
+        const overdue = formattedSettlements.filter(s =>
+          new Date(s.dueDate) < new Date(Date.now() - 24 * 60 * 60 * 1000)
+        );
+        setSettlements(overdue);
+      } else {
+        setSettlements(formattedSettlements);
+      }
+
       setStats(statsRes.data.data || {});
     } catch (error) {
       console.error(error);
@@ -205,12 +237,13 @@ const SettlementPanel = () => {
 
       await api.post('/receipts', receiptData);
 
-      // ثبت تسویه
-      await api.post(`/settlements/${selectedSettlement._id}/confirm`, {
+      // تایید وصول و ارسال به حسابداری
+      await api.put(`/trades/instant/${selectedSettlement._id}/confirm-collection`, {
         amount: parseFloat(receiptForm.amount),
         paymentMethod: receiptForm.paymentMethod,
         referenceNumber: receiptForm.bankTrackingNumber,
         notes: receiptForm.notes,
+        collectionType: receiptForm.type,
         receiptAttached: true
       });
 

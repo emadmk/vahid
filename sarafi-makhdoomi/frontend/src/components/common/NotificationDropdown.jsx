@@ -125,9 +125,12 @@ const NotificationDropdown = ({ basePath = '/dashboard' }) => {
       markAsRead(notification._id);
     }
 
-    // Navigate based on notification type/link
-    if (notification.link) {
-      navigate(notification.link);
+    // Navigate based on notification type/link/actionUrl
+    const targetUrl = notification.link || notification.actionUrl;
+    if (targetUrl) {
+      // اگر مسیر با / شروع نشده، با basePath ترکیب کن
+      const fullPath = targetUrl.startsWith('/') ? targetUrl : `${basePath}/${targetUrl}`;
+      navigate(fullPath);
       setIsOpen(false);
     }
   };

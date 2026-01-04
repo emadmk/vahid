@@ -1,12 +1,226 @@
 const Trade = require('../models/Trade');
 const MarketOffer = require('../models/MarketOffer');
 const User = require('../models/User');
+const Currency = require('../models/Currency');
 const walletService = require('./walletService');
 const commissionService = require('./commissionService');
 const scoringService = require('./scoringService');
+const notificationService = require('./notificationService');
 const mongoose = require('mongoose');
 
 class TradeService {
+  /**
+   * ایجاد معامله فوری (Instant Trade)
+   */
+  async createInstantTrade(tradeData) {
+    const {
+      currencyId,
+      side,
+      amount,
+      rate,
+      validUntil,
+      notes,
+      paymentMethod,
+      walletStatus,
+      customerId,
+      sarafiId,
+      createdBy
+    } = tradeData;
+
+    const totalAmount = amount * rate;
+
+    // دریافت ارز
+    const currency = await Currency.findById(currencyId);
+    if (!currency) {
+      throw new Error('ارز یافت نشد');
+    }
+
+    // محاسبه کارمزد
+    const commission = await commissionService.calculateCommission(
+      { currency: currencyId, type: side, amount: totalAmount, sarafiId },
+      customerId
+    );
+
+    const netAmount = side === 'buy'
+      ? totalAmount + commission.amount
+      : totalAmount - commission.amount;
+
+    const trade = await Trade.create({
+      tradeNumber: Trade.generateTradeNumber(),
+      type: side,
+      tradeType: 'instant',
+      currency: currencyId,
+      amount,
+      rate,
+      totalAmount,
+      commission: {
+        amount: commission.amount,
+        rate: commission.rate,
+        type: commission.type
+      },
+      netAmount,
+      customer: customerId,
+      sarafi: sarafiId,
+      validUntil: validUntil ? new Date(validUntil) : null,
+      walletStatus,
+      paymentMethod: paymentMethod || 'cash_wallet',
+      status: 'pending',
+      notes: notes ? [{ content: notes, addedBy: createdBy, addedAt: new Date() }] : []
+    });
+
+    // ارسال نوتیفیکیشن به صراف
+    await notificationService.create({
+      recipient: sarafiId,
+      type: 'trade_new',
+      title: 'معامله فوری جدید',
+      message: `یک درخواست ${side === 'buy' ? 'خرید' : 'فروش'} ${amount} ${currency.code} ثبت شد`,
+      relatedModel: 'Trade',
+      relatedId: trade._id,
+      severity: 'info',
+      actionUrl: '/sarafi/instant-trade'
+    });
+
+    return trade.populate(['currency', 'customer']);
+  }
+
+  /**
+   * دریافت معاملات فوری
+   */
+  async getInstantTrades(options = {}) {
+    const { customerId, sarafiId, status, limit = 20, skip = 0 } = options;
+
+    const query = { tradeType: 'instant' };
+    if (customerId) query.customer = customerId;
+    if (sarafiId) query.sarafi = sarafiId;
+    if (status) query.status = status;
+
+    const trades = await Trade.find(query)
+      .populate('currency', 'code nameFa symbol')
+      .populate('customer', 'firstName lastName phone')
+      .populate('sarafi', 'firstName lastName sarafiInfo.businessName')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Trade.countDocuments(query);
+
+    return { trades, total };
+  }
+
+  /**
+   * تایید معامله فوری توسط صراف
+   */
+  async approveInstantTrade(tradeId, sarafiId) {
+    const trade = await Trade.findById(tradeId).populate('currency');
+
+    if (!trade) {
+      throw new Error('معامله یافت نشد');
+    }
+
+    if (trade.sarafi.toString() !== sarafiId.toString()) {
+      throw new Error('شما مجاز به تایید این معامله نیستید');
+    }
+
+    if (trade.status !== 'pending') {
+      throw new Error('این معامله قبلا پردازش شده است');
+    }
+
+    trade.status = 'approved';
+    trade.approvedAt = new Date();
+
+    // اگر فروش ارز است، به پنل وصول برود
+    if (trade.type === 'sell') {
+      trade.status = 'pending_collection';
+    }
+
+    await trade.save();
+
+    // ارسال نوتیفیکیشن به کاربر
+    await notificationService.create({
+      recipient: trade.customer,
+      type: 'trade_approved',
+      title: 'معامله تایید شد',
+      message: `معامله ${trade.tradeNumber} توسط صراف تایید شد`,
+      relatedModel: 'Trade',
+      relatedId: trade._id,
+      severity: 'info',
+      actionUrl: '/dashboard/instant-trade'
+    });
+
+    return trade;
+  }
+
+  /**
+   * رد معامله فوری توسط صراف
+   */
+  async rejectInstantTrade(tradeId, sarafiId, reason) {
+    const trade = await Trade.findById(tradeId).populate('currency');
+
+    if (!trade) {
+      throw new Error('معامله یافت نشد');
+    }
+
+    if (trade.sarafi.toString() !== sarafiId.toString()) {
+      throw new Error('شما مجاز به رد این معامله نیستید');
+    }
+
+    if (trade.status !== 'pending') {
+      throw new Error('این معامله قبلا پردازش شده است');
+    }
+
+    trade.status = 'rejected';
+    trade.rejectionReason = reason;
+    trade.rejectedBy = sarafiId;
+    trade.rejectedAt = new Date();
+
+    await trade.save();
+
+    // ارسال نوتیفیکیشن به کاربر
+    await notificationService.create({
+      recipient: trade.customer,
+      type: 'trade_rejected',
+      title: 'معامله رد شد',
+      message: `معامله ${trade.tradeNumber} رد شد. دلیل: ${reason}`,
+      relatedModel: 'Trade',
+      relatedId: trade._id,
+      severity: 'warning',
+      actionUrl: '/dashboard/instant-trade'
+    });
+
+    return trade;
+  }
+
+  /**
+   * لغو معامله فوری توسط کاربر
+   */
+  async cancelInstantTrade(tradeId, userId) {
+    const trade = await Trade.findById(tradeId);
+
+    if (!trade) {
+      throw new Error('معامله یافت نشد');
+    }
+
+    if (trade.customer.toString() !== userId.toString()) {
+      throw new Error('شما مجاز به لغو این معامله نیستید');
+    }
+
+    if (trade.status !== 'pending') {
+      throw new Error('فقط معاملات در انتظار قابل لغو هستند');
+    }
+
+    trade.status = 'cancelled';
+    trade.cancelledAt = new Date();
+    trade.cancellation = {
+      reason: 'لغو توسط کاربر',
+      cancelledBy: userId,
+      penaltyApplied: false
+    };
+
+    await trade.save();
+
+    return trade;
+  }
+
   /**
    * ایجاد معامله جدید (از درخواست مشتری)
    */

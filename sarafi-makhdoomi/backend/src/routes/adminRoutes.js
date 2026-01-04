@@ -238,6 +238,91 @@ router.post('/wallets/credit/decrease', async (req, res) => {
   }
 });
 
+// ========== مدیریت معاملات فوری ==========
+
+// دریافت همه معاملات فوری
+router.get('/instant-trades', async (req, res) => {
+  try {
+    const { status, type, sarafi, search, page = 1, limit = 20 } = req.query;
+    const query = { tradeType: 'instant' };
+
+    if (status) query.status = status;
+    if (type) query.type = type;
+    if (sarafi) query.sarafi = sarafi;
+
+    const skip = (page - 1) * limit;
+
+    let trades = await Trade.find(query)
+      .populate('customer', 'firstName lastName phone')
+      .populate('sarafi', 'firstName lastName phone sarafiName')
+      .populate('currency', 'code name nameFa')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // فیلتر جستجو
+    if (search) {
+      trades = trades.filter(t =>
+        t.tradeNumber?.includes(search) ||
+        t.customer?.firstName?.includes(search) ||
+        t.customer?.lastName?.includes(search) ||
+        t.customer?.phone?.includes(search)
+      );
+    }
+
+    const total = await Trade.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: trades,
+      total,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// آمار معاملات فوری
+router.get('/instant-trades/stats', async (req, res) => {
+  try {
+    const stats = await Trade.aggregate([
+      { $match: { tradeType: 'instant' } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$totalAmount' }
+        }
+      }
+    ]);
+
+    const result = {
+      total: 0,
+      pending: 0,
+      approved: 0,
+      pending_collection: 0,
+      pending_accounting: 0,
+      completed: 0,
+      rejected: 0,
+      cancelled: 0,
+      totalVolume: 0
+    };
+
+    stats.forEach(s => {
+      result.total += s.count;
+      result.totalVolume += s.totalAmount || 0;
+      if (result[s._id] !== undefined) {
+        result[s._id] = s.count;
+      }
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 // ========== مدیریت معاملات ==========
 
 // دریافت همه معاملات
