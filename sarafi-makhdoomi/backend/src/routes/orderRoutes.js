@@ -426,4 +426,50 @@ router.get('/sarafi/stats', authorize('sarafi'), async (req, res) => {
   }
 });
 
+// آمار سفارش‌های یک کاربر خاص
+router.get('/stats/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // اگه صراف هست، فقط آمار مشتریانش رو ببینه
+    // اگه کاربر عادی هست، فقط آمار خودش رو ببینه
+    const query = req.user.role === 'sarafi'
+      ? { customer: userId, sarafi: req.user._id }
+      : { customer: req.user._id };
+
+    const stats = await Order.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' }
+        }
+      }
+    ]);
+
+    const result = {
+      total: 0,
+      open: 0,
+      filled: 0,
+      cancelled: 0,
+      pending: 0,
+      totalVolume: 0
+    };
+
+    stats.forEach(s => {
+      result.total += s.count;
+      result.totalVolume += s.totalAmount || 0;
+      if (s._id === 'open' || s._id === 'partially_filled') result.open += s.count;
+      if (s._id === 'filled') result.filled += s.count;
+      if (s._id === 'cancelled' || s._id === 'rejected') result.cancelled += s.count;
+      if (s._id === 'pending' || s._id === 'pending_credit') result.pending += s.count;
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
