@@ -1,10 +1,11 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import {
-  FaHome, FaUsers, FaExchangeAlt, FaGlobe, FaUser, FaSignOutAlt,
-  FaBars, FaTimes, FaBell, FaCalculator, FaCoins, FaMoneyBillWave, FaStore, FaWallet,
-  FaPercent, FaBook, FaUserTie, FaHistory, FaReceipt, FaChartLine, FaComments,
-  FaHandshake, FaLayerGroup, FaDollarSign, FaUserFriends
+  FaHome, FaUsers, FaExchangeAlt, FaUser, FaSignOutAlt,
+  FaBars, FaTimes, FaCalculator, FaCoins, FaWallet,
+  FaPercent, FaUserTie, FaHistory, FaReceipt, FaChartLine, FaComments,
+  FaHandshake, FaDollarSign, FaUserFriends, FaChevronDown, FaChevronLeft,
+  FaBriefcase, FaChartPie, FaClipboardList, FaCog, FaStore
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
 import NotificationDropdown from '../common/NotificationDropdown';
@@ -14,6 +15,7 @@ import api from '../../services/api';
 const SarafiLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [pendingGroupTrades, setPendingGroupTrades] = useState(0);
+  const [expandedSections, setExpandedSections] = useState(['trading', 'financial', 'settlement', 'customers', 'system']);
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -33,29 +35,92 @@ const SarafiLayout = () => {
       }
     };
     fetchGroupTradesCount();
-    // بروزرسانی هر 30 ثانیه
     const interval = setInterval(fetchGroupTradesCount, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const menuItems = [
-    { path: '/sarafi', label: 'داشبورد', icon: FaHome },
-    { path: '/sarafi/instant-trade', label: 'خرید و فروش فوری', icon: FaExchangeAlt },
-    { path: '/sarafi/pro-trade', label: 'خرید و فروش حرفه‌ای', icon: FaChartLine },
-    { path: '/sarafi/rates', label: 'مدیریت نرخ‌ها', icon: FaDollarSign },
-    { path: '/sarafi/settlements', label: 'پنل وصول', icon: FaHandshake },
-    { path: '/sarafi/spreads', label: 'مدیریت اسپرد', icon: FaPercent },
-    { path: '/sarafi/receipts', label: 'رسیدها', icon: FaReceipt },
-    { path: '/sarafi/accountant', label: 'حسابداری', icon: FaCalculator },
-    { path: '/sarafi/profit-loss', label: 'سود و زیان', icon: FaCoins, isNew: true },
-    { path: '/sarafi/customer-wallets', label: 'کیف پول مشتریان', icon: FaWallet },
-    { path: '/sarafi/customers', label: 'مشتریان', icon: FaUsers },
-    { path: '/sarafi/groups', label: 'گروه‌های صراف', icon: FaUserFriends, badge: pendingGroupTrades },
-    { path: '/sarafi/staff', label: 'کارکنان', icon: FaUserTie },
-    { path: '/sarafi/messages', label: 'پیام‌ها', icon: FaComments },
-    { path: '/sarafi/audit-logs', label: 'لاگ عملیات', icon: FaHistory },
-    { path: '/sarafi/profile', label: 'پروفایل', icon: FaUser }
+  // ساختار منو با دسته‌بندی
+  const menuSections = [
+    {
+      id: 'trading',
+      title: 'معاملات',
+      icon: FaBriefcase,
+      color: 'from-blue-500 to-blue-600',
+      textColor: 'text-blue-400',
+      bgColor: 'bg-blue-500/10',
+      items: [
+        { path: '/sarafi', label: 'داشبورد', icon: FaHome },
+        { path: '/sarafi/instant-trade', label: 'خرید و فروش فوری', icon: FaExchangeAlt },
+        { path: '/sarafi/pro-trade', label: 'خرید و فروش حرفه‌ای', icon: FaChartLine },
+        { path: '/sarafi/groups', label: 'گروه‌های صراف', icon: FaUserFriends, badge: pendingGroupTrades }
+      ]
+    },
+    {
+      id: 'financial',
+      title: 'مدیریت مالی',
+      icon: FaChartPie,
+      color: 'from-emerald-500 to-emerald-600',
+      textColor: 'text-emerald-400',
+      bgColor: 'bg-emerald-500/10',
+      items: [
+        { path: '/sarafi/rates', label: 'مدیریت نرخ‌ها', icon: FaDollarSign },
+        { path: '/sarafi/spreads', label: 'مدیریت اسپرد', icon: FaPercent },
+        { path: '/sarafi/profit-loss', label: 'سود و زیان', icon: FaCoins, isNew: true }
+      ]
+    },
+    {
+      id: 'settlement',
+      title: 'تسویه و حسابداری',
+      icon: FaClipboardList,
+      color: 'from-amber-500 to-amber-600',
+      textColor: 'text-amber-400',
+      bgColor: 'bg-amber-500/10',
+      items: [
+        { path: '/sarafi/settlements', label: 'پنل وصول', icon: FaHandshake },
+        { path: '/sarafi/receipts', label: 'رسیدها', icon: FaReceipt },
+        { path: '/sarafi/accountant', label: 'حسابداری', icon: FaCalculator }
+      ]
+    },
+    {
+      id: 'customers',
+      title: 'مشتریان',
+      icon: FaUsers,
+      color: 'from-purple-500 to-purple-600',
+      textColor: 'text-purple-400',
+      bgColor: 'bg-purple-500/10',
+      items: [
+        { path: '/sarafi/customers', label: 'مشتریان', icon: FaUsers },
+        { path: '/sarafi/customer-wallets', label: 'کیف پول مشتریان', icon: FaWallet }
+      ]
+    },
+    {
+      id: 'system',
+      title: 'سیستم',
+      icon: FaCog,
+      color: 'from-slate-500 to-slate-600',
+      textColor: 'text-slate-400',
+      bgColor: 'bg-slate-500/10',
+      items: [
+        { path: '/sarafi/messages', label: 'پیام‌ها', icon: FaComments },
+        { path: '/sarafi/audit-logs', label: 'لاگ عملیات', icon: FaHistory },
+        { path: '/sarafi/staff', label: 'کارکنان', icon: FaUserTie },
+        { path: '/sarafi/profile', label: 'پروفایل', icon: FaUser }
+      ]
+    }
   ];
+
+  const toggleSection = (sectionId) => {
+    setExpandedSections(prev =>
+      prev.includes(sectionId)
+        ? prev.filter(id => id !== sectionId)
+        : [...prev, sectionId]
+    );
+  };
+
+  const isActive = (path) => location.pathname === path;
+
+  const isSectionActive = (section) =>
+    section.items.some(item => location.pathname === item.path);
 
   const handleLogout = () => {
     logout();
@@ -67,61 +132,105 @@ const SarafiLayout = () => {
       {/* سایدبار */}
       <aside
         data-tour="sidebar"
-        className={`fixed lg:static inset-y-0 right-0 z-50 w-64 bg-dark-900 border-l border-dark-800 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}
+        className={`fixed lg:static inset-y-0 right-0 z-50 w-72 bg-gradient-to-b from-dark-900 via-dark-900 to-dark-950 border-l border-dark-800/50 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}
       >
         <div className="flex flex-col h-full">
           {/* هدر سایدبار */}
-          <div className="p-6 border-b border-dark-800">
-            <Link to="/sarafi" className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center">
-                <span className="text-dark-900 font-bold text-xl">ص</span>
+          <div className="p-5 border-b border-dark-800/50">
+            <Link to="/sarafi" className="flex items-center gap-3 group">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-400 via-gold-500 to-gold-600 flex items-center justify-center shadow-lg shadow-gold-500/20 group-hover:shadow-gold-500/40 transition-shadow">
+                <FaStore className="text-dark-900 text-xl" />
               </div>
               <div>
-                <h1 className="text-gold-500 font-bold">پنل صراف</h1>
+                <h1 className="text-gold-500 font-bold text-lg">پنل صراف</h1>
                 <p className="text-dark-500 text-xs">صرافی گلدن 2026</p>
               </div>
             </Link>
           </div>
 
-          {/* منو */}
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            {menuItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`sidebar-item ${location.pathname === item.path ? 'active' : ''}`}
-              >
-                <item.icon className="w-5 h-5" />
-                <span>{item.label}</span>
-                {item.badge > 0 && (
-                  <span className="mr-auto text-xs bg-red-500 text-white px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                    {item.badge}
-                  </span>
-                )}
-                {item.isNew && (
-                  <span className="mr-auto text-xs bg-green-500 text-white px-1.5 py-0.5 rounded">جدید</span>
-                )}
-              </Link>
-            ))}
+          {/* منو با دسته‌بندی */}
+          <nav className="flex-1 p-3 overflow-y-auto custom-scrollbar">
+            <div className="space-y-3">
+              {menuSections.map((section, sectionIndex) => (
+                <div key={section.id} className="relative">
+                  {/* تیتر بخش */}
+                  <button
+                    onClick={() => toggleSection(section.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group
+                      ${isSectionActive(section) ? section.bgColor : 'hover:bg-dark-800/50'}
+                    `}
+                  >
+                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${section.color} flex items-center justify-center shadow-md`}>
+                      <section.icon className="text-white text-sm" />
+                    </div>
+                    <span className={`font-medium text-sm ${isSectionActive(section) ? section.textColor : 'text-dark-300 group-hover:text-white'}`}>
+                      {section.title}
+                    </span>
+                    <FaChevronDown
+                      className={`mr-auto text-dark-500 text-xs transition-transform duration-200 ${expandedSections.includes(section.id) ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  {/* آیتم‌های بخش */}
+                  <div className={`overflow-hidden transition-all duration-300 ${expandedSections.includes(section.id) ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="mt-1 mr-4 pr-3 border-r border-dark-800/50 space-y-0.5">
+                      {section.items.map((item) => (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200
+                            ${isActive(item.path)
+                              ? `bg-gradient-to-l ${section.color} text-white shadow-md`
+                              : 'text-dark-400 hover:text-white hover:bg-dark-800/50'
+                            }
+                          `}
+                        >
+                          <item.icon className={`w-4 h-4 ${isActive(item.path) ? 'text-white' : ''}`} />
+                          <span>{item.label}</span>
+                          {item.badge > 0 && (
+                            <span className="mr-auto text-xs bg-red-500 text-white px-2 py-0.5 rounded-full min-w-[22px] text-center font-medium animate-pulse">
+                              {item.badge}
+                            </span>
+                          )}
+                          {item.isNew && (
+                            <span className="mr-auto text-[10px] bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded-full font-medium">
+                              جدید
+                            </span>
+                          )}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* خط جداکننده */}
+                  {sectionIndex < menuSections.length - 1 && (
+                    <div className="mt-3 mx-3 border-b border-dark-800/30"></div>
+                  )}
+                </div>
+              ))}
+            </div>
           </nav>
 
-          {/* پروفایل */}
-          <div className="p-4 border-t border-dark-800">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center text-gold-500">
+          {/* پروفایل کاربر */}
+          <div className="p-4 border-t border-dark-800/50 bg-dark-900/50">
+            <div className="flex items-center gap-3 mb-3 p-2 rounded-xl bg-dark-800/30">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-dark-900 font-bold shadow-lg shadow-gold-500/20">
                 {user?.firstName?.[0]}
               </div>
-              <div>
-                <p className="text-white font-medium text-sm">{user?.firstName} {user?.lastName}</p>
-                <p className="text-dark-500 text-xs">صراف</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-medium text-sm truncate">{user?.firstName} {user?.lastName}</p>
+                <p className="text-dark-500 text-xs flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  صراف فعال
+                </p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-4 py-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-red-400 hover:text-white hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 transition-all duration-200"
             >
               <FaSignOutAlt />
-              <span>خروج</span>
+              <span className="text-sm font-medium">خروج از حساب</span>
             </button>
           </div>
         </div>
@@ -130,9 +239,9 @@ const SarafiLayout = () => {
       {/* محتوای اصلی */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* هدر */}
-        <header className="h-16 bg-dark-900/80 backdrop-blur-sm border-b border-dark-800 flex items-center justify-between px-6 sticky top-0 z-40">
+        <header className="h-16 bg-dark-900/80 backdrop-blur-xl border-b border-dark-800/50 flex items-center justify-between px-6 sticky top-0 z-40">
           <button
-            className="lg:hidden text-gold-500 text-xl"
+            className="lg:hidden text-gold-500 text-xl p-2 rounded-lg hover:bg-dark-800 transition-colors"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
             {sidebarOpen ? <FaTimes /> : <FaBars />}
@@ -156,10 +265,27 @@ const SarafiLayout = () => {
       {/* اورلی موبایل */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* استایل اسکرول سفارشی */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(212, 175, 55, 0.3);
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(212, 175, 55, 0.5);
+        }
+      `}</style>
     </div>
   );
 };
