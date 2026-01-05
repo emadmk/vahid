@@ -340,16 +340,16 @@ const Groups = () => {
                 </button>
                 {(group.isOwner || group.isAdmin) && (
                   <button
-                    onClick={() => handleToggleSharing(group._id, group.customerSharing?.isActive)}
+                    onClick={() => handleToggleSharing(group._id, group.customerSharing?.mySharing)}
                     disabled={togglingSharing === group._id}
                     className={`btn-dark text-sm py-2 px-3 flex items-center gap-1 ${
-                      group.customerSharing?.isActive ? 'text-green-400' : 'text-dark-400'
+                      group.customerSharing?.mySharing ? 'text-green-400' : 'text-dark-400'
                     }`}
-                    title={group.customerSharing?.isActive ? 'اشتراک‌گذاری فعال' : 'اشتراک‌گذاری غیرفعال'}
+                    title={group.customerSharing?.mySharing ? 'اشتراک‌گذاری من فعال' : 'اشتراک‌گذاری من غیرفعال'}
                   >
                     {togglingSharing === group._id ? (
                       <FaSpinner className="animate-spin" />
-                    ) : group.customerSharing?.isActive ? (
+                    ) : group.customerSharing?.mySharing ? (
                       <FaToggleOn />
                     ) : (
                       <FaToggleOff />

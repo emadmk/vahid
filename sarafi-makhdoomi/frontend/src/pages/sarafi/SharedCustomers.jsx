@@ -48,18 +48,32 @@ const SharedCustomers = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [groupRes, availableRes, myRes, customersRes] = await Promise.all([
-        api.get(`/sarafi-groups/${groupId}`),
+      // اول اطلاعات اصلی را می‌گیریم
+      const [availableRes, myRes, customersRes] = await Promise.all([
         api.get(`/sarafi-groups/${groupId}/available-customers`),
         api.get(`/sarafi-groups/${groupId}/my-shared-customers`),
-        api.get('/customers')
+        api.get('/sarafi/customers')
       ]);
 
-      setGroup(groupRes.data.data);
       setAvailableCustomers(availableRes.data.data || []);
       setMyCustomers(myRes.data.data || []);
       setAllMyCustomers(customersRes.data.data || []);
+
+      // اطلاعات گروه را جداگانه می‌گیریم چون ممکن است خطا بدهد
+      try {
+        const groupRes = await api.get(`/sarafi-groups/${groupId}`);
+        setGroup(groupRes.data.data);
+      } catch (groupErr) {
+        console.warn('Could not fetch group details:', groupErr);
+        // از لیست گروه‌ها استفاده می‌کنیم
+        const groupsRes = await api.get('/sarafi-groups/my-groups');
+        const foundGroup = groupsRes.data.data?.find(g => g._id === groupId);
+        if (foundGroup) {
+          setGroup(foundGroup);
+        }
+      }
     } catch (e) {
+      console.error('Fetch error:', e);
       toast.error('خطا در دریافت اطلاعات');
     } finally {
       setLoading(false);

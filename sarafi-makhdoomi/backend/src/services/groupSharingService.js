@@ -21,14 +21,24 @@ class GroupSharingService {
     }
 
     // بررسی عضویت
-    const isOwner = group.owner.toString() === sarafiId.toString();
+    const ownerId = group.owner._id ? group.owner._id.toString() : group.owner.toString();
+    const isOwner = ownerId === sarafiId.toString();
     if (!isOwner && !group.isMember(sarafiId)) {
       throw new Error('شما عضو این گروه نیستید');
     }
 
-    // بررسی فعال بودن اشتراک‌گذاری در سطح گروه
-    if (isEnabled && !group.customerSharing?.enabled) {
-      throw new Error('اشتراک‌گذاری مشتری در این گروه فعال نیست');
+    // اگر مالک اشتراک‌گذاری را فعال می‌کند، سطح گروه را هم فعال کن
+    if (isEnabled && isOwner && !group.customerSharing?.enabled) {
+      if (!group.customerSharing) {
+        group.customerSharing = {};
+      }
+      group.customerSharing.enabled = true;
+      group.customerSharing.activationMode = settings.activationMode || 'manual';
+    }
+
+    // بررسی فعال بودن اشتراک‌گذاری در سطح گروه (فقط برای اعضای غیر مالک)
+    if (isEnabled && !isOwner && !group.customerSharing?.enabled) {
+      throw new Error('اشتراک‌گذاری مشتری در این گروه فعال نیست. لطفاً با مالک گروه تماس بگیرید.');
     }
 
     if (isOwner) {
@@ -99,7 +109,8 @@ class GroupSharingService {
     }
 
     // بررسی عضویت
-    const isOwner = group.owner.toString() === sarafiId.toString();
+    const ownerId = group.owner._id ? group.owner._id.toString() : group.owner.toString();
+    const isOwner = ownerId === sarafiId.toString();
     if (!isOwner && !group.isMember(sarafiId)) {
       throw new Error('شما عضو این گروه نیستید');
     }
@@ -233,7 +244,8 @@ class GroupSharingService {
     }
 
     // بررسی عضویت
-    const isOwner = group.owner.toString() === sarafiId.toString();
+    const ownerId = group.owner._id ? group.owner._id.toString() : group.owner.toString();
+    const isOwner = ownerId === sarafiId.toString();
     if (!isOwner && !group.isMember(sarafiId)) {
       throw new Error('شما عضو این گروه نیستید');
     }
@@ -597,7 +609,8 @@ class GroupSharingService {
       throw new Error('گروه یافت نشد');
     }
 
-    const isOwner = group.owner.toString() === sarafiId.toString();
+    const ownerId = group.owner._id ? group.owner._id.toString() : group.owner.toString();
+    const isOwner = ownerId === sarafiId.toString();
     if (!isOwner && !group.isMember(sarafiId)) {
       throw new Error('شما عضو این گروه نیستید');
     }
@@ -624,7 +637,8 @@ class GroupSharingService {
       throw new Error('گروه یافت نشد');
     }
 
-    if (group.owner.toString() !== sarafiId.toString()) {
+    const ownerId = group.owner._id ? group.owner._id.toString() : group.owner.toString();
+    if (ownerId !== sarafiId.toString()) {
       throw new Error('فقط مالک گروه می‌تواند تنظیمات را تغییر دهد');
     }
 

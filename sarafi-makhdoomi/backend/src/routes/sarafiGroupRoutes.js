@@ -20,12 +20,17 @@ router.get('/my-groups', authorize('sarafi', 'admin'), async (req, res) => {
 
     // پردازش گروه‌ها با رعایت حریم خصوصی
     const processedGroups = groups.map(group => {
-      const isOwner = group.owner._id.toString() === req.user._id.toString();
+      const ownerId = group.owner._id ? group.owner._id.toString() : group.owner.toString();
+      const isOwner = ownerId === req.user._id.toString();
       const isAdmin = group.isAdmin(req.user._id);
 
       // بررسی وضعیت اشتراک‌گذاری مشتری
-      const member = group.members.find(m => m.user.toString() === req.user._id.toString());
+      const member = group.members.find(m => {
+        const memberId = m.user._id ? m.user._id.toString() : m.user.toString();
+        return memberId === req.user._id.toString();
+      });
       const isSharingActive = group.isMemberSharingActive ? group.isMemberSharingActive(req.user._id) : false;
+      const mySharing = member?.customerSharing?.isSharing || false;
 
       return {
         _id: group._id,
@@ -40,7 +45,7 @@ router.get('/my-groups', authorize('sarafi', 'admin'), async (req, res) => {
         customerSharing: {
           groupEnabled: group.customerSharing?.enabled || false,
           isActive: isSharingActive,
-          mySharing: member?.customerSharing?.isSharing || false,
+          mySharing: mySharing,
           activationMode: group.customerSharing?.activationMode || 'manual'
         },
         createdAt: group.createdAt
@@ -115,15 +120,16 @@ router.get('/:id', authorize('sarafi', 'admin'), async (req, res) => {
       });
     }
 
-    // بررسی دسترسی
-    if (!group.isMember(req.user._id) && group.owner.toString() !== req.user._id.toString()) {
+    // بررسی دسترسی - بعد از populate، owner یک آبجکت است
+    const ownerId = group.owner._id ? group.owner._id.toString() : group.owner.toString();
+    if (!group.isMember(req.user._id) && ownerId !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'شما دسترسی به این گروه ندارید'
       });
     }
 
-    const isOwner = group.owner._id.toString() === req.user._id.toString();
+    const isOwner = ownerId === req.user._id.toString();
     const isAdmin = group.isAdmin(req.user._id);
 
     // دریافت اعضا با رعایت حریم خصوصی
