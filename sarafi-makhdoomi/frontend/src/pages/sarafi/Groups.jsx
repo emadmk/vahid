@@ -87,13 +87,45 @@ const Groups = () => {
     }
   };
 
+  // کپی به کلیپ‌بورد با fallback برای HTTP
+  const copyToClipboardSafe = async (text) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (e) {
+      console.warn('Clipboard API failed, using fallback');
+    }
+
+    // Fallback برای HTTP
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  };
+
   const handleGenerateInviteCode = async (groupId) => {
     try {
       const res = await api.post(`/sarafi-groups/${groupId}/invite-code`);
       const inviteCode = res.data?.data?.inviteCode;
       if (inviteCode) {
-        await navigator.clipboard.writeText(inviteCode);
-        toast.success(`کد دعوت: ${inviteCode}`, { duration: 10000 });
+        const copied = await copyToClipboardSafe(inviteCode);
+        if (copied) {
+          toast.success(`کد دعوت کپی شد: ${inviteCode}`, { duration: 10000 });
+        } else {
+          toast.success(`کد دعوت: ${inviteCode}`, { duration: 15000 });
+        }
         fetchGroups();
       } else {
         toast.error('کد دعوت دریافت نشد');
