@@ -8,20 +8,19 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   const [tooltipStyle, setTooltipStyle] = useState({});
   const tooltipRef = useRef(null);
   const targetElementRef = useRef(null);
-  const originalStylesRef = useRef({});
 
   const step = steps[currentStep];
 
-  // تابع پاکسازی استایل‌ها
+  // تابع پاکسازی استایل‌ها - با removeProperty برای اطمینان کامل
   const cleanupElement = () => {
     const el = targetElementRef.current;
-    const styles = originalStylesRef.current;
     if (el) {
-      el.style.position = styles.position || '';
-      el.style.zIndex = styles.zIndex || '';
-      el.style.borderRadius = styles.borderRadius || '';
-      el.style.boxShadow = styles.boxShadow || '';
-      el.style.outline = styles.outline || '';
+      el.style.removeProperty('position');
+      el.style.removeProperty('z-index');
+      el.style.removeProperty('border-radius');
+      el.style.removeProperty('box-shadow');
+      el.style.removeProperty('outline');
+      targetElementRef.current = null;
     }
   };
 
@@ -34,16 +33,7 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
     const updatePosition = () => {
       const element = document.querySelector(step.target);
       if (element) {
-        // ذخیره استایل‌های اصلی
-        originalStylesRef.current = {
-          position: element.style.position,
-          zIndex: element.style.zIndex,
-          borderRadius: element.style.borderRadius,
-          boxShadow: element.style.boxShadow,
-          outline: element.style.outline
-        };
-
-        // ذخیره المنت برای اعمال استایل
+        // ذخیره المنت برای پاکسازی بعدی
         targetElementRef.current = element;
 
         // اضافه کردن استایل به المنت هایلایت شده - بدون تغییر background
@@ -172,11 +162,16 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   }, []);
 
   const handleNext = () => {
-    cleanupElement();
     if (currentStep < steps.length - 1) {
+      cleanupElement();
       setCurrentStep(currentStep + 1);
     } else {
-      onComplete();
+      // پایان تور - حتماً cleanup قبل از onComplete
+      cleanupElement();
+      // تاخیر کوتاه برای اطمینان از اعمال تغییرات DOM
+      requestAnimationFrame(() => {
+        onComplete();
+      });
     }
   };
 
@@ -189,7 +184,10 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
 
   const handleSkip = () => {
     cleanupElement();
-    onSkip();
+    // تاخیر کوتاه برای اطمینان از اعمال تغییرات DOM
+    requestAnimationFrame(() => {
+      onSkip();
+    });
   };
 
   if (!step) return null;
