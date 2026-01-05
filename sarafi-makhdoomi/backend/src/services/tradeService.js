@@ -420,11 +420,72 @@ class TradeService {
     const isRialDone = trade.rialCollection?.status === 'collected';
 
     if (isCurrencyDone && isRialDone) {
+      // بروزرسانی کیف پول بر اساس نوع معامله
+      await this.updateWalletsOnTradeCompletion(trade);
+
       trade.status = 'completed';
       trade.completedAt = new Date();
 
       // اعمال امتیاز
       await this.applyScores(trade);
+    }
+  }
+
+  /**
+   * بروزرسانی کیف پول هنگام تکمیل معامله
+   */
+  async updateWalletsOnTradeCompletion(trade) {
+    // populate currency اگر نشده
+    if (!trade.currency?.code) {
+      await trade.populate('currency');
+    }
+
+    if (trade.type === 'sell') {
+      // فروش ارز: کاربر ارز می‌دهد، ریال می‌گیرد
+      try {
+        // برداشت ارز از کیف پول کاربر
+        await walletService.withdrawCurrency(
+          trade.customer,
+          trade.currency._id,
+          trade.amount,
+          `فروش ${trade.amount} ${trade.currency.code} - معامله ${trade.tradeNumber}`,
+          trade.sarafi
+        );
+      } catch (err) {
+        console.log(`Currency withdrawal skipped: ${err.message}`);
+      }
+
+      // واریز ریال به کیف پول کاربر
+      await walletService.deposit(
+        trade.customer,
+        trade.netAmount,
+        `فروش ارز - معامله ${trade.tradeNumber}`,
+        trade.sarafi
+      );
+    } else if (trade.type === 'buy') {
+      // خرید ارز: کاربر ریال می‌دهد، ارز می‌گیرد
+      // برداشت ریال فقط اگر از کیف پول استفاده شده و قبلا کم نشده
+      if (!trade.paymentDetails?.cashAmount) {
+        try {
+          await walletService.withdraw(
+            trade.customer,
+            trade.netAmount,
+            `خرید ارز - معامله ${trade.tradeNumber}`,
+            trade.sarafi
+          );
+        } catch (err) {
+          console.log(`Rial withdrawal skipped: ${err.message}`);
+        }
+      }
+
+      // واریز ارز به کیف پول کاربر
+      await walletService.depositCurrency(
+        trade.customer,
+        trade.currency._id,
+        trade.amount,
+        `خرید ${trade.amount} ${trade.currency.code} - معامله ${trade.tradeNumber}`,
+        trade.sarafi
+      );
     }
   }
 

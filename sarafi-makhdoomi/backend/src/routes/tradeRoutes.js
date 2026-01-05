@@ -361,12 +361,53 @@ router.put('/instant/:id/accounting-approve', protect, authorize('sarafi'), asyn
       });
     }
 
-    // اگر فروش ارز بود، باید به کیف پول مشتری واریز شود
+    // بروزرسانی کیف پول بر اساس نوع معامله
     if (trade.type === 'sell') {
+      // فروش ارز: کاربر ارز می‌دهد، ریال می‌گیرد
+      // 1. برداشت ارز از کیف پول کاربر
+      try {
+        await walletService.withdrawCurrency(
+          trade.customer._id,
+          trade.currency._id,
+          trade.amount,
+          `فروش ${trade.amount} ${trade.currency.code} - معامله ${trade.tradeNumber}`,
+          req.user._id
+        );
+      } catch (currencyError) {
+        // اگر موجودی ارز کافی نیست، فقط لاگ کن و ادامه بده (ارز از قبل تحویل شده)
+        console.log(`Currency withdrawal skipped: ${currencyError.message}`);
+      }
+
+      // 2. واریز ریال به کیف پول کاربر
       await walletService.deposit(
         trade.customer._id,
         trade.netAmount,
         `فروش ارز - معامله ${trade.tradeNumber}`,
+        req.user._id
+      );
+    } else if (trade.type === 'buy') {
+      // خرید ارز: کاربر ریال می‌دهد، ارز می‌گیرد
+      // 1. برداشت ریال از کیف پول کاربر (اگر از کیف پول استفاده شده)
+      if (trade.paymentMethod === 'cash_wallet' || trade.paymentMethod === 'mixed') {
+        try {
+          await walletService.withdraw(
+            trade.customer._id,
+            trade.netAmount,
+            `خرید ارز - معامله ${trade.tradeNumber}`,
+            req.user._id
+          );
+        } catch (rialError) {
+          // اگر موجودی ریال کافی نیست، فقط لاگ کن (ریال از قبل پرداخت شده)
+          console.log(`Rial withdrawal skipped: ${rialError.message}`);
+        }
+      }
+
+      // 2. واریز ارز به کیف پول کاربر
+      await walletService.depositCurrency(
+        trade.customer._id,
+        trade.currency._id,
+        trade.amount,
+        `خرید ${trade.amount} ${trade.currency.code} - معامله ${trade.tradeNumber}`,
         req.user._id
       );
     }
