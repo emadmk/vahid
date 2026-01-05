@@ -206,11 +206,11 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
         />
       </svg>
 
-      {/* Tooltip */}
+      {/* Tooltip - بالاترین z-index ممکن */}
       <div
         ref={tooltipRef}
         className="absolute bg-white rounded-2xl shadow-2xl overflow-hidden animate-fadeIn"
-        style={{ ...tooltipStyle, zIndex: 10010 }}
+        style={{ ...tooltipStyle, zIndex: 2147483647 }}
       >
         {/* هدر */}
         <div className="bg-gradient-to-l from-amber-500 to-yellow-500 px-5 py-4 flex items-center justify-between">
