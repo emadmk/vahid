@@ -132,13 +132,10 @@ class TradeService {
       throw new Error('این معامله قبلا پردازش شده است');
     }
 
-    trade.status = 'approved';
     trade.approvedAt = new Date();
 
-    // اگر فروش ارز است، به پنل وصول برود
-    if (trade.type === 'sell') {
-      trade.status = 'pending_collection';
-    }
+    // پس از تایید، به پنل وصول برود (هم برای خرید و هم فروش)
+    trade.status = 'pending_collection';
 
     await trade.save();
 

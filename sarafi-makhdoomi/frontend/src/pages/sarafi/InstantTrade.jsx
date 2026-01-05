@@ -410,7 +410,7 @@ const InstantTrade = () => {
                         )}
 
                         {/* ثبت وصول */}
-                        {(trade.status === 'approved' || trade.status === 'pending_collection') && (
+                        {trade.status === 'pending_collection' && (
                           <button
                             onClick={() => handleMarkCollected(trade._id)}
                             className="p-2 rounded-lg bg-blue-500/20 text-blue-500 hover:bg-blue-500/30"
