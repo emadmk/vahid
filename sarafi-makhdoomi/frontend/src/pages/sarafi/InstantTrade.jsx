@@ -362,10 +362,10 @@ const InstantTrade = () => {
                           <span className="w-2 h-2 rounded-full bg-purple-500"></span>
                           <div>
                             <span className="text-purple-400">
-                              {trade.sharedCustomer?.displayName || 'مشتری گروهی'}
+                              {trade.ownerSarafi?.sarafiInfo?.name || trade.ownerSarafi?.sarafiInfo?.alias || `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`.trim() || 'صراف'}
                             </span>
                             <p className="text-dark-500 text-xs">
-                              صراف: {trade.ownerSarafi?.sarafiInfo?.name || `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`}
+                              {trade.sharedCustomer?.displayName || 'مشتری گروهی'}
                             </p>
                           </div>
                         </div>
@@ -696,6 +696,135 @@ const InstantTrade = () => {
               </button>
               <button onClick={() => setShowRejectModal(false)} className="btn-outline flex-1">
                 انصراف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* مودال جزئیات معامله */}
+      {selectedTrade && !showRejectModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-dark-800">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <FaEye className="text-gold" />
+                جزئیات معامله
+              </h2>
+              <button onClick={() => setSelectedTrade(null)} className="text-dark-400 hover:text-white">
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {/* شماره معامله */}
+              <div className="flex items-center justify-between">
+                <span className="text-dark-400">شماره معامله:</span>
+                <span className="text-gold font-mono">{selectedTrade.tradeNumber}</span>
+              </div>
+
+              {/* مشتری / صراف */}
+              <div className="bg-dark-800 rounded-lg p-3">
+                {selectedTrade.isGroupTrade ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                      <span className="text-purple-400 font-bold">معامله گروهی</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-dark-400">صراف:</span>
+                      <span className="text-white">
+                        {selectedTrade.ownerSarafi?.sarafiInfo?.name || selectedTrade.ownerSarafi?.sarafiInfo?.alias || `${selectedTrade.ownerSarafi?.firstName || ''} ${selectedTrade.ownerSarafi?.lastName || ''}`.trim() || '-'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-dark-400">نام مستعار:</span>
+                      <span className="text-white">
+                        {selectedTrade.sharedCustomer?.displayName || '-'}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span className="text-dark-400">مشتری:</span>
+                    <span className="text-white">{selectedTrade.customer?.firstName} {selectedTrade.customer?.lastName}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* نوع معامله */}
+              <div className="flex items-center justify-between">
+                <span className="text-dark-400">نوع:</span>
+                <span className={`flex items-center gap-1 ${selectedTrade.side === 'buy' ? 'text-green-500' : 'text-red-500'}`}>
+                  {selectedTrade.side === 'buy' ? <FaArrowUp /> : <FaArrowDown />}
+                  {selectedTrade.side === 'buy' ? 'خرید' : 'فروش'}
+                </span>
+              </div>
+
+              {/* ارز */}
+              <div className="flex items-center justify-between">
+                <span className="text-dark-400">ارز:</span>
+                <span className="text-white">{selectedTrade.currency?.nameFa} ({selectedTrade.currency?.code})</span>
+              </div>
+
+              {/* مقدار */}
+              <div className="flex items-center justify-between">
+                <span className="text-dark-400">مقدار:</span>
+                <span className="text-white">{formatNumber(selectedTrade.amount)}</span>
+              </div>
+
+              {/* نرخ */}
+              <div className="flex items-center justify-between">
+                <span className="text-dark-400">نرخ:</span>
+                <span className="text-white">{formatNumber(selectedTrade.rate)} ریال</span>
+              </div>
+
+              {/* مبلغ کل */}
+              <div className="bg-dark-800 rounded-lg p-3 flex items-center justify-between">
+                <span className="text-dark-400">مبلغ کل:</span>
+                <span className="text-gold text-lg font-bold">{formatNumber(selectedTrade.totalAmount)} ریال</span>
+              </div>
+
+              {/* کارمزد */}
+              {selectedTrade.commission?.amount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-dark-400">کارمزد:</span>
+                  <span className="text-green-500">{formatNumber(selectedTrade.commission.amount)} ریال</span>
+                </div>
+              )}
+
+              {/* وضعیت */}
+              <div className="flex items-center justify-between">
+                <span className="text-dark-400">وضعیت:</span>
+                {getStatusBadge(selectedTrade.status)}
+              </div>
+
+              {/* تاریخ */}
+              <div className="flex items-center justify-between">
+                <span className="text-dark-400">تاریخ ثبت:</span>
+                <span className="text-white">{formatDate(selectedTrade.createdAt)}</span>
+              </div>
+
+              {/* یادداشت */}
+              {selectedTrade.notes && (
+                <div>
+                  <span className="text-dark-400 block mb-1">یادداشت:</span>
+                  <p className="text-white bg-dark-800 rounded-lg p-3">{selectedTrade.notes}</p>
+                </div>
+              )}
+
+              {/* دلیل رد */}
+              {selectedTrade.rejectionReason && (
+                <div>
+                  <span className="text-red-400 block mb-1">دلیل رد:</span>
+                  <p className="text-red-300 bg-red-500/10 rounded-lg p-3">{selectedTrade.rejectionReason}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-dark-800">
+              <button onClick={() => setSelectedTrade(null)} className="btn-outline w-full">
+                بستن
               </button>
             </div>
           </div>

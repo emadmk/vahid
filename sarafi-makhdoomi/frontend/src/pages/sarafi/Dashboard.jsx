@@ -345,9 +345,15 @@ const SarafiDashboard = () => {
                       <p className="text-white text-sm font-medium">
                         {trade.type === 'buy' ? 'خرید' : 'فروش'} {formatNumber(trade.amount)} {trade.currency?.nameFa}
                       </p>
-                      <p className="text-dark-500 text-xs">
-                        {trade.customer?.firstName} {trade.customer?.lastName}
-                      </p>
+                      {trade.isGroupTrade ? (
+                        <p className="text-purple-400 text-xs">
+                          صراف: {trade.ownerSarafi?.sarafiInfo?.name || `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`}
+                        </p>
+                      ) : (
+                        <p className="text-dark-500 text-xs">
+                          {trade.customer?.firstName} {trade.customer?.lastName}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="text-left">

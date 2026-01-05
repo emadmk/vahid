@@ -105,6 +105,8 @@ class TradeService {
       .populate('currency', 'code nameFa symbol')
       .populate('customer', 'firstName lastName phone')
       .populate('sarafi', 'firstName lastName sarafiInfo.businessName')
+      .populate('ownerSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
+      .populate('sharedCustomer', 'displayName customerNickname')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -629,6 +631,8 @@ class TradeService {
     const trades = await Trade.find(query)
       .populate('currency', 'code nameFa symbol')
       .populate('customer', 'firstName lastName phone email')
+      .populate('ownerSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
+      .populate('sharedCustomer', 'displayName customerNickname')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

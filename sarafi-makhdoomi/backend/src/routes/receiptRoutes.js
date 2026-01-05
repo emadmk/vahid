@@ -55,7 +55,14 @@ router.get('/', authorize('sarafi'), async (req, res) => {
     const skip = (page - 1) * limit;
 
     const receipts = await Receipt.find(query)
-      .populate('trade', 'tradeNumber totalAmount')
+      .populate({
+        path: 'trade',
+        select: 'tradeNumber totalAmount isGroupTrade ownerSarafi sharedCustomer',
+        populate: [
+          { path: 'ownerSarafi', select: 'firstName lastName sarafiInfo.name sarafiInfo.alias' },
+          { path: 'sharedCustomer', select: 'displayName customerNickname' }
+        ]
+      })
       .populate('customer', 'firstName lastName phone')
       .populate('currency', 'code nameFa')
       .populate('createdBy', 'firstName lastName')
@@ -704,7 +711,14 @@ router.get('/:id', authorize('sarafi'), async (req, res) => {
       _id: req.params.id,
       sarafi: req.user._id
     })
-      .populate('trade', 'tradeNumber totalAmount type')
+      .populate({
+        path: 'trade',
+        select: 'tradeNumber totalAmount type isGroupTrade ownerSarafi sharedCustomer',
+        populate: [
+          { path: 'ownerSarafi', select: 'firstName lastName sarafiInfo.name sarafiInfo.alias' },
+          { path: 'sharedCustomer', select: 'displayName customerNickname' }
+        ]
+      })
       .populate('currency', 'code name nameFa')
       .populate('customer', 'firstName lastName phone email')
       .populate('createdBy', 'firstName lastName')

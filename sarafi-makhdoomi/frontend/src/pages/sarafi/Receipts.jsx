@@ -368,7 +368,9 @@ const SarafiReceipts = () => {
                     <option value="">انتخاب کنید</option>
                     {trades.map(trade => (
                       <option key={trade._id} value={trade._id}>
-                        {trade.tradeNumber} - {trade.customer?.firstName} {trade.customer?.lastName}
+                        {trade.tradeNumber} - {trade.isGroupTrade
+                          ? (trade.ownerSarafi?.sarafiInfo?.name || trade.ownerSarafi?.sarafiInfo?.alias || `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`.trim() || 'صراف')
+                          : `${trade.customer?.firstName} ${trade.customer?.lastName}`}
                       </option>
                     ))}
                   </select>
@@ -602,6 +604,30 @@ const SarafiReceipts = () => {
                   <p className="text-white">{collectionMethods[selectedReceipt.collectionMethod]}</p>
                 </div>
               </div>
+
+              {/* اطلاعات معامله */}
+              {selectedReceipt.trade?.isGroupTrade && (
+                <div className="bg-purple-500/10 rounded-xl p-4 border border-purple-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                    <span className="text-purple-400 font-medium">معامله گروهی</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-dark-500">صراف: </span>
+                      <span className="text-white">
+                        {selectedReceipt.trade?.ownerSarafi?.sarafiInfo?.name || selectedReceipt.trade?.ownerSarafi?.sarafiInfo?.alias || `${selectedReceipt.trade?.ownerSarafi?.firstName || ''} ${selectedReceipt.trade?.ownerSarafi?.lastName || ''}`.trim() || '-'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-dark-500">نام مستعار: </span>
+                      <span className="text-white">
+                        {selectedReceipt.trade?.sharedCustomer?.displayName || '-'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="bg-dark-800 rounded-xl p-4">
                 <h4 className="text-white font-medium mb-2">صاحب حساب</h4>
