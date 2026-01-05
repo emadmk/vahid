@@ -116,8 +116,37 @@ class GroupSharingService {
     }
 
     // بررسی فعال بودن اشتراک‌گذاری
+    // اگر مالک است و اشتراک‌گذاری فعال نیست، به طور خودکار فعال کن
     if (!group.customerSharing?.enabled) {
-      throw new Error('اشتراک‌گذاری مشتری در این گروه فعال نیست');
+      if (isOwner) {
+        // فعال‌سازی خودکار برای مالک
+        if (!group.customerSharing) {
+          group.customerSharing = {};
+        }
+        group.customerSharing.enabled = true;
+        group.customerSharing.activationMode = 'manual';
+
+        // همچنین اشتراک‌گذاری شخصی مالک را فعال کن
+        let ownerMember = group.members.find(m => m.user.toString() === sarafiId.toString());
+        if (!ownerMember) {
+          group.members.push({
+            user: sarafiId,
+            role: 'admin',
+            customerSharing: {
+              isSharing: true,
+              lastActivatedAt: new Date()
+            }
+          });
+        } else {
+          ownerMember.customerSharing = ownerMember.customerSharing || {};
+          ownerMember.customerSharing.isSharing = true;
+          ownerMember.customerSharing.lastActivatedAt = new Date();
+        }
+
+        await group.save();
+      } else {
+        throw new Error('اشتراک‌گذاری مشتری در این گروه فعال نیست. لطفاً با مالک گروه تماس بگیرید.');
+      }
     }
 
     // بررسی مشتری
