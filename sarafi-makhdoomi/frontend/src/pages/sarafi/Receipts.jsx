@@ -368,8 +368,8 @@ const SarafiReceipts = () => {
                     <option value="">انتخاب کنید</option>
                     {trades.map(trade => (
                       <option key={trade._id} value={trade._id}>
-                        {trade.tradeNumber} - {trade.isGroupTrade
-                          ? (trade.ownerSarafi?.sarafiInfo?.name || trade.ownerSarafi?.sarafiInfo?.alias || `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`.trim() || 'صراف')
+                        {trade.tradeNumber} - {(trade.isGroupTrade || trade.executorSarafi)
+                          ? (trade.sharedCustomer?.displayName || `مشتری گروهی (${trade.ownerSarafi?.sarafiInfo?.name || trade.sarafi?.sarafiInfo?.name || 'صراف'})`)
                           : `${trade.customer?.firstName} ${trade.customer?.lastName}`}
                       </option>
                     ))}

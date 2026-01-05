@@ -627,7 +627,14 @@ class TradeService {
       skip = 0
     } = options;
 
-    const query = { sarafi: sarafiId };
+    // برای صراف: هم معاملات خودش و هم معاملاتی که از گروه قبول کرده
+    const query = {
+      $or: [
+        { sarafi: sarafiId },
+        { executorSarafi: sarafiId }
+      ]
+    };
+
     // پشتیبانی از وضعیت‌های جدا شده با کاما
     if (status) {
       if (status.includes(',')) {
@@ -648,7 +655,9 @@ class TradeService {
     const trades = await Trade.find(query)
       .populate('currency', 'code nameFa symbol')
       .populate('customer', 'firstName lastName phone email')
+      .populate('sarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
       .populate('ownerSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
+      .populate('executorSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
       .populate('sharedCustomer', 'displayName customerNickname')
       .sort({ createdAt: -1 })
       .skip(skip)
