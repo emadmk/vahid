@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FaHome, FaUsers, FaExchangeAlt, FaGlobe, FaUser, FaSignOutAlt,
   FaBars, FaTimes, FaBell, FaCalculator, FaCoins, FaMoneyBillWave, FaStore, FaWallet,
@@ -9,15 +9,34 @@ import {
 import useAuthStore from '../../store/authStore';
 import NotificationDropdown from '../common/NotificationDropdown';
 import { HelpButton, useTourAutoStart } from '../Tour';
+import api from '../../services/api';
 
 const SarafiLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [pendingGroupTrades, setPendingGroupTrades] = useState(0);
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
 
   // شروع خودکار تور در اولین بازدید
   useTourAutoStart('sarafi', 1500);
+
+  // دریافت تعداد معاملات گروهی در انتظار
+  useEffect(() => {
+    const fetchGroupTradesCount = async () => {
+      try {
+        const res = await api.get('/sarafi-groups/settlements', { params: { status: 'pending' } });
+        const count = res.data.data?.length || 0;
+        setPendingGroupTrades(count);
+      } catch (error) {
+        console.error('Error fetching group trades count:', error);
+      }
+    };
+    fetchGroupTradesCount();
+    // بروزرسانی هر 30 ثانیه
+    const interval = setInterval(fetchGroupTradesCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const menuItems = [
     { path: '/sarafi', label: 'داشبورد', icon: FaHome },
@@ -30,7 +49,7 @@ const SarafiLayout = () => {
     { path: '/sarafi/accountant', label: 'حسابداری', icon: FaCalculator },
     { path: '/sarafi/customer-wallets', label: 'کیف پول مشتریان', icon: FaWallet },
     { path: '/sarafi/customers', label: 'مشتریان', icon: FaUsers },
-    { path: '/sarafi/groups', label: 'گروه‌های صراف', icon: FaUserFriends },
+    { path: '/sarafi/groups', label: 'گروه‌های صراف', icon: FaUserFriends, badge: pendingGroupTrades },
     { path: '/sarafi/staff', label: 'کارکنان', icon: FaUserTie },
     { path: '/sarafi/messages', label: 'پیام‌ها', icon: FaComments },
     { path: '/sarafi/audit-logs', label: 'لاگ عملیات', icon: FaHistory },
@@ -73,6 +92,11 @@ const SarafiLayout = () => {
               >
                 <item.icon className="w-5 h-5" />
                 <span>{item.label}</span>
+                {item.badge > 0 && (
+                  <span className="mr-auto text-xs bg-red-500 text-white px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                    {item.badge}
+                  </span>
+                )}
                 {item.isNew && (
                   <span className="mr-auto text-xs bg-green-500 text-white px-1.5 py-0.5 rounded">جدید</span>
                 )}

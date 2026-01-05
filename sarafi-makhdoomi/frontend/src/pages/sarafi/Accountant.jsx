@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   FaCalculator, FaWallet, FaCreditCard, FaPlus, FaMinus, FaSpinner, FaSearch, FaHistory,
-  FaExchangeAlt, FaCheck, FaTimes, FaEye, FaArrowUp, FaArrowDown, FaClock, FaCoins, FaDollarSign, FaEuroSign
+  FaExchangeAlt, FaCheck, FaTimes, FaEye, FaArrowUp, FaArrowDown, FaClock, FaCoins, FaDollarSign, FaEuroSign,
+  FaUserFriends, FaReceipt, FaFileImage, FaFilePdf
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -28,6 +29,8 @@ const Accountant = () => {
   const [selectedTrade, setSelectedTrade] = useState(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [tradeReceipts, setTradeReceipts] = useState([]);
 
   useEffect(() => {
     if (activeTab === 'wallets') {
@@ -99,6 +102,19 @@ const Accountant = () => {
       toast.error(error.response?.data?.message || 'خطا در رد معامله');
     } finally {
       setProcessing(false);
+    }
+  };
+
+  // باز کردن مودال جزئیات با رسیدها
+  const openDetailsModal = async (trade) => {
+    setSelectedTrade(trade);
+    setShowDetailsModal(true);
+    try {
+      const res = await api.get(`/receipts?tradeId=${trade._id}`);
+      setTradeReceipts(res.data.data || []);
+    } catch (error) {
+      console.error('Error fetching receipts:', error);
+      setTradeReceipts([]);
     }
   };
 
@@ -337,8 +353,21 @@ const Accountant = () => {
                     pendingTrades.map(trade => (
                       <tr key={trade._id} className="border-t border-dark-800 hover:bg-dark-800/30">
                         <td className="p-4 text-gold font-medium">{trade.tradeNumber}</td>
-                        <td className="p-4 text-white">
-                          {trade.customer?.firstName} {trade.customer?.lastName}
+                        <td className="p-4">
+                          {trade.isGroupTrade ? (
+                            <div className="flex items-center gap-2">
+                              <FaUserFriends className="text-purple-400" />
+                              <div>
+                                <p className="text-purple-400">{trade.sharedCustomer?.displayName || 'مشتری گروهی'}</p>
+                                <p className="text-dark-500 text-xs">
+                                  صراف: {trade.ownerSarafi?.sarafiInfo?.name ||
+                                    `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-white">{trade.customer?.firstName} {trade.customer?.lastName}</span>
+                          )}
                         </td>
                         <td className="p-4">
                           <span className={`flex items-center gap-1 ${trade.type === 'buy' ? 'text-green-500' : 'text-red-500'}`}>
@@ -371,9 +400,9 @@ const Accountant = () => {
                               <FaTimes />
                             </button>
                             <button
-                              onClick={() => setSelectedTrade(trade)}
+                              onClick={() => openDetailsModal(trade)}
                               className="p-2 rounded-lg bg-dark-700 text-dark-400 hover:text-white"
-                              title="جزئیات"
+                              title="جزئیات و رسید"
                             >
                               <FaEye />
                             </button>
@@ -713,6 +742,173 @@ const Accountant = () => {
                 className="btn-gold flex-1"
               >
                 {processing ? <FaSpinner className="animate-spin mx-auto" /> : 'تایید'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* مودال جزئیات معامله و رسید */}
+      {showDetailsModal && selectedTrade && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-dark-800 sticky top-0 bg-dark-900">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <FaEye className="text-gold" />
+                جزئیات معامله
+              </h2>
+              <button
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  setSelectedTrade(null);
+                  setTradeReceipts([]);
+                }}
+                className="text-dark-400 hover:text-white"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {/* اطلاعات معامله */}
+              <div className="bg-dark-800 rounded-lg p-4">
+                <h3 className="text-gold font-bold mb-3 flex items-center gap-2">
+                  <FaExchangeAlt />
+                  اطلاعات معامله
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-dark-500">شماره معامله:</span>
+                    <p className="text-gold font-bold">{selectedTrade.tradeNumber}</p>
+                  </div>
+                  <div>
+                    <span className="text-dark-500">نوع:</span>
+                    <p className={selectedTrade.type === 'buy' ? 'text-green-500' : 'text-red-500'}>
+                      {selectedTrade.type === 'buy' ? 'خرید' : 'فروش'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-dark-500">ارز:</span>
+                    <p className="text-white">{selectedTrade.currency?.nameFa} ({selectedTrade.currency?.code})</p>
+                  </div>
+                  <div>
+                    <span className="text-dark-500">مقدار:</span>
+                    <p className="text-white font-bold">{formatNumber(selectedTrade.amount)}</p>
+                  </div>
+                  <div>
+                    <span className="text-dark-500">نرخ:</span>
+                    <p className="text-white">{formatNumber(selectedTrade.rate)} ریال</p>
+                  </div>
+                  <div>
+                    <span className="text-dark-500">مبلغ کل:</span>
+                    <p className="text-green-500 font-bold">{formatNumber(selectedTrade.totalAmount)} ریال</p>
+                  </div>
+                  <div>
+                    <span className="text-dark-500">تاریخ:</span>
+                    <p className="text-white">{formatDate(selectedTrade.createdAt)}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-dark-500">مشتری:</span>
+                    {selectedTrade.isGroupTrade ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <FaUserFriends className="text-purple-400" />
+                        <span className="text-purple-400">{selectedTrade.sharedCustomer?.displayName || 'مشتری گروهی'}</span>
+                        <span className="text-dark-500 text-xs">
+                          (صراف: {selectedTrade.ownerSarafi?.sarafiInfo?.name ||
+                            `${selectedTrade.ownerSarafi?.firstName || ''} ${selectedTrade.ownerSarafi?.lastName || ''}`})
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-white">{selectedTrade.customer?.firstName} {selectedTrade.customer?.lastName}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* رسیدها */}
+              <div className="bg-dark-800 rounded-lg p-4">
+                <h3 className="text-gold font-bold mb-3 flex items-center gap-2">
+                  <FaReceipt />
+                  رسیدهای پرداخت
+                </h3>
+                {tradeReceipts.length === 0 ? (
+                  <p className="text-dark-500 text-center py-4">رسیدی برای این معامله ثبت نشده</p>
+                ) : (
+                  <div className="space-y-3">
+                    {tradeReceipts.map((receipt, index) => (
+                      <div key={receipt._id || index} className="bg-dark-700 rounded-lg p-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm mb-2">
+                          <div>
+                            <span className="text-dark-500">نوع:</span>
+                            <p className={receipt.type === 'rial' ? 'text-yellow-500' : 'text-blue-500'}>
+                              {receipt.type === 'rial' ? 'ریالی' : 'ارزی'}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-dark-500">مبلغ:</span>
+                            <p className="text-white font-bold">{formatNumber(receipt.amount)}</p>
+                          </div>
+                          <div>
+                            <span className="text-dark-500">روش پرداخت:</span>
+                            <p className="text-white">
+                              {receipt.paymentMethod === 'bank_transfer' ? 'انتقال بانکی' :
+                               receipt.paymentMethod === 'cash' ? 'نقدی' :
+                               receipt.paymentMethod === 'cheque' ? 'چک' :
+                               receipt.paymentMethod === 'pos' ? 'کارتخوان' : receipt.paymentMethod}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-dark-500">شماره پیگیری:</span>
+                            <p className="text-gold">{receipt.bankTrackingNumber}</p>
+                          </div>
+                        </div>
+                        {receipt.accountHolder && (
+                          <p className="text-dark-400 text-xs">صاحب حساب: {receipt.accountHolder}</p>
+                        )}
+                        {receipt.notes && (
+                          <p className="text-dark-400 text-xs mt-1">توضیحات: {receipt.notes}</p>
+                        )}
+                        {/* فایل‌های پیوست */}
+                        {receipt.attachments && receipt.attachments.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {receipt.attachments.map((file, fileIndex) => (
+                              <a
+                                key={fileIndex}
+                                href={file.url || `/api/receipts/files/${file.filename}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 bg-dark-800 px-2 py-1 rounded text-xs text-blue-400 hover:text-blue-300"
+                              >
+                                {file.originalName?.endsWith('.pdf') ? <FaFilePdf className="text-red-400" /> : <FaFileImage className="text-blue-400" />}
+                                {file.originalName || `فایل ${fileIndex + 1}`}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-dark-800 flex gap-3">
+              <button
+                onClick={() => handleApproveTrade(selectedTrade._id)}
+                disabled={processing}
+                className="flex-1 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-bold flex items-center justify-center gap-2"
+              >
+                {processing ? <FaSpinner className="animate-spin" /> : <FaCheck />}
+                تایید و تکمیل معامله
+              </button>
+              <button
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  setShowRejectModal(true);
+                }}
+                className="flex-1 py-2 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500/30 font-bold"
+              >
+                رد معامله
               </button>
             </div>
           </div>

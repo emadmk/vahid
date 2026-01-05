@@ -4,7 +4,7 @@ import {
   FaFileAlt, FaFilter, FaSearch, FaCalendarAlt, FaUser, FaPhone,
   FaDownload, FaUpload, FaHistory, FaChartPie, FaWallet, FaTimes,
   FaCheck, FaEye, FaInfoCircle, FaSync, FaReceipt, FaTrash, FaFilePdf,
-  FaFileImage, FaCloudUploadAlt
+  FaFileImage, FaCloudUploadAlt, FaUserFriends
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -521,20 +521,37 @@ const SettlementPanel = () => {
                       <span className="text-gold font-medium">{settlement.tradeNumber}</span>
                     </td>
                     <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center">
-                          <FaUser className="text-dark-400 text-xs" />
+                      {settlement.trade?.isGroupTrade ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                            <FaUserFriends className="text-purple-400 text-xs" />
+                          </div>
+                          <div>
+                            <p className="text-purple-400 text-sm">
+                              {settlement.trade?.sharedCustomer?.displayName || 'مشتری گروهی'}
+                            </p>
+                            <p className="text-dark-500 text-xs">
+                              صراف: {settlement.trade?.ownerSarafi?.sarafiInfo?.name ||
+                                `${settlement.trade?.ownerSarafi?.firstName || ''} ${settlement.trade?.ownerSarafi?.lastName || ''}`}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-white text-sm">
-                            {settlement.customer?.firstName} {settlement.customer?.lastName}
-                          </p>
-                          <p className="text-dark-500 text-xs flex items-center gap-1">
-                            <FaPhone className="text-xs" />
-                            {settlement.customer?.phone}
-                          </p>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center">
+                            <FaUser className="text-dark-400 text-xs" />
+                          </div>
+                          <div>
+                            <p className="text-white text-sm">
+                              {settlement.customer?.firstName} {settlement.customer?.lastName}
+                            </p>
+                            <p className="text-dark-500 text-xs flex items-center gap-1">
+                              <FaPhone className="text-xs" />
+                              {settlement.customer?.phone}
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </td>
                     <td className="p-4">
                       {settlement.type === 'rial' ? (

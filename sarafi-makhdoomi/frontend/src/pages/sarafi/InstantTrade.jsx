@@ -357,7 +357,21 @@ const InstantTrade = () => {
                   <tr key={trade._id} className="border-t border-dark-800 hover:bg-dark-800/30">
                     <td className="p-3 text-gold text-sm">{trade.tradeNumber}</td>
                     <td className="p-3">
-                      <span className="text-white">{trade.customer?.firstName} {trade.customer?.lastName}</span>
+                      {trade.isGroupTrade ? (
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                          <div>
+                            <span className="text-purple-400">
+                              {trade.sharedCustomer?.displayName || 'مشتری گروهی'}
+                            </span>
+                            <p className="text-dark-500 text-xs">
+                              صراف: {trade.ownerSarafi?.sarafiInfo?.name || `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-white">{trade.customer?.firstName} {trade.customer?.lastName}</span>
+                      )}
                     </td>
                     <td className="p-3">
                       <span className={`flex items-center gap-1 ${trade.side === 'buy' ? 'text-green-500' : 'text-red-500'}`}>
