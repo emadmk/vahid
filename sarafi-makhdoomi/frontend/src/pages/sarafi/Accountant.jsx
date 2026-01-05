@@ -863,7 +863,7 @@ const Accountant = () => {
                           </div>
                         </div>
                         {receipt.accountHolder && (
-                          <p className="text-dark-400 text-xs">صاحب حساب: {receipt.accountHolder}</p>
+                          <p className="text-dark-400 text-xs">صاحب حساب: {typeof receipt.accountHolder === 'object' ? receipt.accountHolder.name : receipt.accountHolder}</p>
                         )}
                         {receipt.notes && (
                           <p className="text-dark-400 text-xs mt-1">توضیحات: {receipt.notes}</p>
