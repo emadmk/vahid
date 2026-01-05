@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowRight, FaPlus, FaUsers, FaUserPlus, FaTrash, FaExchangeAlt, FaStar, FaCheck, FaTimes, FaSpinner, FaSearch } from 'react-icons/fa';
+import { FaArrowRight, FaPlus, FaUsers, FaUserPlus, FaTrash, FaExchangeAlt, FaStar, FaCheck, FaTimes, FaSpinner, FaSearch, FaSync } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jalaliMoment from 'jalali-moment';
@@ -30,6 +30,7 @@ const SharedCustomers = () => {
   });
   const [tradePreview, setTradePreview] = useState(null);
   const [submittingTrade, setSubmittingTrade] = useState(false);
+  const [fetchingRate, setFetchingRate] = useState(false);
 
   // فرم اشتراک‌گذاری
   const [shareForm, setShareForm] = useState({
@@ -86,6 +87,29 @@ const SharedCustomers = () => {
       setCurrencies(res.data.data || []);
     } catch (e) {
       console.error('Error fetching currencies:', e);
+    }
+  };
+
+  // دریافت نرخ روز برای ارز انتخاب شده
+  const fetchDailyRate = async () => {
+    if (!tradeForm.currencyId) {
+      toast.error('لطفا ابتدا ارز را انتخاب کنید');
+      return;
+    }
+
+    setFetchingRate(true);
+    try {
+      const currency = currencies.find(c => c._id === tradeForm.currencyId);
+      if (currency) {
+        // استفاده از نرخ خرید یا فروش بر اساس نوع معامله
+        const rate = tradeForm.type === 'buy' ? currency.sellRate : currency.buyRate;
+        setTradeForm({ ...tradeForm, baseRate: rate.toString() });
+        toast.success(`نرخ ${tradeForm.type === 'buy' ? 'فروش' : 'خرید'}: ${rate.toLocaleString()} ریال`);
+      }
+    } catch (e) {
+      toast.error('خطا در دریافت نرخ');
+    } finally {
+      setFetchingRate(false);
     }
   };
 
@@ -465,13 +489,24 @@ const SharedCustomers = () => {
               {/* نرخ پایه */}
               <div>
                 <label className="block text-dark-400 text-sm mb-2">نرخ پایه (ریال)</label>
-                <input
-                  type="number"
-                  className="input-dark"
-                  value={tradeForm.baseRate}
-                  onChange={(e) => setTradeForm({ ...tradeForm, baseRate: e.target.value })}
-                  placeholder="نرخ بازار"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    className="input-dark flex-1"
+                    value={tradeForm.baseRate}
+                    onChange={(e) => setTradeForm({ ...tradeForm, baseRate: e.target.value })}
+                    placeholder="نرخ بازار"
+                  />
+                  <button
+                    type="button"
+                    onClick={fetchDailyRate}
+                    disabled={fetchingRate || !tradeForm.currencyId}
+                    className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-dark-900 rounded-lg font-bold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {fetchingRate ? <FaSpinner className="animate-spin" /> : <FaSync />}
+                    نرخ روز
+                  </button>
+                </div>
               </div>
 
               {/* اسپرد شما */}
