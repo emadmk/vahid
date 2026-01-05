@@ -269,7 +269,11 @@ router.put('/instant/:id/confirm-collection', protect, authorize('sarafi'), asyn
       });
     }
 
-    if (trade.sarafi.toString() !== req.user._id.toString()) {
+    // بررسی دسترسی: صراف اصلی یا صراف اجراکننده (برای معاملات گروهی)
+    const isOriginalSarafi = trade.sarafi.toString() === req.user._id.toString();
+    const isExecutorSarafi = trade.executorSarafi && trade.executorSarafi.toString() === req.user._id.toString();
+
+    if (!isOriginalSarafi && !isExecutorSarafi) {
       return res.status(403).json({
         success: false,
         message: 'دسترسی غیرمجاز'
@@ -347,7 +351,11 @@ router.put('/instant/:id/accounting-approve', protect, authorize('sarafi'), asyn
       });
     }
 
-    if (trade.sarafi.toString() !== req.user._id.toString()) {
+    // بررسی دسترسی: صراف اصلی یا صراف اجراکننده (برای معاملات گروهی)
+    const isOriginalSarafi = trade.sarafi.toString() === req.user._id.toString();
+    const isExecutorSarafi = trade.executorSarafi && trade.executorSarafi.toString() === req.user._id.toString();
+
+    if (!isOriginalSarafi && !isExecutorSarafi) {
       return res.status(403).json({
         success: false,
         message: 'دسترسی غیرمجاز'
@@ -485,7 +493,11 @@ router.put('/instant/:id/accounting-reject', protect, authorize('sarafi'), async
       });
     }
 
-    if (trade.sarafi.toString() !== req.user._id.toString()) {
+    // بررسی دسترسی: صراف اصلی یا صراف اجراکننده (برای معاملات گروهی)
+    const isOriginalSarafi = trade.sarafi.toString() === req.user._id.toString();
+    const isExecutorSarafi = trade.executorSarafi && trade.executorSarafi.toString() === req.user._id.toString();
+
+    if (!isOriginalSarafi && !isExecutorSarafi) {
       return res.status(403).json({
         success: false,
         message: 'دسترسی غیرمجاز'
