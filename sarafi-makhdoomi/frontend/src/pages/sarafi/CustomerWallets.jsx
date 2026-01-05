@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { FaSearch, FaWallet, FaPlus, FaMinus, FaCreditCard, FaHistory, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaWallet, FaPlus, FaMinus, FaCreditCard, FaHistory, FaTimes, FaCoins, FaDollarSign, FaEuroSign } from 'react-icons/fa';
 import { sarafiAPI } from '../../services/api';
+import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jalaliMoment from 'jalali-moment';
 
@@ -10,18 +11,31 @@ const CustomerWallets = () => {
   const [search, setSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerWallets, setCustomerWallets] = useState(null);
+  const [currencyBalances, setCurrencyBalances] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [walletsLoading, setWalletsLoading] = useState(false);
+  const [currencies, setCurrencies] = useState([]);
 
   // مدال عملیات
   const [operationModal, setOperationModal] = useState({ open: false, type: '', customer: null });
   const [operationAmount, setOperationAmount] = useState('');
   const [operationDescription, setOperationDescription] = useState('');
   const [operationLoading, setOperationLoading] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState('');
 
   useEffect(() => {
     fetchCustomers();
+    fetchCurrencies();
   }, [search]);
+
+  const fetchCurrencies = async () => {
+    try {
+      const res = await api.get('/currencies');
+      setCurrencies(res.data.data || []);
+    } catch (e) {
+      console.error('خطا در دریافت ارزها:', e);
+    }
+  };
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -38,11 +52,13 @@ const CustomerWallets = () => {
   const fetchCustomerWallets = async (customerId) => {
     setWalletsLoading(true);
     try {
-      const [walletsRes, transactionsRes] = await Promise.all([
+      const [walletsRes, currencyRes, transactionsRes] = await Promise.all([
         sarafiAPI.getCustomerWallets(customerId),
+        api.get(`/wallets/customer/${customerId}/currencies`),
         sarafiAPI.getCustomerTransactions(customerId, { limit: 20 })
       ]);
       setCustomerWallets(walletsRes.data.data || null);
+      setCurrencyBalances(currencyRes.data.data?.currencyBalances || []);
       setTransactions(transactionsRes.data.data || []);
     } catch (e) {
       console.error(e);
@@ -57,21 +73,29 @@ const CustomerWallets = () => {
     fetchCustomerWallets(customer._id);
   };
 
-  const openOperationModal = (type) => {
+  const openOperationModal = (type, currencyId = null) => {
     setOperationModal({ open: true, type, customer: selectedCustomer });
     setOperationAmount('');
     setOperationDescription('');
+    setSelectedCurrency(currencyId || '');
   };
 
   const closeOperationModal = () => {
     setOperationModal({ open: false, type: '', customer: null });
     setOperationAmount('');
     setOperationDescription('');
+    setSelectedCurrency('');
   };
 
   const handleOperation = async () => {
     if (!operationAmount || parseFloat(operationAmount) <= 0) {
       toast.error('مبلغ معتبر وارد کنید');
+      return;
+    }
+
+    // برای عملیات ارزی، انتخاب ارز الزامی است
+    if (['currency_deposit', 'currency_withdraw'].includes(operationModal.type) && !selectedCurrency) {
+      toast.error('ارز را انتخاب کنید');
       return;
     }
 
@@ -88,6 +112,24 @@ const CustomerWallets = () => {
         case 'withdraw':
           await sarafiAPI.withdraw({ customerId, amount, description: operationDescription });
           toast.success('برداشت با موفقیت انجام شد');
+          break;
+        case 'currency_deposit':
+          await api.post('/wallets/currency/deposit', {
+            customerId,
+            currencyId: selectedCurrency,
+            amount,
+            description: operationDescription
+          });
+          toast.success('واریز ارز با موفقیت انجام شد');
+          break;
+        case 'currency_withdraw':
+          await api.post('/wallets/currency/withdraw', {
+            customerId,
+            currencyId: selectedCurrency,
+            amount,
+            description: operationDescription
+          });
+          toast.success('برداشت ارز با موفقیت انجام شد');
           break;
         case 'increase_credit':
           await sarafiAPI.increaseCreditLimit({ customerId, amount });
@@ -116,13 +158,21 @@ const CustomerWallets = () => {
 
   const getOperationTitle = () => {
     const titles = {
-      deposit: 'واریز به کیف پول',
-      withdraw: 'برداشت از کیف پول',
+      deposit: 'واریز ریال به کیف پول',
+      withdraw: 'برداشت ریال از کیف پول',
+      currency_deposit: 'واریز ارز به کیف پول',
+      currency_withdraw: 'برداشت ارز از کیف پول',
       increase_credit: 'افزایش سقف اعتبار',
       decrease_credit: 'کاهش سقف اعتبار',
       repay_credit: 'بازپرداخت اعتبار'
     };
     return titles[operationModal.type] || '';
+  };
+
+  const getCurrencyIcon = (code) => {
+    if (code === 'USD') return <FaDollarSign className="text-green-500" />;
+    if (code === 'EUR') return <FaEuroSign className="text-blue-500" />;
+    return <FaCoins className="text-gold-500" />;
   };
 
   const getTransactionType = (type) => {
@@ -241,14 +291,14 @@ const CustomerWallets = () => {
 
               {/* کیف پول‌ها */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* کیف پول نقدی */}
+                {/* کیف پول نقدی (ریال) */}
                 <div className="card-dark bg-gradient-to-br from-green-900/20 to-dark-800">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
                       <FaWallet className="text-green-500 text-xl" />
                     </div>
                     <div>
-                      <p className="text-dark-400 text-sm">کیف پول نقدی</p>
+                      <p className="text-dark-400 text-sm">موجودی ریالی</p>
                       <p className="text-white font-bold text-lg">
                         {(cashWallet?.balance || 0).toLocaleString()} ریال
                       </p>
@@ -260,13 +310,13 @@ const CustomerWallets = () => {
                       onClick={() => openOperationModal('deposit')}
                       className="flex-1 btn-primary py-2 text-sm"
                     >
-                      <FaPlus className="ml-1" /> واریز
+                      <FaPlus className="ml-1" /> واریز ریال
                     </button>
                     <button
                       onClick={() => openOperationModal('withdraw')}
                       className="flex-1 btn-outline py-2 text-sm"
                     >
-                      <FaMinus className="ml-1" /> برداشت
+                      <FaMinus className="ml-1" /> برداشت ریال
                     </button>
                   </div>
                 </div>
@@ -333,6 +383,63 @@ const CustomerWallets = () => {
                     </button>
                   </div>
                 </div>
+              </div>
+
+              {/* موجودی ارزها */}
+              <div className="card-dark">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <FaCoins className="text-gold-500" />
+                    <h3 className="text-white font-bold">موجودی ارزها</h3>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openOperationModal('currency_deposit')}
+                      className="btn-primary py-1 px-3 text-xs"
+                    >
+                      <FaPlus className="ml-1" /> واریز ارز
+                    </button>
+                    <button
+                      onClick={() => openOperationModal('currency_withdraw')}
+                      className="btn-outline py-1 px-3 text-xs"
+                    >
+                      <FaMinus className="ml-1" /> برداشت ارز
+                    </button>
+                  </div>
+                </div>
+
+                {currencyBalances.length === 0 ? (
+                  <p className="text-dark-500 text-center py-4">موجودی ارزی ندارد</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {currencyBalances.map((cb, index) => (
+                      <div
+                        key={cb.currency || index}
+                        className="bg-dark-800 rounded-lg p-3 border border-dark-700"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center">
+                            {getCurrencyIcon(cb.currencyCode)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-white text-sm">{cb.currencyName || cb.currencyCode}</p>
+                            <p className="text-xs text-dark-400">{cb.currencyCode}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-dark-400">موجودی:</span>
+                            <span className="font-bold text-gold-500">{cb.amount?.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-dark-400">ارزش ریالی:</span>
+                            <span className="text-green-500">{cb.rialValue?.toLocaleString()} ریال</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* تاریخچه تراکنش‌ها */}
@@ -414,8 +521,29 @@ const CustomerWallets = () => {
                 </p>
               </div>
 
+              {/* انتخاب ارز برای عملیات ارزی */}
+              {['currency_deposit', 'currency_withdraw'].includes(operationModal.type) && (
+                <div>
+                  <label className="block text-dark-400 text-sm mb-2">انتخاب ارز</label>
+                  <select
+                    className="input-dark"
+                    value={selectedCurrency}
+                    onChange={(e) => setSelectedCurrency(e.target.value)}
+                  >
+                    <option value="">انتخاب کنید...</option>
+                    {currencies.filter(c => c.isActive).map(currency => (
+                      <option key={currency._id} value={currency._id}>
+                        {currency.nameFa} ({currency.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
-                <label className="block text-dark-400 text-sm mb-2">مبلغ (ریال)</label>
+                <label className="block text-dark-400 text-sm mb-2">
+                  {['currency_deposit', 'currency_withdraw'].includes(operationModal.type) ? 'مقدار' : 'مبلغ (ریال)'}
+                </label>
                 <input
                   type="number"
                   className="input-dark"
@@ -425,7 +553,7 @@ const CustomerWallets = () => {
                 />
               </div>
 
-              {['deposit', 'withdraw', 'repay_credit'].includes(operationModal.type) && (
+              {['deposit', 'withdraw', 'repay_credit', 'currency_deposit', 'currency_withdraw'].includes(operationModal.type) && (
                 <div>
                   <label className="block text-dark-400 text-sm mb-2">توضیحات (اختیاری)</label>
                   <textarea
