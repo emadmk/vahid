@@ -531,7 +531,7 @@ const CustomerWallets = () => {
                     onChange={(e) => setSelectedCurrency(e.target.value)}
                   >
                     <option value="">انتخاب کنید...</option>
-                    {currencies.filter(c => c.isActive).map(currency => (
+                    {currencies.map(currency => (
                       <option key={currency._id} value={currency._id}>
                         {currency.nameFa} ({currency.code})
                       </option>
