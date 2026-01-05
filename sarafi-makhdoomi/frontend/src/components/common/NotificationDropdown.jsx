@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   FaBell, FaCheck, FaCheckDouble, FaTimes, FaExclamationCircle,
   FaInfoCircle, FaCheckCircle, FaExclamationTriangle, FaArrowLeft,
-  FaTrash, FaCog
+  FaTrash, FaCog, FaExternalLinkAlt
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -121,6 +121,7 @@ const NotificationDropdown = ({ basePath = '/dashboard' }) => {
   };
 
   const handleNotificationClick = (notification) => {
+    // علامت‌گذاری به عنوان خوانده شده
     if (!notification.isRead) {
       markAsRead(notification._id);
     }
@@ -131,6 +132,9 @@ const NotificationDropdown = ({ basePath = '/dashboard' }) => {
       // اگر مسیر با / شروع نشده، با basePath ترکیب کن
       const fullPath = targetUrl.startsWith('/') ? targetUrl : `${basePath}/${targetUrl}`;
       navigate(fullPath);
+      setIsOpen(false);
+    } else {
+      // اگر لینکی نداشت، فقط بسته شود
       setIsOpen(false);
     }
   };
@@ -200,7 +204,7 @@ const NotificationDropdown = ({ basePath = '/dashboard' }) => {
                   onClick={() => handleNotificationClick(notification)}
                   className={`px-4 py-3 border-b border-dark-700 cursor-pointer transition-all hover:bg-dark-800 ${
                     !notification.isRead ? 'bg-dark-850' : 'bg-dark-900'
-                  }`}
+                  } ${(notification.link || notification.actionUrl) ? 'hover:border-r-2 hover:border-r-gold' : ''}`}
                 >
                   <div className="flex items-start gap-3">
                     {/* Icon */}
@@ -217,6 +221,9 @@ const NotificationDropdown = ({ basePath = '/dashboard' }) => {
                           !notification.isRead ? 'text-white font-medium' : 'text-dark-300'
                         }`}>
                           {notification.title || notification.message}
+                          {(notification.link || notification.actionUrl) && (
+                            <FaExternalLinkAlt className="inline-block mr-1 w-3 h-3 text-gold" />
+                          )}
                         </p>
                         <button
                           onClick={(e) => deleteNotification(notification._id, e)}

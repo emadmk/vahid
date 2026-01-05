@@ -214,8 +214,11 @@ sarafiGroupSchema.statics.getGroupsForUser = async function(userId) {
 
 // متد استاتیک: پیوستن با کد دعوت
 sarafiGroupSchema.statics.joinByInviteCode = async function(code, userId) {
+  // تبدیل به uppercase برای جلوگیری از مشکل case-sensitivity
+  const normalizedCode = code.toUpperCase().trim();
+
   const group = await this.findOne({
-    inviteCode: code,
+    inviteCode: normalizedCode,
     isActive: true,
     $or: [
       { inviteCodeExpiry: { $gt: new Date() } },
@@ -225,6 +228,11 @@ sarafiGroupSchema.statics.joinByInviteCode = async function(code, userId) {
 
   if (!group) {
     throw new Error('کد دعوت نامعتبر یا منقضی شده است');
+  }
+
+  // بررسی اینکه مالک نباشد
+  if (group.owner.toString() === userId.toString()) {
+    throw new Error('شما مالک این گروه هستید');
   }
 
   if (group.isMember(userId)) {
