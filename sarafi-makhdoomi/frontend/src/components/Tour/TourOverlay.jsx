@@ -106,7 +106,7 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
             left = Math.max(10, rect.left);
         }
 
-        // اطمینان از قرار گرفتن کامل tooltip در صفحه
+        // اولویت: نمایش کامل tooltip در صفحه (حتی اگر روی المنت قرار بگیرد)
         if (top + tooltipHeight > windowHeight - 20) {
           top = windowHeight - tooltipHeight - 20;
         }
@@ -118,35 +118,6 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
         }
         if (left < 20) {
           left = 20;
-        }
-
-        // اطمینان از عدم همپوشانی با المنت
-        const tooltipRect = {
-          top,
-          left,
-          right: left + tooltipWidth,
-          bottom: top + tooltipHeight
-        };
-
-        const elementRect = {
-          top: rect.top - 10,
-          left: rect.left - 10,
-          right: rect.right + 10,
-          bottom: rect.bottom + 10
-        };
-
-        // بررسی همپوشانی
-        const isOverlapping = !(
-          tooltipRect.right < elementRect.left ||
-          tooltipRect.left > elementRect.right ||
-          tooltipRect.bottom < elementRect.top ||
-          tooltipRect.top > elementRect.bottom
-        );
-
-        if (isOverlapping && position !== 'corner') {
-          // اگر همپوشانی داشت، به گوشه ببر
-          top = 80;
-          left = windowWidth - tooltipWidth - 20;
         }
 
         setTooltipStyle({ top, left, width: tooltipWidth });
