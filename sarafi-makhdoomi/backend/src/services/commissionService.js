@@ -9,19 +9,28 @@ class CommissionService {
     const { currency, type, amount, sarafiId } = tradeData;
 
     // یافتن قوانین فعال با اولویت نزولی
+    // استفاده از $and برای ترکیب چندین شرط $or
     const rules = await Commission.find({
       isActive: true,
-      $or: [
-        { sarafi: sarafiId },
-        { sarafi: null } // قوانین عمومی
-      ],
-      $or: [
-        { currency: currency },
-        { currency: null } // قوانین عمومی ارز
-      ],
-      $or: [
-        { tradeType: type },
-        { tradeType: 'both' }
+      $and: [
+        {
+          $or: [
+            { sarafi: sarafiId },
+            { sarafi: null } // قوانین عمومی
+          ]
+        },
+        {
+          $or: [
+            { currency: currency },
+            { currency: null } // قوانین عمومی ارز
+          ]
+        },
+        {
+          $or: [
+            { tradeType: type },
+            { tradeType: 'both' }
+          ]
+        }
       ]
     }).sort({ priority: -1 });
 
@@ -48,13 +57,18 @@ class CommissionService {
     const rule = await this.findApplicableRule(tradeData, customer);
 
     if (!rule) {
-      // بدون کارمزد - استفاده از percentage با مقدار 0
+      // کارمزد پیش‌فرض: 0.5% با حداقل 50,000 ریال
+      const defaultRate = 0.5;
+      const defaultMin = 50000;
+      let defaultAmount = Math.round((tradeData.amount * defaultRate) / 100);
+      defaultAmount = Math.max(defaultAmount, defaultMin);
+
       return {
-        amount: 0,
-        rate: 0,
+        amount: defaultAmount,
+        rate: defaultRate,
         type: 'percentage',
         ruleId: null,
-        ruleName: 'بدون کارمزد'
+        ruleName: 'کارمزد پیش‌فرض'
       };
     }
 
