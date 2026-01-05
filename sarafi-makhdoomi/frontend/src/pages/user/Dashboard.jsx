@@ -126,7 +126,7 @@ const Dashboard = () => {
       </div>
 
       {/* کیف پول‌ها */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div data-tour="wallet-balance" className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* کیف پول نقدی */}
         <Link to="/dashboard/wallet" className="card p-6 hover:border-gold/50 transition-all group">
           <div className="flex items-center justify-between mb-4">
@@ -202,7 +202,7 @@ const Dashboard = () => {
       </div>
 
       {/* آمار سریع */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div data-tour="stats-cards" className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Link to="/dashboard/instant-trade" className="stat-card hover:border-gold/50">
           <FaExchangeAlt className="text-gold text-2xl mb-2" />
           <div className="stat-value">{stats.total}</div>
@@ -227,7 +227,7 @@ const Dashboard = () => {
 
       {/* دکمه‌های سریع */}
       {user?.status === 'approved' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div data-tour="quick-actions" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link to="/dashboard/instant-trade" className="card-dark hover:border-gold-500/50 flex items-center gap-4 transition-all">
             <div className="w-12 h-12 rounded-full bg-gold-500/10 flex items-center justify-center text-gold-500">
               <FaBolt className="w-5 h-5" />

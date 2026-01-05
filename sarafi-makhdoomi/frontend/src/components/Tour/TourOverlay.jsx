@@ -5,7 +5,7 @@ import { FaArrowLeft, FaArrowRight, FaTimes, FaLightbulb } from 'react-icons/fa'
 const TourOverlay = ({ steps, onComplete, onSkip }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState(null);
-  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const [tooltipStyle, setTooltipStyle] = useState({});
   const tooltipRef = useRef(null);
 
   const step = steps[currentStep];
@@ -20,9 +20,8 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
         setTargetRect(rect);
 
         // محاسبه موقعیت tooltip
-        const tooltipWidth = 320;
-        const tooltipHeight = 200;
-        const padding = 16;
+        const tooltipWidth = 340;
+        const padding = 20;
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
 
@@ -30,7 +29,7 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
 
         switch (step.position || 'bottom') {
           case 'top':
-            top = rect.top - tooltipHeight - padding;
+            top = rect.top - padding;
             left = rect.left + rect.width / 2 - tooltipWidth / 2;
             break;
           case 'bottom':
@@ -38,11 +37,11 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
             left = rect.left + rect.width / 2 - tooltipWidth / 2;
             break;
           case 'left':
-            top = rect.top + rect.height / 2 - tooltipHeight / 2;
+            top = rect.top;
             left = rect.left - tooltipWidth - padding;
             break;
           case 'right':
-            top = rect.top + rect.height / 2 - tooltipHeight / 2;
+            top = rect.top;
             left = rect.right + padding;
             break;
           default:
@@ -53,19 +52,28 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
         // تنظیم برای جلوگیری از خروج از صفحه
         if (left < padding) left = padding;
         if (left + tooltipWidth > windowWidth - padding) left = windowWidth - tooltipWidth - padding;
-        if (top < padding) top = rect.bottom + padding;
-        if (top + tooltipHeight > windowHeight - padding) top = rect.top - tooltipHeight - padding;
+        if (top < padding) {
+          top = rect.bottom + padding;
+        }
+        if (top > windowHeight - 250) {
+          top = rect.top - 220;
+        }
 
-        setTooltipPosition({ top, left });
+        setTooltipStyle({ top, left, width: tooltipWidth });
 
         // اسکرول به المنت
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     };
 
-    updatePosition();
+    // تاخیر کوتاه برای اطمینان از رندر شدن المنت
+    setTimeout(updatePosition, 100);
     window.addEventListener('resize', updatePosition);
-    return () => window.removeEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition);
+    };
   }, [currentStep, step]);
 
   const handleNext = () => {
@@ -87,17 +95,17 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   return createPortal(
     <div className="fixed inset-0 z-[9999]" dir="rtl">
       {/* پس‌زمینه تاریک با سوراخ */}
-      <svg className="absolute inset-0 w-full h-full">
+      <svg className="absolute inset-0 w-full h-full pointer-events-none">
         <defs>
           <mask id="tour-mask">
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
             {targetRect && (
               <rect
-                x={targetRect.left - 8}
-                y={targetRect.top - 8}
-                width={targetRect.width + 16}
-                height={targetRect.height + 16}
-                rx="12"
+                x={targetRect.left - 12}
+                y={targetRect.top - 12}
+                width={targetRect.width + 24}
+                height={targetRect.height + 24}
+                rx="16"
                 fill="black"
               />
             )}
@@ -108,21 +116,22 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
           y="0"
           width="100%"
           height="100%"
-          fill="rgba(0, 0, 0, 0.85)"
+          fill="rgba(0, 0, 0, 0.9)"
           mask="url(#tour-mask)"
         />
       </svg>
 
-      {/* حاشیه دور المنت هایلایت شده */}
+      {/* پس‌زمینه روشن برای المنت هایلایت شده */}
       {targetRect && (
         <div
-          className="absolute border-2 border-gold rounded-xl pointer-events-none animate-pulse"
+          className="absolute rounded-2xl pointer-events-none"
           style={{
-            top: targetRect.top - 8,
-            left: targetRect.left - 8,
-            width: targetRect.width + 16,
-            height: targetRect.height + 16,
-            boxShadow: '0 0 20px rgba(212, 175, 55, 0.5), 0 0 40px rgba(212, 175, 55, 0.3)'
+            top: targetRect.top - 12,
+            left: targetRect.left - 12,
+            width: targetRect.width + 24,
+            height: targetRect.height + 24,
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 1) 0%, rgba(15, 23, 42, 1) 100%)',
+            boxShadow: '0 0 0 4px #d4af37, 0 0 30px rgba(212, 175, 55, 0.6), 0 0 60px rgba(212, 175, 55, 0.3)',
           }}
         />
       )}
@@ -130,75 +139,74 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
       {/* Tooltip */}
       <div
         ref={tooltipRef}
-        className="absolute bg-dark-900 border border-dark-700 rounded-2xl shadow-2xl p-5 w-80 animate-fadeIn"
-        style={{
-          top: tooltipPosition.top,
-          left: tooltipPosition.left,
-        }}
+        className="absolute bg-white rounded-2xl shadow-2xl overflow-hidden animate-fadeIn"
+        style={tooltipStyle}
       >
         {/* هدر */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center">
-              <FaLightbulb className="text-gold text-sm" />
+        <div className="bg-gradient-to-l from-amber-500 to-yellow-500 px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+              <FaLightbulb className="text-white text-lg" />
             </div>
-            <span className="text-gold font-bold">{step.title}</span>
+            <span className="text-white font-bold text-lg">{step.title}</span>
           </div>
           <button
             onClick={onSkip}
-            className="text-dark-400 hover:text-white transition-colors"
+            className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
           >
             <FaTimes />
           </button>
         </div>
 
         {/* محتوا */}
-        <p className="text-dark-300 text-sm leading-relaxed mb-5">
-          {step.content}
-        </p>
+        <div className="p-5">
+          <p className="text-gray-700 text-base leading-relaxed mb-5">
+            {step.content}
+          </p>
 
-        {/* پیشرفت */}
-        <div className="flex items-center gap-1 mb-4">
-          {steps.map((_, index) => (
-            <div
-              key={index}
-              className={`h-1.5 rounded-full transition-all ${
-                index === currentStep
-                  ? 'w-6 bg-gold'
-                  : index < currentStep
-                  ? 'w-3 bg-gold/50'
-                  : 'w-3 bg-dark-700'
+          {/* پیشرفت */}
+          <div className="flex items-center gap-1.5 mb-5">
+            {steps.map((_, index) => (
+              <div
+                key={index}
+                className={`h-2 rounded-full transition-all ${
+                  index === currentStep
+                    ? 'w-8 bg-amber-500'
+                    : index < currentStep
+                    ? 'w-4 bg-amber-300'
+                    : 'w-4 bg-gray-200'
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* دکمه‌ها */}
+          <div className="flex items-center justify-between gap-3">
+            <button
+              onClick={handlePrev}
+              disabled={currentStep === 0}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                currentStep === 0
+                  ? 'text-gray-300 cursor-not-allowed bg-gray-100'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-200'
               }`}
-            />
-          ))}
-        </div>
+            >
+              <FaArrowRight className="text-xs" />
+              قبلی
+            </button>
 
-        {/* دکمه‌ها */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={handlePrev}
-            disabled={currentStep === 0}
-            className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-all ${
-              currentStep === 0
-                ? 'text-dark-600 cursor-not-allowed'
-                : 'text-dark-300 hover:text-white hover:bg-dark-800'
-            }`}
-          >
-            <FaArrowRight className="text-xs" />
-            قبلی
-          </button>
+            <span className="text-gray-400 text-sm font-medium">
+              {currentStep + 1} از {steps.length}
+            </span>
 
-          <span className="text-dark-500 text-xs">
-            {currentStep + 1} از {steps.length}
-          </span>
-
-          <button
-            onClick={handleNext}
-            className="flex items-center gap-1 px-4 py-2 rounded-lg text-sm bg-gold text-dark-900 font-bold hover:bg-gold/90 transition-all"
-          >
-            {currentStep === steps.length - 1 ? 'پایان' : 'بعدی'}
-            {currentStep < steps.length - 1 && <FaArrowLeft className="text-xs" />}
-          </button>
+            <button
+              onClick={handleNext}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-l from-amber-500 to-yellow-500 text-white hover:from-amber-600 hover:to-yellow-600 transition-all shadow-lg shadow-amber-500/30"
+            >
+              {currentStep === steps.length - 1 ? 'پایان' : 'بعدی'}
+              {currentStep < steps.length - 1 && <FaArrowLeft className="text-xs" />}
+            </button>
+          </div>
         </div>
       </div>
     </div>,

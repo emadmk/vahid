@@ -51,7 +51,10 @@ const UserLayout = () => {
   return (
     <div className="min-h-screen bg-dark-950 flex">
       {/* سایدبار */}
-      <aside className={`fixed lg:static inset-y-0 right-0 z-50 w-64 bg-dark-900 border-l border-dark-800 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+      <aside
+        data-tour="sidebar"
+        className={`fixed lg:static inset-y-0 right-0 z-50 w-64 bg-dark-900 border-l border-dark-800 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}
+      >
         <div className="flex flex-col h-full">
           {/* هدر سایدبار */}
           <div className="p-6 border-b border-dark-800">
