@@ -47,6 +47,7 @@ const SarafiLayout = () => {
     { path: '/sarafi/spreads', label: 'مدیریت اسپرد', icon: FaPercent },
     { path: '/sarafi/receipts', label: 'رسیدها', icon: FaReceipt },
     { path: '/sarafi/accountant', label: 'حسابداری', icon: FaCalculator },
+    { path: '/sarafi/profit-loss', label: 'سود و زیان', icon: FaCoins, isNew: true },
     { path: '/sarafi/customer-wallets', label: 'کیف پول مشتریان', icon: FaWallet },
     { path: '/sarafi/customers', label: 'مشتریان', icon: FaUsers },
     { path: '/sarafi/groups', label: 'گروه‌های صراف', icon: FaUserFriends, badge: pendingGroupTrades },

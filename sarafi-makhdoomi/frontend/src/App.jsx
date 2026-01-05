@@ -52,6 +52,7 @@ import NotificationsPage from './pages/shared/Notifications';
 import SarafiGroups from './pages/sarafi/Groups';
 import SharedCustomers from './pages/sarafi/SharedCustomers';
 import GroupSettlements from './pages/sarafi/GroupSettlements';
+import SarafiProfitLoss from './pages/sarafi/ProfitLoss';
 
 // صفحات ادمین
 import AdminDashboard from './pages/admin/Dashboard';
@@ -185,6 +186,7 @@ function App() {
           <Route path="groups" element={<SarafiGroups />} />
           <Route path="groups/:groupId/shared-customers" element={<SharedCustomers />} />
           <Route path="group-settlements" element={<GroupSettlements />} />
+          <Route path="profit-loss" element={<SarafiProfitLoss />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
         </Route>
