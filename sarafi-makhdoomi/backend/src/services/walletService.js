@@ -418,6 +418,7 @@ class WalletService {
     const transactions = await WalletTransaction.find(query)
       .populate('wallet', 'type')
       .populate('trade', 'tradeNumber')
+      .populate('currency', 'code nameFa symbol')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

@@ -486,7 +486,7 @@ const CustomerWallets = () => {
                               : 'text-red-500'
                           }`}>
                             {tx.type === 'deposit' || tx.type === 'credit_repay' ? '+' : '-'}
-                            {tx.amount?.toLocaleString()} ریال
+                            {tx.amount?.toLocaleString()} {tx.currency?.code || tx.currencyCode || (tx.walletType === 'currency' ? tx.currency?.nameFa || 'ارز' : 'ریال')}
                           </p>
                           {tx.description && (
                             <p className="text-dark-400 text-xs">{tx.description}</p>
