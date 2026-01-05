@@ -30,7 +30,7 @@ const CustomerWallets = () => {
 
   const fetchCurrencies = async () => {
     try {
-      const res = await api.get('/currencies');
+      const res = await api.get('/public/currencies');
       setCurrencies(res.data.data || []);
     } catch (e) {
       console.error('خطا در دریافت ارزها:', e);
