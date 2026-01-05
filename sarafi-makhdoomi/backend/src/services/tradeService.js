@@ -98,14 +98,23 @@ class TradeService {
 
     const query = { tradeType: 'instant' };
     if (customerId) query.customer = customerId;
-    if (sarafiId) query.sarafi = sarafiId;
+
+    // برای صراف: هم معاملات خودش و هم معاملاتی که از گروه قبول کرده
+    if (sarafiId) {
+      query.$or = [
+        { sarafi: sarafiId },
+        { executorSarafi: sarafiId }
+      ];
+    }
+
     if (status) query.status = status;
 
     const trades = await Trade.find(query)
       .populate('currency', 'code nameFa symbol')
       .populate('customer', 'firstName lastName phone')
-      .populate('sarafi', 'firstName lastName sarafiInfo.businessName')
+      .populate('sarafi', 'firstName lastName sarafiInfo.businessName sarafiInfo.name sarafiInfo.alias')
       .populate('ownerSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
+      .populate('executorSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
       .populate('sharedCustomer', 'displayName customerNickname')
       .sort({ createdAt: -1 })
       .skip(skip)

@@ -287,8 +287,28 @@ const tradeSchema = new mongoose.Schema({
     ref: 'User'
   },
 
-  // صراف اجراکننده - صراف B (برای معاملات گروهی - همان sarafi فعلی)
-  // sarafi فیلد موجود نقش اجراکننده را دارد
+  // صراف اجراکننده - صراف B که معامله را قبول کرده
+  executorSarafi: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+
+  // صراف قبول‌کننده معامله (برای معاملات گروهی که از صراف دیگر قبول شده)
+  acceptedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+
+  // تاریخ قبول معامله
+  acceptedAt: {
+    type: Date
+  },
+
+  // گروه مرتبط با قبول معامله
+  groupId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SarafiGroup'
+  },
 
   // اطلاعات اسپرد معامله گروهی
   groupTradeDetails: {
@@ -340,6 +360,9 @@ tradeSchema.index({ group: 1, status: 1 });
 tradeSchema.index({ ownerSarafi: 1, status: 1 });
 tradeSchema.index({ sharedCustomer: 1 });
 tradeSchema.index({ groupSettlementStatus: 1 });
+tradeSchema.index({ executorSarafi: 1, status: 1 });
+tradeSchema.index({ acceptedBy: 1 });
+tradeSchema.index({ groupId: 1 });
 
 // تولید شماره معامله یکتا
 tradeSchema.statics.generateTradeNumber = function() {

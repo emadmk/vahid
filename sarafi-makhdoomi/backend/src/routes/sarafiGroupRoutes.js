@@ -245,6 +245,76 @@ router.post('/group-trade', authorize('sarafi', 'admin'), async (req, res) => {
   }
 });
 
+// قبول معامله از صراف دیگر در گروه و انتقال به پنل خودم
+router.post('/accept-trade/:tradeId', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const Trade = require('../models/Trade');
+    const { tradeId } = req.params;
+
+    // یافتن معامله
+    const trade = await Trade.findById(tradeId)
+      .populate('sarafi', 'firstName lastName sarafiInfo.name')
+      .populate('customer', 'firstName lastName phone');
+
+    if (!trade) {
+      return res.status(404).json({ success: false, message: 'معامله یافت نشد' });
+    }
+
+    // بررسی اینکه معامله قبلا گرفته نشده
+    if (trade.acceptedBy) {
+      return res.status(400).json({ success: false, message: 'این معامله قبلا توسط صراف دیگری قبول شده است' });
+    }
+
+    // بررسی اینکه معامله مال خود صراف نباشد
+    if (trade.sarafi._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'نمی‌توانید معامله خودتان را قبول کنید' });
+    }
+
+    // بررسی اینکه صراف‌ها در یک گروه هستند
+    const myGroups = await SarafiGroup.getGroupsForUser(req.user._id);
+    const originalSarafiGroups = await SarafiGroup.getGroupsForUser(trade.sarafi._id);
+
+    const myGroupIds = myGroups.map(g => g._id.toString());
+    const sharedGroup = originalSarafiGroups.find(g => myGroupIds.includes(g._id.toString()));
+
+    if (!sharedGroup) {
+      return res.status(403).json({ success: false, message: 'شما در گروه مشترک با این صراف نیستید' });
+    }
+
+    // علامت‌گذاری معامله به عنوان قبول شده توسط این صراف
+    trade.acceptedBy = req.user._id;
+    trade.acceptedAt = new Date();
+    trade.isGroupTrade = true;
+    trade.ownerSarafi = trade.sarafi._id; // صراف اصلی
+    trade.executorSarafi = req.user._id; // صراف اجراکننده (قبول‌کننده)
+    trade.groupId = sharedGroup._id;
+
+    await trade.save();
+
+    // ثبت لاگ
+    await AuditLog.log({
+      action: 'trade.accept',
+      category: 'trade',
+      user: req.user._id,
+      userRole: 'sarafi',
+      sarafi: req.user._id,
+      targetType: 'Trade',
+      targetId: trade._id,
+      description: `قبول معامله از صراف ${trade.sarafi.sarafiInfo?.name || trade.sarafi.firstName}`,
+      ipAddress: req.ip
+    });
+
+    res.json({
+      success: true,
+      data: trade,
+      message: 'معامله با موفقیت قبول شد و به پنل شما اضافه شد'
+    });
+  } catch (error) {
+    console.error('Error accepting trade:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 // ==================== روت‌های درخواست‌های معامله گروهی (باید قبل از /:id باشند) ====================
 
 // دریافت درخواست‌های معامله مشتریان اشتراکی در انتظار
@@ -304,6 +374,7 @@ router.get('/pending-group-trades', authorize('sarafi', 'admin'), async (req, re
       regularPendingTrades = await Trade.find({
         sarafi: { $in: memberSarafiIds },
         isGroupTrade: { $ne: true }, // نه معاملات گروهی
+        acceptedBy: { $exists: false }, // معاملاتی که هنوز قبول نشده‌اند
         status: { $in: ['pending', 'awaiting_payment', 'processing'] } // همه وضعیت‌های در حال بررسی
       })
         .populate('currency', 'code nameFa symbol')

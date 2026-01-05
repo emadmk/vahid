@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowRight, FaPlus, FaUsers, FaUserPlus, FaTrash, FaExchangeAlt, FaStar, FaCheck, FaTimes, FaSpinner, FaSearch, FaSync } from 'react-icons/fa';
+import { FaArrowRight, FaPlus, FaUsers, FaUserPlus, FaTrash, FaExchangeAlt, FaStar, FaCheck, FaTimes, FaSpinner, FaSearch, FaSync, FaHandshake } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jalaliMoment from 'jalali-moment';
@@ -20,6 +20,7 @@ const SharedCustomers = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [currencies, setCurrencies] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [acceptingTrade, setAcceptingTrade] = useState(null); // ID معامله در حال قبول
 
   // فرم معامله
   const [tradeForm, setTradeForm] = useState({
@@ -207,6 +208,33 @@ const SharedCustomers = () => {
     } catch (e) {
       toast.error(e.response?.data?.message || 'خطا');
     }
+  };
+
+  // قبول معامله و انتقال به پنل خودم
+  const handleAcceptTrade = async (tradeId) => {
+    if (!confirm('آیا می‌خواهید این معامله را قبول کنید و به پنل خود منتقل کنید؟')) return;
+
+    setAcceptingTrade(tradeId);
+    try {
+      await api.post(`/sarafi-groups/accept-trade/${tradeId}`);
+      toast.success('معامله با موفقیت قبول شد و به پنل شما منتقل شد');
+      fetchData();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'خطا در قبول معامله');
+    } finally {
+      setAcceptingTrade(null);
+    }
+  };
+
+  // تولید نام مستعار برای مشتری
+  const getMaskedCustomerName = (trade, index) => {
+    // اگر صراف نام مستعار داده، از آن استفاده کن
+    if (trade.sharedCustomer?.displayName) {
+      return trade.sharedCustomer.displayName;
+    }
+    // در غیر این صورت یک نام عمومی نمایش بده
+    const sarafiName = trade.sarafi?.sarafiInfo?.name || trade.sarafi?.sarafiInfo?.alias || `${trade.sarafi?.firstName || ''}`;
+    return `مشتری ${sarafiName} #${index + 1}`;
   };
 
   const getTrustStars = (rating) => {
@@ -493,7 +521,7 @@ const SharedCustomers = () => {
                 درخواست‌های معامله از اعضای گروه
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {pendingTrades.memberTrades.map(trade => (
+                {pendingTrades.memberTrades.map((trade, index) => (
                   <div key={trade._id} className="card-dark border border-gold/30">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -501,9 +529,9 @@ const SharedCustomers = () => {
                           <FaExchangeAlt />
                         </div>
                         <div>
-                          <h4 className="text-white font-bold">{trade.customer?.firstName} {trade.customer?.lastName}</h4>
+                          <h4 className="text-white font-bold">{getMaskedCustomerName(trade, index)}</h4>
                           <p className="text-gold text-xs">
-                            صراف: {trade.sarafi?.sarafiInfo?.name || `${trade.sarafi?.firstName || ''} ${trade.sarafi?.lastName || ''}`}
+                            صراف: {trade.sarafi?.sarafiInfo?.name || trade.sarafi?.sarafiInfo?.alias || `${trade.sarafi?.firstName || ''} ${trade.sarafi?.lastName || ''}`}
                           </p>
                         </div>
                       </div>
@@ -534,6 +562,25 @@ const SharedCustomers = () => {
                     <p className="text-dark-500 text-xs mb-3">
                       {new Date(trade.createdAt).toLocaleDateString('fa-IR')} - {new Date(trade.createdAt).toLocaleTimeString('fa-IR')}
                     </p>
+
+                    {/* دکمه قبول معامله */}
+                    <button
+                      onClick={() => handleAcceptTrade(trade._id)}
+                      disabled={acceptingTrade === trade._id}
+                      className="w-full btn-gold text-sm py-2 flex items-center justify-center gap-2"
+                    >
+                      {acceptingTrade === trade._id ? (
+                        <>
+                          <FaSpinner className="animate-spin" />
+                          در حال انتقال...
+                        </>
+                      ) : (
+                        <>
+                          <FaHandshake />
+                          قبول و انتقال به پنل من
+                        </>
+                      )}
+                    </button>
                   </div>
                 ))}
               </div>
