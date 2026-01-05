@@ -16,7 +16,6 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
     const el = targetElementRef.current;
     if (el) {
       el.style.removeProperty('position');
-      el.style.removeProperty('z-index');
       el.style.removeProperty('border-radius');
       el.style.removeProperty('box-shadow');
       el.style.removeProperty('outline');
@@ -36,9 +35,8 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
         // ذخیره المنت برای پاکسازی بعدی
         targetElementRef.current = element;
 
-        // اضافه کردن استایل به المنت هایلایت شده - بدون تغییر background
+        // اضافه کردن استایل به المنت هایلایت شده - بدون z-index برای جلوگیری از مشکل stacking context
         element.style.position = 'relative';
-        element.style.zIndex = '10001';
         element.style.borderRadius = '16px';
         element.style.boxShadow = '0 0 0 4px #d4af37, 0 0 40px rgba(212, 175, 55, 0.6)';
         element.style.outline = '2px solid #fbbf24';
