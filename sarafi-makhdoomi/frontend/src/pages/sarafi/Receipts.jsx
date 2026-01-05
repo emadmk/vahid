@@ -634,7 +634,11 @@ const SarafiReceipts = () => {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
                     <span className="text-dark-500">نام: </span>
-                    <span className="text-white">{selectedReceipt.accountHolder?.name}</span>
+                    <span className="text-white">
+                      {selectedReceipt.trade?.isGroupTrade
+                        ? (selectedReceipt.trade?.ownerSarafi?.sarafiInfo?.name || selectedReceipt.trade?.ownerSarafi?.sarafiInfo?.alias || `${selectedReceipt.trade?.ownerSarafi?.firstName || ''} ${selectedReceipt.trade?.ownerSarafi?.lastName || ''}`.trim() || selectedReceipt.accountHolder?.name)
+                        : selectedReceipt.accountHolder?.name}
+                    </span>
                   </div>
                   <div>
                     <span className="text-dark-500">بانک: </span>

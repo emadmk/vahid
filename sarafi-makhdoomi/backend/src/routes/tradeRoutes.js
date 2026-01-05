@@ -791,4 +791,98 @@ router.put('/sarafi/:id/cancel', protect, authorize('sarafi'), async (req, res) 
   }
 });
 
+// آمار معاملات گروهی
+router.get('/sarafi/group-trade-stats', protect, authorize('sarafi'), async (req, res) => {
+  try {
+    const Trade = require('../models/Trade');
+    const mongoose = require('mongoose');
+    const { period = '30d' } = req.query;
+
+    // محاسبه تاریخ شروع
+    const dateFilter = new Date();
+    if (period === '7d') dateFilter.setDate(dateFilter.getDate() - 7);
+    else if (period === '30d') dateFilter.setDate(dateFilter.getDate() - 30);
+    else if (period === '90d') dateFilter.setDate(dateFilter.getDate() - 90);
+    else if (period === '1y') dateFilter.setFullYear(dateFilter.getFullYear() - 1);
+
+    // شروع امروز
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    // آمار معاملات گروهی که این صراف مجری (executor) بوده
+    const executorStats = await Trade.aggregate([
+      {
+        $match: {
+          sarafi: new mongoose.Types.ObjectId(req.user._id),
+          isGroupTrade: true,
+          status: 'completed',
+          createdAt: { $gte: dateFilter }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalTrades: { $sum: 1 },
+          totalVolume: { $sum: '$totalAmount' },
+          totalCommission: { $sum: '$commission.amount' },
+          buyCount: { $sum: { $cond: [{ $eq: ['$type', 'buy'] }, 1, 0] } },
+          sellCount: { $sum: { $cond: [{ $eq: ['$type', 'sell'] }, 1, 0] } }
+        }
+      }
+    ]);
+
+    // آمار امروز
+    const todayStats = await Trade.aggregate([
+      {
+        $match: {
+          sarafi: new mongoose.Types.ObjectId(req.user._id),
+          isGroupTrade: true,
+          createdAt: { $gte: todayStart }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          todayTrades: { $sum: 1 },
+          completedToday: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+          todayCommission: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, '$commission.amount', 0] } }
+        }
+      }
+    ]);
+
+    // معاملات گروهی تکمیل شده
+    const completedTrades = await Trade.find({
+      sarafi: req.user._id,
+      isGroupTrade: true,
+      status: 'completed',
+      createdAt: { $gte: dateFilter }
+    })
+      .populate('currency', 'code nameFa')
+      .populate('ownerSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
+      .populate('sharedCustomer', 'displayName')
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    const stats = executorStats[0] || {};
+    const today = todayStats[0] || {};
+
+    res.json({
+      success: true,
+      data: {
+        totalTrades: stats.totalTrades || 0,
+        totalVolume: stats.totalVolume || 0,
+        totalCommission: stats.totalCommission || 0,
+        buyCount: stats.buyCount || 0,
+        sellCount: stats.sellCount || 0,
+        todayTrades: today.todayTrades || 0,
+        completedToday: today.completedToday || 0,
+        todayCommission: today.todayCommission || 0,
+        trades: completedTrades
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

@@ -818,4 +818,84 @@ router.get('/:id/my-shared-customers', authorize('sarafi', 'admin'), async (req,
   }
 });
 
+// دریافت درخواست‌های معامله مشتریان اشتراکی در انتظار
+router.get('/pending-group-trades', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const Trade = require('../models/Trade');
+
+    // یافتن گروه‌هایی که این صراف عضو آن‌هاست
+    const myGroups = await SarafiGroup.getGroupsForUser(req.user._id);
+    const groupIds = myGroups.map(g => g._id);
+
+    // یافتن مشتریان اشتراکی از صراف‌های دیگر در این گروه‌ها
+    const sharedCustomers = await SharedCustomer.find({
+      group: { $in: groupIds },
+      ownerSarafi: { $ne: req.user._id }, // مشتریان صراف‌های دیگر
+      isActive: true
+    }).populate('ownerSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias');
+
+    const sharedCustomerIds = sharedCustomers.map(sc => sc._id);
+
+    // یافتن معاملات در انتظار از این مشتریان
+    const pendingTrades = await Trade.find({
+      sharedCustomer: { $in: sharedCustomerIds },
+      status: 'pending',
+      sarafi: { $ne: req.user._id } // نه معاملاتی که خودم ایجاد کردم
+    })
+      .populate('currency', 'code nameFa symbol')
+      .populate('customer', 'firstName lastName phone')
+      .populate('sharedCustomer', 'displayName customerNickname trustRating')
+      .populate('ownerSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
+      .populate('sarafi', 'firstName lastName sarafiInfo.name')
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    // همچنین معاملات معمولی که مشتریان صراف‌های گروه ایجاد کرده‌اند
+    // و این صراف می‌تواند آن‌ها را ببیند
+    const memberSarafiIds = [];
+    myGroups.forEach(group => {
+      if (group.requestSharing?.enabled) {
+        group.members?.forEach(member => {
+          const memberId = member.user?._id || member.user;
+          if (memberId && memberId.toString() !== req.user._id.toString()) {
+            memberSarafiIds.push(memberId);
+          }
+        });
+        // اضافه کردن مالک گروه
+        const ownerId = group.owner?._id || group.owner;
+        if (ownerId && ownerId.toString() !== req.user._id.toString()) {
+          memberSarafiIds.push(ownerId);
+        }
+      }
+    });
+
+    let regularPendingTrades = [];
+    if (memberSarafiIds.length > 0) {
+      regularPendingTrades = await Trade.find({
+        sarafi: { $in: memberSarafiIds },
+        isGroupTrade: false,
+        status: 'pending',
+        tradeType: 'instant'
+      })
+        .populate('currency', 'code nameFa symbol')
+        .populate('customer', 'firstName lastName phone')
+        .populate('sarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
+        .sort({ createdAt: -1 })
+        .limit(30);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        groupTrades: pendingTrades,
+        memberTrades: regularPendingTrades,
+        total: pendingTrades.length + regularPendingTrades.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching pending group trades:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

@@ -14,7 +14,8 @@ const SharedCustomers = () => {
   const [myCustomers, setMyCustomers] = useState([]);
   const [availableCustomers, setAvailableCustomers] = useState([]);
   const [allMyCustomers, setAllMyCustomers] = useState([]);
-  const [tab, setTab] = useState('available'); // 'available' | 'mine' | 'share'
+  const [pendingTrades, setPendingTrades] = useState({ groupTrades: [], memberTrades: [], total: 0 });
+  const [tab, setTab] = useState('available'); // 'available' | 'mine' | 'share' | 'pending'
   const [showTradeModal, setShowTradeModal] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [currencies, setCurrencies] = useState([]);
@@ -50,15 +51,17 @@ const SharedCustomers = () => {
     setLoading(true);
     try {
       // اول اطلاعات اصلی را می‌گیریم
-      const [availableRes, myRes, customersRes] = await Promise.all([
+      const [availableRes, myRes, customersRes, pendingRes] = await Promise.all([
         api.get(`/sarafi-groups/${groupId}/available-customers`),
         api.get(`/sarafi-groups/${groupId}/my-shared-customers`),
-        api.get('/sarafi/customers')
+        api.get('/sarafi/customers'),
+        api.get('/sarafi-groups/pending-group-trades').catch(() => ({ data: { data: { groupTrades: [], memberTrades: [], total: 0 } } }))
       ]);
 
       setAvailableCustomers(availableRes.data.data || []);
       setMyCustomers(myRes.data.data || []);
       setAllMyCustomers(customersRes.data.data || []);
+      setPendingTrades(pendingRes.data.data || { groupTrades: [], memberTrades: [], total: 0 });
 
       // اطلاعات گروه را جداگانه می‌گیریم چون ممکن است خطا بدهد
       try {
@@ -249,7 +252,7 @@ const SharedCustomers = () => {
       </div>
 
       {/* تب‌ها */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 flex-wrap">
         <button
           onClick={() => setTab('available')}
           className={`px-4 py-2 rounded-lg transition-colors ${
@@ -267,6 +270,20 @@ const SharedCustomers = () => {
         >
           <FaUserPlus className="inline ml-2" />
           مشتریان من ({myCustomers.length})
+        </button>
+        <button
+          onClick={() => setTab('pending')}
+          className={`px-4 py-2 rounded-lg transition-colors relative ${
+            tab === 'pending' ? 'bg-purple-500 text-white' : 'bg-dark-800 text-dark-400 hover:text-white'
+          }`}
+        >
+          <FaExchangeAlt className="inline ml-2" />
+          درخواست‌های معامله
+          {pendingTrades.total > 0 && (
+            <span className="absolute -top-2 -left-2 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">
+              {pendingTrades.total}
+            </span>
+          )}
         </button>
       </div>
 
@@ -405,6 +422,129 @@ const SharedCustomers = () => {
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* تب درخواست‌های معامله */}
+      {tab === 'pending' && (
+        <div className="space-y-6">
+          {/* معاملات گروهی در انتظار */}
+          {pendingTrades.groupTrades?.length > 0 && (
+            <div>
+              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                <FaUsers className="text-purple-500" />
+                درخواست‌های معامله از مشتریان اشتراکی
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pendingTrades.groupTrades.map(trade => (
+                  <div key={trade._id} className="card-dark border border-purple-500/30">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">
+                          <FaExchangeAlt />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-bold">{trade.sharedCustomer?.displayName || 'مشتری اشتراکی'}</h4>
+                          <p className="text-purple-400 text-xs">
+                            صراف: {trade.ownerSarafi?.sarafiInfo?.name || `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`badge ${trade.type === 'buy' ? 'badge-success' : 'badge-danger'}`}>
+                        {trade.type === 'buy' ? 'خرید' : 'فروش'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 text-sm mb-4 bg-dark-800 p-3 rounded-lg">
+                      <div className="flex justify-between">
+                        <span className="text-dark-500">ارز:</span>
+                        <span className="text-white">{trade.currency?.nameFa} ({trade.currency?.code})</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-dark-500">مقدار:</span>
+                        <span className="text-gold">{trade.amount?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-dark-500">نرخ:</span>
+                        <span className="text-white">{trade.rate?.toLocaleString()} ریال</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-dark-500">مبلغ کل:</span>
+                        <span className="text-gold font-bold">{trade.totalAmount?.toLocaleString()} ریال</span>
+                      </div>
+                    </div>
+
+                    <p className="text-dark-500 text-xs mb-3">
+                      {new Date(trade.createdAt).toLocaleDateString('fa-IR')} - {new Date(trade.createdAt).toLocaleTimeString('fa-IR')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* معاملات معمولی اعضای گروه */}
+          {pendingTrades.memberTrades?.length > 0 && (
+            <div>
+              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                <FaExchangeAlt className="text-gold" />
+                درخواست‌های معامله از اعضای گروه
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pendingTrades.memberTrades.map(trade => (
+                  <div key={trade._id} className="card-dark border border-gold/30">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-gold/20 flex items-center justify-center text-gold">
+                          <FaExchangeAlt />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-bold">{trade.customer?.firstName} {trade.customer?.lastName}</h4>
+                          <p className="text-gold text-xs">
+                            صراف: {trade.sarafi?.sarafiInfo?.name || `${trade.sarafi?.firstName || ''} ${trade.sarafi?.lastName || ''}`}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`badge ${trade.type === 'buy' ? 'badge-success' : 'badge-danger'}`}>
+                        {trade.type === 'buy' ? 'خرید' : 'فروش'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 text-sm mb-4 bg-dark-800 p-3 rounded-lg">
+                      <div className="flex justify-between">
+                        <span className="text-dark-500">ارز:</span>
+                        <span className="text-white">{trade.currency?.nameFa} ({trade.currency?.code})</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-dark-500">مقدار:</span>
+                        <span className="text-gold">{trade.amount?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-dark-500">نرخ:</span>
+                        <span className="text-white">{trade.rate?.toLocaleString()} ریال</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-dark-500">مبلغ کل:</span>
+                        <span className="text-gold font-bold">{trade.totalAmount?.toLocaleString()} ریال</span>
+                      </div>
+                    </div>
+
+                    <p className="text-dark-500 text-xs mb-3">
+                      {new Date(trade.createdAt).toLocaleDateString('fa-IR')} - {new Date(trade.createdAt).toLocaleTimeString('fa-IR')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* هیچ درخواستی وجود ندارد */}
+          {pendingTrades.total === 0 && (
+            <div className="card-dark text-center py-12">
+              <FaExchangeAlt className="text-4xl text-dark-600 mx-auto mb-4" />
+              <p className="text-dark-500">درخواست معامله‌ای از اعضای گروه وجود ندارد</p>
             </div>
           )}
         </div>

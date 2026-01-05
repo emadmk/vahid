@@ -15,9 +15,12 @@ const ProfitLoss = () => {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('30d');
   const [profitData, setProfitData] = useState(null);
+  const [groupProfitData, setGroupProfitData] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [trades, setTrades] = useState([]);
+  const [groupTrades, setGroupTrades] = useState([]);
   const [activeChart, setActiveChart] = useState('profit'); // profit | commission | volume
+  const [activeTab, setActiveTab] = useState('all'); // all | own | group
 
   const COLORS = ['#f5b50a', '#22c55e', '#3b82f6', '#a855f7', '#ef4444', '#06b6d4'];
 
@@ -28,12 +31,15 @@ const ProfitLoss = () => {
   const fetchProfitData = async () => {
     setLoading(true);
     try {
-      const [statsRes, tradesRes] = await Promise.all([
+      const [statsRes, tradesRes, groupStatsRes] = await Promise.all([
         api.get('/trades/sarafi/stats', { params: { period } }),
-        api.get('/trades/sarafi/trades', { params: { status: 'completed', limit: 100 } })
+        api.get('/trades/sarafi/trades', { params: { status: 'completed', limit: 100 } }),
+        api.get('/trades/sarafi/group-trade-stats', { params: { period } }).catch(() => ({ data: { data: {} } }))
       ]);
 
       const stats = statsRes.data.data || {};
+      const groupStats = groupStatsRes.data.data || {};
+
       setProfitData({
         totalProfit: stats.totalCommission || 0,
         todayProfit: stats.todayCommission || 0,
@@ -46,13 +52,27 @@ const ProfitLoss = () => {
         sellProfit: Math.round((stats.sellCount / (stats.totalTrades || 1)) * stats.totalCommission) || 0
       });
 
+      setGroupProfitData({
+        totalProfit: groupStats.totalCommission || 0,
+        todayProfit: groupStats.todayCommission || 0,
+        totalVolume: groupStats.totalVolume || 0,
+        totalTrades: groupStats.totalTrades || 0,
+        todayTrades: groupStats.todayTrades || 0,
+        completedToday: groupStats.completedToday || 0,
+        avgCommission: groupStats.totalTrades ? Math.round(groupStats.totalCommission / groupStats.totalTrades) : 0,
+        buyProfit: Math.round((groupStats.buyCount / (groupStats.totalTrades || 1)) * groupStats.totalCommission) || 0,
+        sellProfit: Math.round((groupStats.sellCount / (groupStats.totalTrades || 1)) * groupStats.totalCommission) || 0
+      });
+
       // پردازش داده‌های نمودار
       const completedTrades = tradesRes.data.data || [];
       setTrades(completedTrades);
+      setGroupTrades(groupStats.trades || []);
 
-      // گروه‌بندی بر اساس تاریخ
+      // گروه‌بندی بر اساس تاریخ (همه معاملات + گروهی)
       const grouped = {};
-      completedTrades.forEach(trade => {
+      const allTrades = [...completedTrades, ...(groupStats.trades || [])];
+      allTrades.forEach(trade => {
         const date = new Date(trade.createdAt).toLocaleDateString('fa-IR');
         if (!grouped[date]) {
           grouped[date] = { date, profit: 0, commission: 0, volume: 0, trades: 0 };
@@ -72,12 +92,38 @@ const ProfitLoss = () => {
     }
   };
 
+  // محاسبه مجموع سود و زیان (خودی + گروهی)
+  const totalStats = {
+    totalProfit: (profitData?.totalProfit || 0) + (groupProfitData?.totalProfit || 0),
+    todayProfit: (profitData?.todayProfit || 0) + (groupProfitData?.todayProfit || 0),
+    totalVolume: (profitData?.totalVolume || 0) + (groupProfitData?.totalVolume || 0),
+    totalTrades: (profitData?.totalTrades || 0) + (groupProfitData?.totalTrades || 0),
+    todayTrades: (profitData?.todayTrades || 0) + (groupProfitData?.todayTrades || 0),
+    completedToday: (profitData?.completedToday || 0) + (groupProfitData?.completedToday || 0)
+  };
+
+  // انتخاب داده‌ها بر اساس تب فعال
+  const getActiveData = () => {
+    if (activeTab === 'own') return profitData;
+    if (activeTab === 'group') return groupProfitData;
+    return totalStats;
+  };
+
+  const getActiveTrades = () => {
+    if (activeTab === 'own') return trades;
+    if (activeTab === 'group') return groupTrades;
+    return [...trades, ...groupTrades].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  };
+
   const formatNumber = (num) => new Intl.NumberFormat('fa-IR').format(Math.round(num || 0));
   const formatDate = (date) => new Date(date).toLocaleDateString('fa-IR');
 
+  const activeData = getActiveData();
+  const activeTrades = getActiveTrades();
+
   const pieData = [
-    { name: 'معاملات خرید', value: profitData?.buyProfit || 0, color: '#22c55e' },
-    { name: 'معاملات فروش', value: profitData?.sellProfit || 0, color: '#ef4444' }
+    { name: 'معاملات خرید', value: activeData?.buyProfit || 0, color: '#22c55e' },
+    { name: 'معاملات فروش', value: activeData?.sellProfit || 0, color: '#ef4444' }
   ];
 
   if (loading) {
@@ -97,7 +143,29 @@ const ProfitLoss = () => {
           سود و زیان
         </h1>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* تب نوع معاملات */}
+          <div className="flex items-center gap-2 bg-dark-800 rounded-lg p-1">
+            {[
+              { value: 'all', label: 'همه', icon: FaChartLine },
+              { value: 'own', label: 'خودی', icon: FaMoneyBillWave },
+              { value: 'group', label: 'گروهی', icon: FaUserFriends }
+            ].map(t => (
+              <button
+                key={t.value}
+                onClick={() => setActiveTab(t.value)}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center gap-1.5 ${
+                  activeTab === t.value
+                    ? t.value === 'group' ? 'bg-purple-500 text-white font-bold' : 'bg-gold text-dark-900 font-bold'
+                    : 'text-dark-400 hover:text-white'
+                }`}
+              >
+                <t.icon className="text-xs" />
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           {/* فیلتر دوره */}
           <div className="flex items-center gap-2 bg-dark-800 rounded-lg p-1">
             {[
@@ -122,17 +190,55 @@ const ProfitLoss = () => {
         </div>
       </div>
 
+      {/* نمایش آمار گروهی در کنار خودی */}
+      {groupProfitData && groupProfitData.totalTrades > 0 && activeTab === 'all' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="card p-4 border-r-4 border-gold bg-gradient-to-l from-gold/5 to-transparent">
+            <div className="flex items-center gap-2 mb-3">
+              <FaMoneyBillWave className="text-gold" />
+              <span className="text-white font-bold">معاملات خودی</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-dark-400 text-xs">سود کل</p>
+                <p className="text-gold font-bold text-lg">{formatNumber(profitData?.totalProfit)}</p>
+              </div>
+              <div>
+                <p className="text-dark-400 text-xs">تعداد معاملات</p>
+                <p className="text-white font-bold text-lg">{profitData?.totalTrades || 0}</p>
+              </div>
+            </div>
+          </div>
+          <div className="card p-4 border-r-4 border-purple-500 bg-gradient-to-l from-purple-500/5 to-transparent">
+            <div className="flex items-center gap-2 mb-3">
+              <FaUserFriends className="text-purple-500" />
+              <span className="text-white font-bold">معاملات گروهی</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-dark-400 text-xs">سود کل</p>
+                <p className="text-purple-400 font-bold text-lg">{formatNumber(groupProfitData?.totalProfit)}</p>
+              </div>
+              <div>
+                <p className="text-dark-400 text-xs">تعداد معاملات</p>
+                <p className="text-white font-bold text-lg">{groupProfitData?.totalTrades || 0}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* کارت‌های آمار */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card p-5 border-r-4 border-gold">
+        <div className={`card p-5 border-r-4 ${activeTab === 'group' ? 'border-purple-500' : 'border-gold'}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-dark-400 text-sm mb-1">سود کل</p>
-              <p className="text-2xl font-bold text-gold">{formatNumber(profitData?.totalProfit)}</p>
+              <p className="text-dark-400 text-sm mb-1">سود کل {activeTab === 'group' && '(گروهی)'}</p>
+              <p className={`text-2xl font-bold ${activeTab === 'group' ? 'text-purple-400' : 'text-gold'}`}>{formatNumber(activeData?.totalProfit)}</p>
               <p className="text-dark-500 text-xs">ریال</p>
             </div>
-            <div className="w-14 h-14 rounded-full bg-gold/20 flex items-center justify-center">
-              <FaTrophy className="text-gold text-2xl" />
+            <div className={`w-14 h-14 rounded-full ${activeTab === 'group' ? 'bg-purple-500/20' : 'bg-gold/20'} flex items-center justify-center`}>
+              <FaTrophy className={`${activeTab === 'group' ? 'text-purple-500' : 'text-gold'} text-2xl`} />
             </div>
           </div>
         </div>
@@ -141,7 +247,7 @@ const ProfitLoss = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-dark-400 text-sm mb-1">سود امروز</p>
-              <p className="text-2xl font-bold text-green-500">{formatNumber(profitData?.todayProfit)}</p>
+              <p className="text-2xl font-bold text-green-500">{formatNumber(activeData?.todayProfit)}</p>
               <p className="text-dark-500 text-xs">ریال</p>
             </div>
             <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -154,7 +260,7 @@ const ProfitLoss = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-dark-400 text-sm mb-1">حجم معاملات</p>
-              <p className="text-2xl font-bold text-blue-500">{formatNumber(profitData?.totalVolume)}</p>
+              <p className="text-2xl font-bold text-blue-500">{formatNumber(activeData?.totalVolume)}</p>
               <p className="text-dark-500 text-xs">ریال</p>
             </div>
             <div className="w-14 h-14 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -167,7 +273,7 @@ const ProfitLoss = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-dark-400 text-sm mb-1">میانگین کارمزد هر معامله</p>
-              <p className="text-2xl font-bold text-purple-500">{formatNumber(profitData?.avgCommission)}</p>
+              <p className="text-2xl font-bold text-purple-500">{formatNumber(activeData?.avgCommission)}</p>
               <p className="text-dark-500 text-xs">ریال</p>
             </div>
             <div className="w-14 h-14 rounded-full bg-purple-500/20 flex items-center justify-center">
@@ -279,14 +385,14 @@ const ProfitLoss = () => {
                 <span className="w-3 h-3 rounded-full bg-green-500"></span>
                 <span className="text-dark-400">معاملات خرید</span>
               </div>
-              <span className="text-white font-bold">{formatNumber(profitData?.buyProfit)} ریال</span>
+              <span className="text-white font-bold">{formatNumber(activeData?.buyProfit)} ریال</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-red-500"></span>
                 <span className="text-dark-400">معاملات فروش</span>
               </div>
-              <span className="text-white font-bold">{formatNumber(profitData?.sellProfit)} ریال</span>
+              <span className="text-white font-bold">{formatNumber(activeData?.sellProfit)} ریال</span>
             </div>
           </div>
         </div>
@@ -296,10 +402,10 @@ const ProfitLoss = () => {
       <div className="card overflow-hidden">
         <div className="p-4 border-b border-dark-800 flex items-center justify-between">
           <h2 className="font-bold text-white flex items-center gap-2">
-            <FaMoneyBillWave className="text-gold" />
-            جزئیات معاملات
+            {activeTab === 'group' ? <FaUserFriends className="text-purple-500" /> : <FaMoneyBillWave className="text-gold" />}
+            جزئیات معاملات {activeTab === 'group' ? 'گروهی' : activeTab === 'own' ? 'خودی' : ''}
           </h2>
-          <span className="text-dark-500 text-sm">{trades.length} معامله</span>
+          <span className="text-dark-500 text-sm">{activeTrades.length} معامله</span>
         </div>
         <div className="overflow-x-auto max-h-96">
           <table className="w-full">
@@ -312,18 +418,19 @@ const ProfitLoss = () => {
                 <th className="text-right p-3 text-dark-400 text-sm">مقدار</th>
                 <th className="text-right p-3 text-dark-400 text-sm">حجم</th>
                 <th className="text-right p-3 text-dark-400 text-sm">کارمزد</th>
+                {activeTab !== 'own' && <th className="text-right p-3 text-dark-400 text-sm">صراف</th>}
               </tr>
             </thead>
             <tbody>
-              {trades.length === 0 ? (
+              {activeTrades.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center p-8 text-dark-500">
+                  <td colSpan={activeTab !== 'own' ? 8 : 7} className="text-center p-8 text-dark-500">
                     معامله‌ای یافت نشد
                   </td>
                 </tr>
               ) : (
-                trades.map(trade => (
-                  <tr key={trade._id} className="border-t border-dark-800 hover:bg-dark-800/30">
+                activeTrades.map(trade => (
+                  <tr key={trade._id} className={`border-t border-dark-800 hover:bg-dark-800/30 ${trade.isGroupTrade ? 'bg-purple-500/5' : ''}`}>
                     <td className="p-3 text-dark-400 text-sm">{formatDate(trade.createdAt)}</td>
                     <td className="p-3 text-gold text-sm">{trade.tradeNumber}</td>
                     <td className="p-3">
@@ -338,6 +445,18 @@ const ProfitLoss = () => {
                     <td className="p-3 text-white text-sm">{formatNumber(trade.amount)}</td>
                     <td className="p-3 text-white text-sm">{formatNumber(trade.totalAmount)}</td>
                     <td className="p-3 text-green-500 font-bold text-sm">{formatNumber(trade.commission?.amount || 0)}</td>
+                    {activeTab !== 'own' && (
+                      <td className="p-3 text-sm">
+                        {trade.isGroupTrade ? (
+                          <span className="text-purple-400 flex items-center gap-1">
+                            <FaUserFriends className="text-xs" />
+                            {trade.ownerSarafi?.sarafiInfo?.name || trade.ownerSarafi?.sarafiInfo?.alias || `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`.trim() || '-'}
+                          </span>
+                        ) : (
+                          <span className="text-dark-500">-</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -349,18 +468,18 @@ const ProfitLoss = () => {
       {/* آمار اضافی */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card p-4 text-center">
-          <FaExchangeAlt className="text-gold text-2xl mx-auto mb-2" />
-          <p className="text-2xl font-bold text-white">{profitData?.totalTrades || 0}</p>
-          <p className="text-dark-400 text-sm">تعداد کل معاملات</p>
+          <FaExchangeAlt className={`${activeTab === 'group' ? 'text-purple-500' : 'text-gold'} text-2xl mx-auto mb-2`} />
+          <p className="text-2xl font-bold text-white">{activeData?.totalTrades || 0}</p>
+          <p className="text-dark-400 text-sm">تعداد کل معاملات {activeTab === 'group' && 'گروهی'}</p>
         </div>
         <div className="card p-4 text-center">
           <FaCalendarAlt className="text-blue-500 text-2xl mx-auto mb-2" />
-          <p className="text-2xl font-bold text-white">{profitData?.todayTrades || 0}</p>
+          <p className="text-2xl font-bold text-white">{activeData?.todayTrades || 0}</p>
           <p className="text-dark-400 text-sm">معاملات امروز</p>
         </div>
         <div className="card p-4 text-center">
           <FaCoins className="text-green-500 text-2xl mx-auto mb-2" />
-          <p className="text-2xl font-bold text-white">{profitData?.completedToday || 0}</p>
+          <p className="text-2xl font-bold text-white">{activeData?.completedToday || 0}</p>
           <p className="text-dark-400 text-sm">تکمیل شده امروز</p>
         </div>
       </div>
