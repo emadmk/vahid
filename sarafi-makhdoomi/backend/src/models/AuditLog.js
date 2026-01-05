@@ -98,6 +98,25 @@ const auditLogSchema = new mongoose.Schema({
       'group.member_add',
       'group.member_remove',
 
+      // عملیات اشتراک‌گذاری مشتری
+      'customer_sharing.enable',
+      'customer_sharing.disable',
+      'customer_sharing.share_customer',
+      'customer_sharing.unshare_customer',
+      'customer_sharing.update_settings',
+
+      // عملیات تسویه گروهی
+      'group_settlement.create',
+      'group_settlement.confirm',
+      'group_settlement.dispute',
+      'group_settlement.resolve',
+      'group_settlement.complete',
+
+      // معاملات گروهی
+      'group_trade.create',
+      'group_trade.complete',
+      'group_trade.cancel',
+
       // سایر
       'other'
     ]
@@ -119,7 +138,10 @@ const auditLogSchema = new mongoose.Schema({
       'permission',       // دسترسی
       'staff',            // کارکنان
       'system',           // سیستم
-      'group'             // گروه صراف
+      'group',            // گروه صراف
+      'customer_sharing', // اشتراک‌گذاری مشتری
+      'group_settlement', // تسویه گروهی
+      'group_trade'       // معامله گروهی
     ],
     required: true
   },
@@ -163,7 +185,7 @@ const auditLogSchema = new mongoose.Schema({
   // نوع موجودیت
   targetType: {
     type: String,
-    enum: ['User', 'Trade', 'Order', 'Receipt', 'Wallet', 'Spread', 'MarketOffer', 'Currency', 'SarafiStaff', 'Settings', 'SarafiGroup']
+    enum: ['User', 'Trade', 'Order', 'Receipt', 'Wallet', 'Spread', 'MarketOffer', 'Currency', 'SarafiStaff', 'Settings', 'SarafiGroup', 'SharedCustomer', 'GroupSettlement']
   },
 
   // شناسه موجودیت

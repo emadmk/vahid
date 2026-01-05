@@ -259,6 +259,68 @@ const tradeSchema = new mongoose.Schema({
   // متادیتا
   metadata: {
     type: mongoose.Schema.Types.Mixed
+  },
+
+  // ========== فیلدهای معامله گروهی ==========
+
+  // آیا این یک معامله گروهی است؟
+  isGroupTrade: {
+    type: Boolean,
+    default: false
+  },
+
+  // گروه مرتبط (برای معاملات گروهی)
+  group: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SarafiGroup'
+  },
+
+  // مشتری اشتراکی (برای معاملات گروهی)
+  sharedCustomer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SharedCustomer'
+  },
+
+  // صراف مالک مشتری - صراف A (برای معاملات گروهی)
+  ownerSarafi: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+
+  // صراف اجراکننده - صراف B (برای معاملات گروهی - همان sarafi فعلی)
+  // sarafi فیلد موجود نقش اجراکننده را دارد
+
+  // اطلاعات اسپرد معامله گروهی
+  groupTradeDetails: {
+    // نرخ پایه (بدون اسپرد)
+    baseRate: Number,
+    // اسپرد صراف مالک (A) - درصد
+    ownerSpreadPercent: Number,
+    // مبلغ اسپرد صراف مالک (A) - ریال
+    ownerSpreadAmount: Number,
+    // اسپرد صراف اجراکننده (B) - درصد
+    executorSpreadPercent: Number,
+    // مبلغ اسپرد صراف اجراکننده (B) - ریال
+    executorSpreadAmount: Number,
+    // نرخ تسویه بین صراف‌ها
+    interSarafiRate: Number,
+    // سود صراف مالک
+    ownerProfit: Number,
+    // سود صراف اجراکننده
+    executorProfit: Number
+  },
+
+  // تسویه گروهی مرتبط
+  groupSettlement: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'GroupSettlement'
+  },
+
+  // وضعیت تسویه گروهی
+  groupSettlementStatus: {
+    type: String,
+    enum: ['pending', 'executor_settled', 'completed', 'disputed'],
+    default: 'pending'
   }
 }, {
   timestamps: true
@@ -272,6 +334,12 @@ tradeSchema.index({ status: 1, createdAt: -1 });
 tradeSchema.index({ currency: 1, createdAt: -1 });
 tradeSchema.index({ 'currencyCollection.status': 1 });
 tradeSchema.index({ 'rialCollection.status': 1 });
+// ایندکس‌های معامله گروهی
+tradeSchema.index({ isGroupTrade: 1, status: 1 });
+tradeSchema.index({ group: 1, status: 1 });
+tradeSchema.index({ ownerSarafi: 1, status: 1 });
+tradeSchema.index({ sharedCustomer: 1 });
+tradeSchema.index({ groupSettlementStatus: 1 });
 
 // تولید شماره معامله یکتا
 tradeSchema.statics.generateTradeNumber = function() {

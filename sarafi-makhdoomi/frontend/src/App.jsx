@@ -49,6 +49,8 @@ import SarafiRates from './pages/sarafi/Rates';
 import MessagesPage from './pages/shared/Messages';
 import NotificationsPage from './pages/shared/Notifications';
 import SarafiGroups from './pages/sarafi/Groups';
+import SharedCustomers from './pages/sarafi/SharedCustomers';
+import GroupSettlements from './pages/sarafi/GroupSettlements';
 
 // صفحات ادمین
 import AdminDashboard from './pages/admin/Dashboard';
@@ -179,6 +181,8 @@ function App() {
           <Route path="settlements" element={<SarafiSettlementPanel />} />
           <Route path="rates" element={<SarafiRates />} />
           <Route path="groups" element={<SarafiGroups />} />
+          <Route path="groups/:groupId/shared-customers" element={<SharedCustomers />} />
+          <Route path="group-settlements" element={<GroupSettlements />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
         </Route>

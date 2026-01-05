@@ -41,6 +41,50 @@ const sarafiGroupSchema = new mongoose.Schema({
     addedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
+    },
+    // ========== تنظیمات اشتراک‌گذاری مشتری برای هر عضو ==========
+    customerSharing: {
+      // آیا این عضو مشتریانش را با گروه به اشتراک می‌گذارد؟
+      isSharing: {
+        type: Boolean,
+        default: false
+      },
+      // آخرین بار فعال‌سازی
+      lastActivatedAt: Date,
+      // آخرین بار غیرفعال‌سازی
+      lastDeactivatedAt: Date,
+      // تنظیمات شخصی (override گروه)
+      personalSettings: {
+        activationMode: {
+          type: String,
+          enum: ['manual', 'scheduled', 'always', 'offline', 'group_default']
+        },
+        schedule: {
+          startTime: String,
+          endTime: String,
+          daysOfWeek: [Number]
+        }
+      },
+      // آمار اشتراک‌گذاری
+      stats: {
+        totalCustomersShared: {
+          type: Number,
+          default: 0
+        },
+        totalTradesFromSharing: {
+          type: Number,
+          default: 0
+        },
+        totalEarningsFromSharing: {
+          type: Number,
+          default: 0
+        }
+      }
+    },
+    // آخرین فعالیت آنلاین (برای حالت offline)
+    lastOnline: {
+      type: Date,
+      default: Date.now
     }
   }],
 
@@ -91,6 +135,69 @@ const sarafiGroupSchema = new mongoose.Schema({
       type: String,
       enum: ['fifo', 'random', 'round_robin'],
       default: 'fifo' // اولین نفر اولین خدمت
+    }
+  },
+
+  // ========== تنظیمات اشتراک‌گذاری مشتری ==========
+  customerSharing: {
+    // آیا اشتراک‌گذاری مشتری فعال است؟
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    // حالت فعال‌سازی
+    activationMode: {
+      type: String,
+      enum: ['manual', 'scheduled', 'always', 'offline'],
+      default: 'manual'
+      // manual: دستی توسط صراف
+      // scheduled: براساس زمان‌بندی
+      // always: همیشه فعال
+      // offline: وقتی صراف آفلاین می‌شود
+    },
+    // زمان‌بندی (برای حالت scheduled)
+    schedule: {
+      startTime: {
+        type: String, // فرمت HH:mm
+        default: '09:00'
+      },
+      endTime: {
+        type: String,
+        default: '17:00'
+      },
+      // روزهای هفته (0=یکشنبه تا 6=شنبه)
+      daysOfWeek: [{
+        type: Number,
+        min: 0,
+        max: 6
+      }],
+      timezone: {
+        type: String,
+        default: 'Asia/Tehran'
+      }
+    },
+    // تنظیمات آفلاین (برای حالت offline)
+    offlineSettings: {
+      // دقایق غیرفعالی قبل از اشتراک‌گذاری
+      inactiveMinutes: {
+        type: Number,
+        default: 10,
+        min: 1,
+        max: 120
+      }
+    },
+    // تنظیمات اسپرد برای معاملات گروهی
+    spreadSettings: {
+      // آیا صراف اجراکننده اسپرد اضافه می‌کند؟
+      executorAddsSpread: {
+        type: Boolean,
+        default: true
+      },
+      // حداکثر اسپرد مجاز برای اجراکننده
+      maxExecutorSpread: {
+        type: Number,
+        default: 5 // درصد
+      }
     }
   },
 
@@ -199,6 +306,143 @@ sarafiGroupSchema.methods.getVisibleMembers = function(requestingUserId) {
 
   // در غیر این صورت فقط خود کاربر
   return this.members.filter(m => m.user.toString() === requestingUserId.toString());
+};
+
+// ========== متدهای اشتراک‌گذاری مشتری ==========
+
+// فعال/غیرفعال کردن اشتراک‌گذاری مشتری برای یک عضو
+sarafiGroupSchema.methods.toggleCustomerSharing = function(userId, isSharing) {
+  const member = this.members.find(m => m.user.toString() === userId.toString());
+  if (!member) {
+    throw new Error('این کاربر عضو گروه نیست');
+  }
+
+  member.customerSharing = member.customerSharing || {};
+  member.customerSharing.isSharing = isSharing;
+
+  if (isSharing) {
+    member.customerSharing.lastActivatedAt = new Date();
+  } else {
+    member.customerSharing.lastDeactivatedAt = new Date();
+  }
+
+  return member;
+};
+
+// بررسی اینکه آیا اشتراک‌گذاری مشتری فعال است
+sarafiGroupSchema.methods.isMemberSharingActive = function(userId) {
+  // اگر اشتراک‌گذاری مشتری در سطح گروه غیرفعال است
+  if (!this.customerSharing?.enabled) {
+    return false;
+  }
+
+  const member = this.members.find(m => m.user.toString() === userId.toString());
+  if (!member) return false;
+
+  // اگر به صورت دستی غیرفعال کرده
+  if (!member.customerSharing?.isSharing) return false;
+
+  // بررسی حالت فعال‌سازی
+  const mode = member.customerSharing?.personalSettings?.activationMode ||
+               this.customerSharing.activationMode;
+
+  switch (mode) {
+    case 'always':
+      return true;
+
+    case 'manual':
+      return member.customerSharing?.isSharing || false;
+
+    case 'scheduled':
+      return this._isWithinSchedule(member);
+
+    case 'offline':
+      return this._isOffline(member);
+
+    default:
+      return member.customerSharing?.isSharing || false;
+  }
+};
+
+// بررسی زمان‌بندی
+sarafiGroupSchema.methods._isWithinSchedule = function(member) {
+  const schedule = member.customerSharing?.personalSettings?.schedule ||
+                   this.customerSharing.schedule;
+
+  if (!schedule?.startTime || !schedule?.endTime) return true;
+
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentDay = now.getDay();
+
+  // بررسی روز هفته
+  if (schedule.daysOfWeek?.length > 0 && !schedule.daysOfWeek.includes(currentDay)) {
+    return false;
+  }
+
+  // تبدیل زمان به دقیقه
+  const [startHour, startMin] = schedule.startTime.split(':').map(Number);
+  const [endHour, endMin] = schedule.endTime.split(':').map(Number);
+
+  const currentTimeInMinutes = currentHour * 60 + currentMinute;
+  const startTimeInMinutes = startHour * 60 + startMin;
+  const endTimeInMinutes = endHour * 60 + endMin;
+
+  return currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes <= endTimeInMinutes;
+};
+
+// بررسی آفلاین بودن
+sarafiGroupSchema.methods._isOffline = function(member) {
+  if (!member.lastOnline) return true;
+
+  const inactiveMinutes = this.customerSharing?.offlineSettings?.inactiveMinutes || 10;
+  const minutesSinceLastOnline = (Date.now() - member.lastOnline.getTime()) / (1000 * 60);
+
+  return minutesSinceLastOnline >= inactiveMinutes;
+};
+
+// به‌روزرسانی وضعیت آنلاین عضو
+sarafiGroupSchema.methods.updateMemberOnlineStatus = function(userId) {
+  const member = this.members.find(m => m.user.toString() === userId.toString());
+  if (member) {
+    member.lastOnline = new Date();
+  }
+  return member;
+};
+
+// دریافت اعضایی که اشتراک‌گذاری مشتری فعال دارند
+sarafiGroupSchema.methods.getMembersWithActiveSharing = function(excludeUserId = null) {
+  return this.members.filter(m => {
+    if (excludeUserId && m.user.toString() === excludeUserId.toString()) {
+      return false;
+    }
+    return this.isMemberSharingActive(m.user);
+  });
+};
+
+// به‌روزرسانی آمار اشتراک‌گذاری عضو
+sarafiGroupSchema.methods.updateMemberSharingStats = function(userId, stats) {
+  const member = this.members.find(m => m.user.toString() === userId.toString());
+  if (!member) return;
+
+  member.customerSharing = member.customerSharing || {};
+  member.customerSharing.stats = member.customerSharing.stats || {};
+
+  if (stats.customersShared) {
+    member.customerSharing.stats.totalCustomersShared =
+      (member.customerSharing.stats.totalCustomersShared || 0) + stats.customersShared;
+  }
+  if (stats.trades) {
+    member.customerSharing.stats.totalTradesFromSharing =
+      (member.customerSharing.stats.totalTradesFromSharing || 0) + stats.trades;
+  }
+  if (stats.earnings) {
+    member.customerSharing.stats.totalEarningsFromSharing =
+      (member.customerSharing.stats.totalEarningsFromSharing || 0) + stats.earnings;
+  }
+
+  return member;
 };
 
 // متد استاتیک: دریافت گروه‌های یک صراف

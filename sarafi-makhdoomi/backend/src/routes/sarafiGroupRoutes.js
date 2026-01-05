@@ -2,8 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middlewares/auth');
 const SarafiGroup = require('../models/SarafiGroup');
+const SharedCustomer = require('../models/SharedCustomer');
+const GroupSettlement = require('../models/GroupSettlement');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
+const groupSharingService = require('../services/groupSharingService');
 
 // همه روت‌ها نیاز به احراز هویت دارند
 router.use(protect);
@@ -20,6 +23,10 @@ router.get('/my-groups', authorize('sarafi', 'admin'), async (req, res) => {
       const isOwner = group.owner._id.toString() === req.user._id.toString();
       const isAdmin = group.isAdmin(req.user._id);
 
+      // بررسی وضعیت اشتراک‌گذاری مشتری
+      const member = group.members.find(m => m.user.toString() === req.user._id.toString());
+      const isSharingActive = group.isMemberSharingActive ? group.isMemberSharingActive(req.user._id) : false;
+
       return {
         _id: group._id,
         name: group.privacy.showGroupName ? group.name : 'گروه خصوصی',
@@ -30,6 +37,12 @@ router.get('/my-groups', authorize('sarafi', 'admin'), async (req, res) => {
         myRole: isOwner ? 'owner' : (isAdmin ? 'admin' : 'member'),
         rateSharing: group.rateSharing,
         requestSharing: group.requestSharing,
+        customerSharing: {
+          groupEnabled: group.customerSharing?.enabled || false,
+          isActive: isSharingActive,
+          mySharing: member?.customerSharing?.isSharing || false,
+          activationMode: group.customerSharing?.activationMode || 'manual'
+        },
         createdAt: group.createdAt
       };
     });
@@ -494,6 +507,305 @@ router.delete('/:id', authorize('sarafi', 'admin'), async (req, res) => {
       success: true,
       message: 'گروه با موفقیت حذف شد'
     });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== روت‌های اشتراک‌گذاری مشتری ====================
+
+// دریافت تنظیمات اشتراک‌گذاری
+router.get('/:id/sharing-settings', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const settings = await groupSharingService.getGroupSharingSettings(
+      req.params.id,
+      req.user._id
+    );
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// به‌روزرسانی تنظیمات اشتراک‌گذاری گروه (فقط مالک)
+router.put('/:id/sharing-settings', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const group = await groupSharingService.updateGroupSharingSettings(
+      req.params.id,
+      req.user._id,
+      req.body
+    );
+    res.json({
+      success: true,
+      data: group.customerSharing,
+      message: 'تنظیمات به‌روزرسانی شد'
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// فعال/غیرفعال کردن اشتراک‌گذاری مشتری
+router.post('/:id/sharing/toggle', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const { isEnabled, settings } = req.body;
+    const group = await groupSharingService.toggleCustomerSharing(
+      req.params.id,
+      req.user._id,
+      isEnabled,
+      settings
+    );
+    res.json({
+      success: true,
+      data: { isEnabled },
+      message: isEnabled ? 'اشتراک‌گذاری فعال شد' : 'اشتراک‌گذاری غیرفعال شد'
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// اشتراک‌گذاری یک مشتری
+router.post('/:id/shared-customers', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const {
+      customerId,
+      displayName,
+      trustRating,
+      tradeLimits,
+      ownerSpread,
+      expiresAt,
+      notes
+    } = req.body;
+
+    const sharedCustomer = await groupSharingService.shareCustomer({
+      groupId: req.params.id,
+      sarafiId: req.user._id,
+      customerId,
+      displayName,
+      trustRating,
+      tradeLimits,
+      ownerSpread,
+      expiresAt,
+      notes
+    });
+
+    res.status(201).json({
+      success: true,
+      data: sharedCustomer,
+      message: 'مشتری با موفقیت به اشتراک گذاشته شد'
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// دریافت مشتریان اشتراکی قابل دسترس
+router.get('/:id/available-customers', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const customers = await groupSharingService.getAvailableSharedCustomers(
+      req.params.id,
+      req.user._id
+    );
+    res.json({ success: true, data: customers });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// دریافت مشتریان اشتراکی من در این گروه
+router.get('/:id/my-shared-customers', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const customers = await SharedCustomer.getSharedCustomersOfSarafi(
+      req.user._id,
+      req.params.id
+    );
+    res.json({ success: true, data: customers });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// حذف اشتراک‌گذاری یک مشتری
+router.delete('/shared-customers/:customerId', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    await groupSharingService.unshareCustomer(req.params.customerId, req.user._id);
+    res.json({
+      success: true,
+      message: 'اشتراک‌گذاری مشتری حذف شد'
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// به‌روزرسانی وضعیت آنلاین (برای حالت offline)
+router.post('/heartbeat', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const result = await groupSharingService.updateOnlineStatus(req.user._id);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== روت‌های معامله گروهی ====================
+
+// پیش‌نمایش معامله گروهی
+router.post('/group-trade/preview', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const { sharedCustomerId, type, currencyId, amount, executorSpreadPercent, baseRate } = req.body;
+    const preview = await groupSharingService.calculateGroupTradePreview(
+      sharedCustomerId,
+      type,
+      currencyId,
+      amount,
+      executorSpreadPercent,
+      baseRate
+    );
+    res.json({ success: true, data: preview });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ایجاد معامله گروهی
+router.post('/group-trade', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const result = await groupSharingService.createGroupTrade({
+      ...req.body,
+      executorSarafiId: req.user._id
+    });
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: 'معامله گروهی با موفقیت ایجاد شد'
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== روت‌های تسویه گروهی ====================
+
+// دریافت تسویه‌های من
+router.get('/settlements', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const { role, status, limit, skip } = req.query;
+    const settlements = await GroupSettlement.getSettlementsForSarafi(
+      req.user._id,
+      { role, status, limit: parseInt(limit) || 50, skip: parseInt(skip) || 0 }
+    );
+    res.json({ success: true, data: settlements });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// دریافت جزئیات تسویه
+router.get('/settlements/:id', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const settlement = await GroupSettlement.findById(req.params.id)
+      .populate('group', 'name')
+      .populate('trade')
+      .populate('ownerSarafi', 'firstName lastName sarafiInfo.name')
+      .populate('executorSarafi', 'firstName lastName sarafiInfo.name')
+      .populate('customer', 'firstName lastName')
+      .populate('currency', 'name symbol code');
+
+    if (!settlement) {
+      return res.status(404).json({ success: false, message: 'تسویه یافت نشد' });
+    }
+
+    // بررسی دسترسی
+    const isOwner = settlement.ownerSarafi._id.toString() === req.user._id.toString();
+    const isExecutor = settlement.executorSarafi._id.toString() === req.user._id.toString();
+
+    if (!isOwner && !isExecutor) {
+      return res.status(403).json({ success: false, message: 'دسترسی غیرمجاز' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...settlement.toObject(),
+        isOwner,
+        isExecutor,
+        // نمایش نام مشتری فقط برای صراف مالک
+        customer: isOwner ? settlement.customer : { displayName: 'مشتری اشتراکی' }
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// تایید تسویه
+router.post('/settlements/:id/confirm', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const settlement = await groupSharingService.confirmSettlement(
+      req.params.id,
+      req.user._id
+    );
+    res.json({
+      success: true,
+      data: settlement,
+      message: 'تسویه تایید شد'
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ثبت وصول از مشتری (فقط صراف مالک)
+router.post('/settlements/:id/customer-collection', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const settlement = await groupSharingService.recordCustomerCollection(
+      req.params.id,
+      req.user._id,
+      req.body
+    );
+    res.json({
+      success: true,
+      data: settlement,
+      message: 'وصول از مشتری ثبت شد'
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ثبت اختلاف
+router.post('/settlements/:id/dispute', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const settlement = await GroupSettlement.findById(req.params.id);
+    if (!settlement) {
+      return res.status(404).json({ success: false, message: 'تسویه یافت نشد' });
+    }
+
+    const { reason } = req.body;
+    await settlement.raiseDispute(reason, req.user._id);
+
+    res.json({
+      success: true,
+      data: settlement,
+      message: 'اختلاف ثبت شد'
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// محاسبه خالص بدهی بین دو صراف
+router.get('/balance/:sarafiId', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const { groupId } = req.query;
+    const balance = await GroupSettlement.calculateNetBalance(
+      req.user._id,
+      req.params.sarafiId,
+      groupId
+    );
+    res.json({ success: true, data: balance });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }

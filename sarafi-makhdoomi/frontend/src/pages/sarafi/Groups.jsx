@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
-import { FaPlus, FaUsers, FaKey, FaCopy, FaTrash, FaCog, FaSpinner, FaTimes, FaUserPlus, FaSignInAlt } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import { FaPlus, FaUsers, FaKey, FaCopy, FaTrash, FaCog, FaSpinner, FaTimes, FaUserPlus, FaSignInAlt, FaShareAlt, FaToggleOn, FaToggleOff, FaExchangeAlt, FaHandshake } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jalaliMoment from 'jalali-moment';
 
 const Groups = () => {
+  const navigate = useNavigate();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(null);
+  const [showSharingModal, setShowSharingModal] = useState(null);
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [togglingSharing, setTogglingSharing] = useState(null);
 
   const [newGroup, setNewGroup] = useState({
     name: '',
@@ -24,6 +28,23 @@ const Groups = () => {
   });
 
   const [inviteCode, setInviteCode] = useState('');
+
+  const [sharingSettings, setSharingSettings] = useState({
+    enabled: false,
+    activationMode: 'manual',
+    schedule: {
+      startTime: '09:00',
+      endTime: '17:00',
+      daysOfWeek: [0, 1, 2, 3, 4, 5, 6]
+    },
+    offlineSettings: {
+      inactiveMinutes: 10
+    },
+    spreadSettings: {
+      executorAddsSpread: true,
+      maxExecutorSpread: 5
+    }
+  });
 
   useEffect(() => {
     fetchGroups();
@@ -165,6 +186,55 @@ const Groups = () => {
     toast.success('کپی شد');
   };
 
+  // دریافت تنظیمات اشتراک‌گذاری
+  const fetchSharingSettings = async (groupId) => {
+    try {
+      const res = await api.get(`/sarafi-groups/${groupId}/sharing-settings`);
+      setSharingSettings(res.data.data.groupSettings || sharingSettings);
+      setShowSharingModal(groupId);
+    } catch (e) {
+      toast.error('خطا در دریافت تنظیمات');
+    }
+  };
+
+  // ذخیره تنظیمات اشتراک‌گذاری
+  const saveSharingSettings = async () => {
+    try {
+      await api.put(`/sarafi-groups/${showSharingModal}/sharing-settings`, sharingSettings);
+      toast.success('تنظیمات ذخیره شد');
+      setShowSharingModal(null);
+      fetchGroups();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'خطا در ذخیره تنظیمات');
+    }
+  };
+
+  // فعال/غیرفعال کردن اشتراک‌گذاری
+  const handleToggleSharing = async (groupId, currentState) => {
+    setTogglingSharing(groupId);
+    try {
+      await api.post(`/sarafi-groups/${groupId}/sharing/toggle`, {
+        isEnabled: !currentState
+      });
+      toast.success(currentState ? 'اشتراک‌گذاری غیرفعال شد' : 'اشتراک‌گذاری فعال شد');
+      fetchGroups();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'خطا');
+    } finally {
+      setTogglingSharing(null);
+    }
+  };
+
+  // رفتن به صفحه مشتریان اشتراکی
+  const goToSharedCustomers = (groupId) => {
+    navigate(`/sarafi/groups/${groupId}/shared-customers`);
+  };
+
+  // رفتن به صفحه تسویه‌ها
+  const goToSettlements = () => {
+    navigate('/sarafi/group-settlements');
+  };
+
   const getRoleBadge = (role) => {
     const map = {
       owner: { label: 'مالک', class: 'badge-gold' },
@@ -180,6 +250,13 @@ const Groups = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-white">گروه‌های صراف</h1>
         <div className="flex gap-2">
+          <button
+            onClick={goToSettlements}
+            className="btn-dark flex items-center gap-2"
+          >
+            <FaHandshake />
+            تسویه‌ها
+          </button>
           <button
             onClick={() => setShowJoinModal(true)}
             className="btn-dark flex items-center gap-2"
@@ -251,7 +328,38 @@ const Groups = () => {
                 </div>
               </div>
 
+              {/* دکمه‌های اشتراک‌گذاری */}
               <div className="flex gap-2 pt-4 border-t border-dark-700">
+                <button
+                  onClick={() => goToSharedCustomers(group._id)}
+                  className="flex-1 btn-dark text-sm py-2 flex items-center justify-center gap-1"
+                  title="مشتریان اشتراکی"
+                >
+                  <FaShareAlt />
+                  مشتریان
+                </button>
+                {(group.isOwner || group.isAdmin) && (
+                  <button
+                    onClick={() => handleToggleSharing(group._id, group.customerSharing?.isActive)}
+                    disabled={togglingSharing === group._id}
+                    className={`btn-dark text-sm py-2 px-3 flex items-center gap-1 ${
+                      group.customerSharing?.isActive ? 'text-green-400' : 'text-dark-400'
+                    }`}
+                    title={group.customerSharing?.isActive ? 'اشتراک‌گذاری فعال' : 'اشتراک‌گذاری غیرفعال'}
+                  >
+                    {togglingSharing === group._id ? (
+                      <FaSpinner className="animate-spin" />
+                    ) : group.customerSharing?.isActive ? (
+                      <FaToggleOn />
+                    ) : (
+                      <FaToggleOff />
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* دکمه‌های مدیریت */}
+              <div className="flex gap-2 pt-2">
                 {group.isOwner || group.isAdmin ? (
                   <>
                     <button
@@ -263,13 +371,22 @@ const Groups = () => {
                       کد دعوت
                     </button>
                     {group.isOwner && (
-                      <button
-                        onClick={() => handleDeleteGroup(group._id)}
-                        className="btn-dark text-red-500 hover:bg-red-500/10 text-sm py-2 px-3"
-                        title="حذف گروه"
-                      >
-                        <FaTrash />
-                      </button>
+                      <>
+                        <button
+                          onClick={() => fetchSharingSettings(group._id)}
+                          className="btn-dark text-sm py-2 px-3"
+                          title="تنظیمات اشتراک‌گذاری"
+                        >
+                          <FaCog />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteGroup(group._id)}
+                          className="btn-dark text-red-500 hover:bg-red-500/10 text-sm py-2 px-3"
+                          title="حذف گروه"
+                        >
+                          <FaTrash />
+                        </button>
+                      </>
                     )}
                   </>
                 ) : (
@@ -419,6 +536,160 @@ const Groups = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* مودال تنظیمات اشتراک‌گذاری */}
+      {showSharingModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="card-dark w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-white">تنظیمات اشتراک‌گذاری مشتری</h2>
+              <button onClick={() => setShowSharingModal(null)} className="text-dark-400 hover:text-white">
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* فعال/غیرفعال */}
+              <div>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sharingSettings.enabled}
+                    onChange={(e) => setSharingSettings({ ...sharingSettings, enabled: e.target.checked })}
+                    className="w-5 h-5 rounded bg-dark-700 border-dark-600"
+                  />
+                  <span className="text-white">فعال‌سازی اشتراک‌گذاری مشتری در این گروه</span>
+                </label>
+                <p className="text-dark-500 text-xs mt-1 mr-8">
+                  با فعال‌سازی این گزینه، اعضا می‌توانند مشتریان خود را با گروه به اشتراک بگذارند
+                </p>
+              </div>
+
+              {sharingSettings.enabled && (
+                <>
+                  {/* حالت فعال‌سازی */}
+                  <div>
+                    <label className="block text-dark-400 text-sm mb-2">حالت فعال‌سازی اشتراک‌گذاری</label>
+                    <select
+                      className="input-dark"
+                      value={sharingSettings.activationMode}
+                      onChange={(e) => setSharingSettings({ ...sharingSettings, activationMode: e.target.value })}
+                    >
+                      <option value="manual">دستی - صراف خودش فعال می‌کند</option>
+                      <option value="always">همیشه فعال</option>
+                      <option value="scheduled">زمان‌بندی شده</option>
+                      <option value="offline">وقتی آفلاین می‌شود</option>
+                    </select>
+                  </div>
+
+                  {/* تنظیمات زمان‌بندی */}
+                  {sharingSettings.activationMode === 'scheduled' && (
+                    <div className="bg-dark-800 p-4 rounded-lg space-y-3">
+                      <label className="block text-dark-400 text-sm">زمان‌بندی</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-dark-500 text-xs mb-1">از ساعت</label>
+                          <input
+                            type="time"
+                            className="input-dark"
+                            value={sharingSettings.schedule?.startTime || '09:00'}
+                            onChange={(e) => setSharingSettings({
+                              ...sharingSettings,
+                              schedule: { ...sharingSettings.schedule, startTime: e.target.value }
+                            })}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-dark-500 text-xs mb-1">تا ساعت</label>
+                          <input
+                            type="time"
+                            className="input-dark"
+                            value={sharingSettings.schedule?.endTime || '17:00'}
+                            onChange={(e) => setSharingSettings({
+                              ...sharingSettings,
+                              schedule: { ...sharingSettings.schedule, endTime: e.target.value }
+                            })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* تنظیمات آفلاین */}
+                  {sharingSettings.activationMode === 'offline' && (
+                    <div className="bg-dark-800 p-4 rounded-lg">
+                      <label className="block text-dark-400 text-sm mb-2">
+                        فعال‌سازی بعد از چند دقیقه غیرفعالی
+                      </label>
+                      <input
+                        type="number"
+                        className="input-dark"
+                        min={1}
+                        max={120}
+                        value={sharingSettings.offlineSettings?.inactiveMinutes || 10}
+                        onChange={(e) => setSharingSettings({
+                          ...sharingSettings,
+                          offlineSettings: { inactiveMinutes: parseInt(e.target.value) || 10 }
+                        })}
+                      />
+                    </div>
+                  )}
+
+                  {/* تنظیمات اسپرد */}
+                  <div className="bg-dark-800 p-4 rounded-lg space-y-3">
+                    <label className="block text-dark-400 text-sm">تنظیمات اسپرد</label>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={sharingSettings.spreadSettings?.executorAddsSpread !== false}
+                        onChange={(e) => setSharingSettings({
+                          ...sharingSettings,
+                          spreadSettings: { ...sharingSettings.spreadSettings, executorAddsSpread: e.target.checked }
+                        })}
+                        className="rounded bg-dark-700 border-dark-600"
+                      />
+                      <span className="text-dark-400 text-sm">صراف اجراکننده می‌تواند اسپرد اضافه کند</span>
+                    </label>
+                    {sharingSettings.spreadSettings?.executorAddsSpread !== false && (
+                      <div>
+                        <label className="block text-dark-500 text-xs mb-1">حداکثر اسپرد مجاز (%)</label>
+                        <input
+                          type="number"
+                          className="input-dark"
+                          min={0}
+                          max={20}
+                          step={0.5}
+                          value={sharingSettings.spreadSettings?.maxExecutorSpread || 5}
+                          onChange={(e) => setSharingSettings({
+                            ...sharingSettings,
+                            spreadSettings: { ...sharingSettings.spreadSettings, maxExecutorSpread: parseFloat(e.target.value) || 5 }
+                          })}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowSharingModal(null)}
+                  className="flex-1 btn-dark"
+                >
+                  انصراف
+                </button>
+                <button
+                  onClick={saveSharingSettings}
+                  className="flex-1 btn-gold"
+                >
+                  ذخیره تنظیمات
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
