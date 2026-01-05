@@ -91,6 +91,9 @@ const notificationSchema = new mongoose.Schema({
   // لینک مرتبط
   link: String,
 
+  // لینک اقدام (برای ناوبری)
+  actionUrl: String,
+
   // درخواست مرتبط
   request: {
     type: mongoose.Schema.Types.ObjectId,

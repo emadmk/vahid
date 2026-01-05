@@ -90,12 +90,17 @@ const Groups = () => {
   const handleGenerateInviteCode = async (groupId) => {
     try {
       const res = await api.post(`/sarafi-groups/${groupId}/invite-code`);
-      toast.success('کد دعوت جدید تولید شد');
-      navigator.clipboard.writeText(res.data.data.inviteCode);
-      toast.success('کد کپی شد: ' + res.data.data.inviteCode);
-      fetchGroups();
+      const inviteCode = res.data?.data?.inviteCode;
+      if (inviteCode) {
+        await navigator.clipboard.writeText(inviteCode);
+        toast.success(`کد دعوت: ${inviteCode}`, { duration: 10000 });
+        fetchGroups();
+      } else {
+        toast.error('کد دعوت دریافت نشد');
+      }
     } catch (e) {
-      toast.error('خطا در تولید کد دعوت');
+      console.error('Invite code error:', e);
+      toast.error(e.response?.data?.message || 'خطا در تولید کد دعوت');
     }
   };
 
