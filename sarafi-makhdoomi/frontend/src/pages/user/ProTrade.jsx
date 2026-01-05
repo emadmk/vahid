@@ -187,9 +187,19 @@ const ProTrade = () => {
   const handleQuickAmount = (percentage) => {
     if (!wallet || !selectedCurrency) return;
 
-    const balance = orderTicket.side === 'buy'
-      ? (wallet.balances?.IRR || 0) / (orderTicket.price || selectedCurrency.sellRate)
-      : (wallet.balances?.[selectedCurrency.code] || 0);
+    let balance;
+    if (orderTicket.side === 'buy') {
+      // برای خرید: موجودی ریالی تقسیم بر قیمت = مقدار ارز قابل خرید
+      const rialBalance = wallet.cashBalance || 0;
+      const price = orderTicket.price || selectedCurrency.sellRate;
+      balance = price > 0 ? rialBalance / price : 0;
+    } else {
+      // برای فروش: موجودی ارز
+      const currencyBalance = wallet.currencyBalances?.find(
+        cb => cb.currency?.code === selectedCurrency.code || cb.currency?._id === selectedCurrency._id
+      );
+      balance = currencyBalance?.balance || 0;
+    }
 
     const amount = (balance * percentage / 100).toFixed(selectedCurrency.decimalPlaces || 2);
     setOrderTicket(prev => ({ ...prev, amount }));
@@ -204,12 +214,16 @@ const ProTrade = () => {
   // Get wallet balance for selected currency
   const getCurrencyBalance = () => {
     if (!wallet || !selectedCurrency) return 0;
-    return wallet.balances?.[selectedCurrency.code] || 0;
+    // currencyBalances آرایه‌ای از آبجکت‌ها با فرمت {currency: {...}, balance: number}
+    const currencyBalance = wallet.currencyBalances?.find(
+      cb => cb.currency?.code === selectedCurrency.code || cb.currency?._id === selectedCurrency._id
+    );
+    return currencyBalance?.balance || 0;
   };
 
   const getRialBalance = () => {
     if (!wallet) return 0;
-    return wallet.balances?.IRR || 0;
+    return wallet.cashBalance || 0;
   };
 
   if (loading) {
