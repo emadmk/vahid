@@ -7,6 +7,7 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   const [targetRect, setTargetRect] = useState(null);
   const [tooltipStyle, setTooltipStyle] = useState({});
   const [targetElement, setTargetElement] = useState(null);
+  const [originalStyles, setOriginalStyles] = useState({});
   const tooltipRef = useRef(null);
 
   const step = steps[currentStep];
@@ -15,26 +16,35 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
     if (!step) return;
 
     // پاکسازی المنت قبلی
-    if (targetElement) {
-      targetElement.style.position = '';
-      targetElement.style.zIndex = '';
-      targetElement.style.background = '';
-      targetElement.style.borderRadius = '';
-      targetElement.style.boxShadow = '';
+    if (targetElement && originalStyles) {
+      targetElement.style.position = originalStyles.position || '';
+      targetElement.style.zIndex = originalStyles.zIndex || '';
+      targetElement.style.borderRadius = originalStyles.borderRadius || '';
+      targetElement.style.boxShadow = originalStyles.boxShadow || '';
+      targetElement.style.outline = originalStyles.outline || '';
     }
 
     const updatePosition = () => {
       const element = document.querySelector(step.target);
       if (element) {
+        // ذخیره استایل‌های اصلی
+        setOriginalStyles({
+          position: element.style.position,
+          zIndex: element.style.zIndex,
+          borderRadius: element.style.borderRadius,
+          boxShadow: element.style.boxShadow,
+          outline: element.style.outline
+        });
+
         // ذخیره المنت برای اعمال استایل
         setTargetElement(element);
 
-        // اضافه کردن استایل به المنت هایلایت شده
+        // اضافه کردن استایل به المنت هایلایت شده - بدون تغییر background
         element.style.position = 'relative';
-        element.style.zIndex = '10000';
-        element.style.background = 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)';
+        element.style.zIndex = '10001';
         element.style.borderRadius = '16px';
-        element.style.boxShadow = '0 0 0 4px #d4af37, 0 0 30px rgba(212, 175, 55, 0.4)';
+        element.style.boxShadow = '0 0 0 4px #d4af37, 0 0 40px rgba(212, 175, 55, 0.6)';
+        element.style.outline = '2px solid #fbbf24';
 
         const rect = element.getBoundingClientRect();
         setTargetRect(rect);
@@ -123,23 +133,23 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   // پاکسازی استایل هنگام unmount
   useEffect(() => {
     return () => {
-      if (targetElement) {
-        targetElement.style.position = '';
-        targetElement.style.zIndex = '';
-        targetElement.style.background = '';
-        targetElement.style.borderRadius = '';
-        targetElement.style.boxShadow = '';
+      if (targetElement && originalStyles) {
+        targetElement.style.position = originalStyles.position || '';
+        targetElement.style.zIndex = originalStyles.zIndex || '';
+        targetElement.style.borderRadius = originalStyles.borderRadius || '';
+        targetElement.style.boxShadow = originalStyles.boxShadow || '';
+        targetElement.style.outline = originalStyles.outline || '';
       }
     };
-  }, []);
+  }, [targetElement, originalStyles]);
 
   const cleanupElement = () => {
-    if (targetElement) {
-      targetElement.style.position = '';
-      targetElement.style.zIndex = '';
-      targetElement.style.background = '';
-      targetElement.style.borderRadius = '';
-      targetElement.style.boxShadow = '';
+    if (targetElement && originalStyles) {
+      targetElement.style.position = originalStyles.position || '';
+      targetElement.style.zIndex = originalStyles.zIndex || '';
+      targetElement.style.borderRadius = originalStyles.borderRadius || '';
+      targetElement.style.boxShadow = originalStyles.boxShadow || '';
+      targetElement.style.outline = originalStyles.outline || '';
     }
   };
 
@@ -199,7 +209,7 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
       <div
         ref={tooltipRef}
         className="absolute bg-white rounded-2xl shadow-2xl overflow-hidden animate-fadeIn"
-        style={{ ...tooltipStyle, zIndex: 10002 }}
+        style={{ ...tooltipStyle, zIndex: 10010 }}
       >
         {/* هدر */}
         <div className="bg-gradient-to-l from-amber-500 to-yellow-500 px-5 py-4 flex items-center justify-between">
