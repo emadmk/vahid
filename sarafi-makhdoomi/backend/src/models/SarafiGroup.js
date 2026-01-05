@@ -256,13 +256,21 @@ sarafiGroupSchema.methods.generateInviteCode = function(expiresInDays = 7) {
 
 // متد بررسی عضویت
 sarafiGroupSchema.methods.isMember = function(userId) {
-  return this.members.some(m => m.user.toString() === userId.toString());
+  return this.members.some(m => {
+    // پشتیبانی از هر دو حالت populate شده و نشده
+    const memberId = m.user._id ? m.user._id.toString() : m.user.toString();
+    return memberId === userId.toString();
+  });
 };
 
 // متد بررسی ادمین بودن
 sarafiGroupSchema.methods.isAdmin = function(userId) {
-  if (this.owner.toString() === userId.toString()) return true;
-  const member = this.members.find(m => m.user.toString() === userId.toString());
+  const ownerId = this.owner._id ? this.owner._id.toString() : this.owner.toString();
+  if (ownerId === userId.toString()) return true;
+  const member = this.members.find(m => {
+    const memberId = m.user._id ? m.user._id.toString() : m.user.toString();
+    return memberId === userId.toString();
+  });
   return member && member.role === 'admin';
 };
 
@@ -279,13 +287,19 @@ sarafiGroupSchema.methods.addMember = function(userId, addedBy, role = 'member')
   this.stats.totalMembers = this.members.length;
 };
 
+// تابع کمکی برای دریافت ID عضو (پشتیبانی از هر دو حالت populate شده و نشده)
+const getMemberId = (member) => {
+  return member.user._id ? member.user._id.toString() : member.user.toString();
+};
+
 // متد حذف عضو
 sarafiGroupSchema.methods.removeMember = function(userId) {
-  const index = this.members.findIndex(m => m.user.toString() === userId.toString());
+  const index = this.members.findIndex(m => getMemberId(m) === userId.toString());
   if (index === -1) {
     throw new Error('این کاربر عضو گروه نیست');
   }
-  if (this.owner.toString() === userId.toString()) {
+  const ownerId = this.owner._id ? this.owner._id.toString() : this.owner.toString();
+  if (ownerId === userId.toString()) {
     throw new Error('نمی‌توان مالک گروه را حذف کرد');
   }
   this.members.splice(index, 1);
@@ -305,14 +319,14 @@ sarafiGroupSchema.methods.getVisibleMembers = function(requestingUserId) {
   }
 
   // در غیر این صورت فقط خود کاربر
-  return this.members.filter(m => m.user.toString() === requestingUserId.toString());
+  return this.members.filter(m => getMemberId(m) === requestingUserId.toString());
 };
 
 // ========== متدهای اشتراک‌گذاری مشتری ==========
 
 // فعال/غیرفعال کردن اشتراک‌گذاری مشتری برای یک عضو
 sarafiGroupSchema.methods.toggleCustomerSharing = function(userId, isSharing) {
-  const member = this.members.find(m => m.user.toString() === userId.toString());
+  const member = this.members.find(m => getMemberId(m) === userId.toString());
   if (!member) {
     throw new Error('این کاربر عضو گروه نیست');
   }
@@ -336,7 +350,7 @@ sarafiGroupSchema.methods.isMemberSharingActive = function(userId) {
     return false;
   }
 
-  const member = this.members.find(m => m.user.toString() === userId.toString());
+  const member = this.members.find(m => getMemberId(m) === userId.toString());
   if (!member) return false;
 
   // اگر به صورت دستی غیرفعال کرده
@@ -404,7 +418,7 @@ sarafiGroupSchema.methods._isOffline = function(member) {
 
 // به‌روزرسانی وضعیت آنلاین عضو
 sarafiGroupSchema.methods.updateMemberOnlineStatus = function(userId) {
-  const member = this.members.find(m => m.user.toString() === userId.toString());
+  const member = this.members.find(m => getMemberId(m) === userId.toString());
   if (member) {
     member.lastOnline = new Date();
   }
@@ -414,16 +428,17 @@ sarafiGroupSchema.methods.updateMemberOnlineStatus = function(userId) {
 // دریافت اعضایی که اشتراک‌گذاری مشتری فعال دارند
 sarafiGroupSchema.methods.getMembersWithActiveSharing = function(excludeUserId = null) {
   return this.members.filter(m => {
-    if (excludeUserId && m.user.toString() === excludeUserId.toString()) {
+    if (excludeUserId && getMemberId(m) === excludeUserId.toString()) {
       return false;
     }
-    return this.isMemberSharingActive(m.user);
+    const memberId = getMemberId(m);
+    return this.isMemberSharingActive(memberId);
   });
 };
 
 // به‌روزرسانی آمار اشتراک‌گذاری عضو
 sarafiGroupSchema.methods.updateMemberSharingStats = function(userId, stats) {
-  const member = this.members.find(m => m.user.toString() === userId.toString());
+  const member = this.members.find(m => getMemberId(m) === userId.toString());
   if (!member) return;
 
   member.customerSharing = member.customerSharing || {};
