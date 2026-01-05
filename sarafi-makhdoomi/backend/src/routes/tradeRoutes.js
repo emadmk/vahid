@@ -809,6 +809,7 @@ router.get('/sarafi/group-trade-stats', protect, authorize('sarafi'), async (req
     const Trade = require('../models/Trade');
     const mongoose = require('mongoose');
     const { period = '30d' } = req.query;
+    const userId = new mongoose.Types.ObjectId(req.user._id);
 
     // محاسبه تاریخ شروع
     const dateFilter = new Date();
@@ -821,11 +822,11 @@ router.get('/sarafi/group-trade-stats', protect, authorize('sarafi'), async (req
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    // آمار معاملات گروهی که این صراف مجری (executor) بوده
-    const executorStats = await Trade.aggregate([
+    // آمار معاملات گروهی که این صراف مالک (ownerSarafi) بوده
+    const ownerStats = await Trade.aggregate([
       {
         $match: {
-          sarafi: new mongoose.Types.ObjectId(req.user._id),
+          ownerSarafi: userId,
           isGroupTrade: true,
           status: 'completed',
           createdAt: { $gte: dateFilter }
@@ -836,18 +837,40 @@ router.get('/sarafi/group-trade-stats', protect, authorize('sarafi'), async (req
           _id: null,
           totalTrades: { $sum: 1 },
           totalVolume: { $sum: '$totalAmount' },
-          totalCommission: { $sum: '$commission.amount' },
+          totalProfit: { $sum: { $ifNull: ['$groupTradeDetails.ownerProfit', 0] } },
           buyCount: { $sum: { $cond: [{ $eq: ['$type', 'buy'] }, 1, 0] } },
           sellCount: { $sum: { $cond: [{ $eq: ['$type', 'sell'] }, 1, 0] } }
         }
       }
     ]);
 
-    // آمار امروز
-    const todayStats = await Trade.aggregate([
+    // آمار معاملات گروهی که این صراف اجراکننده (executorSarafi) بوده
+    const executorStats = await Trade.aggregate([
       {
         $match: {
-          sarafi: new mongoose.Types.ObjectId(req.user._id),
+          executorSarafi: userId,
+          isGroupTrade: true,
+          status: 'completed',
+          createdAt: { $gte: dateFilter }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalTrades: { $sum: 1 },
+          totalVolume: { $sum: '$totalAmount' },
+          totalProfit: { $sum: { $ifNull: ['$groupTradeDetails.executorProfit', 0] } },
+          buyCount: { $sum: { $cond: [{ $eq: ['$type', 'buy'] }, 1, 0] } },
+          sellCount: { $sum: { $cond: [{ $eq: ['$type', 'sell'] }, 1, 0] } }
+        }
+      }
+    ]);
+
+    // آمار امروز - مالک
+    const todayOwnerStats = await Trade.aggregate([
+      {
+        $match: {
+          ownerSarafi: userId,
           isGroupTrade: true,
           createdAt: { $gte: todayStart }
         }
@@ -857,39 +880,102 @@ router.get('/sarafi/group-trade-stats', protect, authorize('sarafi'), async (req
           _id: null,
           todayTrades: { $sum: 1 },
           completedToday: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
-          todayCommission: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, '$commission.amount', 0] } }
+          todayProfit: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, { $ifNull: ['$groupTradeDetails.ownerProfit', 0] }, 0] } }
         }
       }
     ]);
 
-    // معاملات گروهی تکمیل شده
+    // آمار امروز - اجراکننده
+    const todayExecutorStats = await Trade.aggregate([
+      {
+        $match: {
+          executorSarafi: userId,
+          isGroupTrade: true,
+          createdAt: { $gte: todayStart }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          todayTrades: { $sum: 1 },
+          completedToday: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+          todayProfit: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, { $ifNull: ['$groupTradeDetails.executorProfit', 0] }, 0] } }
+        }
+      }
+    ]);
+
+    // معاملات گروهی تکمیل شده (هم به عنوان مالک و هم اجراکننده)
     const completedTrades = await Trade.find({
-      sarafi: req.user._id,
+      $or: [
+        { ownerSarafi: req.user._id },
+        { executorSarafi: req.user._id }
+      ],
       isGroupTrade: true,
       status: 'completed',
       createdAt: { $gte: dateFilter }
     })
       .populate('currency', 'code nameFa')
       .populate('ownerSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
+      .populate('executorSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
       .populate('sharedCustomer', 'displayName')
       .sort({ createdAt: -1 })
       .limit(100);
 
-    const stats = executorStats[0] || {};
-    const today = todayStats[0] || {};
+    // اضافه کردن سود صحیح به هر معامله بر اساس نقش کاربر
+    const tradesWithProfit = completedTrades.map(trade => {
+      const tradeObj = trade.toObject();
+      const isOwner = trade.ownerSarafi?._id?.toString() === req.user._id.toString();
+      const isExecutor = trade.executorSarafi?._id?.toString() === req.user._id.toString();
+
+      // محاسبه سود بر اساس نقش
+      let userProfit = 0;
+      if (isOwner) {
+        userProfit = trade.groupTradeDetails?.ownerProfit || 0;
+      } else if (isExecutor) {
+        userProfit = trade.groupTradeDetails?.executorProfit || 0;
+      }
+
+      tradeObj.commission = { amount: userProfit };
+      tradeObj.userRole = isOwner ? 'owner' : 'executor';
+      return tradeObj;
+    });
+
+    // ترکیب آمارها
+    const owner = ownerStats[0] || {};
+    const executor = executorStats[0] || {};
+    const todayOwner = todayOwnerStats[0] || {};
+    const todayExecutor = todayExecutorStats[0] || {};
+
+    const totalTrades = (owner.totalTrades || 0) + (executor.totalTrades || 0);
+    const totalVolume = (owner.totalVolume || 0) + (executor.totalVolume || 0);
+    const totalCommission = (owner.totalProfit || 0) + (executor.totalProfit || 0);
+    const buyCount = (owner.buyCount || 0) + (executor.buyCount || 0);
+    const sellCount = (owner.sellCount || 0) + (executor.sellCount || 0);
+    const todayTrades = (todayOwner.todayTrades || 0) + (todayExecutor.todayTrades || 0);
+    const completedToday = (todayOwner.completedToday || 0) + (todayExecutor.completedToday || 0);
+    const todayCommission = (todayOwner.todayProfit || 0) + (todayExecutor.todayProfit || 0);
 
     res.json({
       success: true,
       data: {
-        totalTrades: stats.totalTrades || 0,
-        totalVolume: stats.totalVolume || 0,
-        totalCommission: stats.totalCommission || 0,
-        buyCount: stats.buyCount || 0,
-        sellCount: stats.sellCount || 0,
-        todayTrades: today.todayTrades || 0,
-        completedToday: today.completedToday || 0,
-        todayCommission: today.todayCommission || 0,
-        trades: completedTrades
+        totalTrades,
+        totalVolume,
+        totalCommission,
+        buyCount,
+        sellCount,
+        todayTrades,
+        completedToday,
+        todayCommission,
+        // آمار تفکیکی
+        asOwner: {
+          trades: owner.totalTrades || 0,
+          profit: owner.totalProfit || 0
+        },
+        asExecutor: {
+          trades: executor.totalTrades || 0,
+          profit: executor.totalProfit || 0
+        },
+        trades: tradesWithProfit
       }
     });
   } catch (error) {
