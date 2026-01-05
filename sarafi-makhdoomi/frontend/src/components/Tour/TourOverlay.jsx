@@ -50,65 +50,92 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
         setTargetRect(rect);
 
         // محاسبه موقعیت tooltip
-        const tooltipWidth = 360;
-        const tooltipHeight = 220;
-        const padding = 16;
+        const tooltipWidth = 340;
+        const tooltipHeight = 200;
+        const gap = 20; // فاصله بین tooltip و المنت
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
 
         let top, left;
         let position = step.position || 'auto';
 
+        // محاسبه فضای موجود در هر طرف
+        const spaceTop = rect.top;
+        const spaceBottom = windowHeight - rect.bottom;
+        const spaceLeft = rect.left;
+        const spaceRight = windowWidth - rect.right;
+
         // محاسبه خودکار بهترین موقعیت
         if (position === 'auto') {
-          const spaceTop = rect.top;
-          const spaceBottom = windowHeight - rect.bottom;
-          const spaceLeft = rect.left;
-          const spaceRight = windowWidth - rect.right;
-
-          if (spaceBottom >= tooltipHeight + padding) {
-            position = 'bottom';
-          } else if (spaceTop >= tooltipHeight + padding) {
+          // اولویت: بالا، پایین، چپ، راست
+          if (spaceTop >= tooltipHeight + gap) {
             position = 'top';
-          } else if (spaceRight >= tooltipWidth + padding) {
-            position = 'right';
-          } else if (spaceLeft >= tooltipWidth + padding) {
-            position = 'left';
-          } else {
+          } else if (spaceBottom >= tooltipHeight + gap) {
             position = 'bottom';
+          } else if (spaceLeft >= tooltipWidth + gap) {
+            position = 'left';
+          } else if (spaceRight >= tooltipWidth + gap) {
+            position = 'right';
+          } else {
+            // اگر جایی نیست، tooltip را کوچکتر و در گوشه قرار بده
+            position = 'corner';
           }
         }
 
         switch (position) {
           case 'top':
-            top = rect.top - tooltipHeight - padding;
-            left = rect.left + rect.width / 2 - tooltipWidth / 2;
+            top = rect.top - tooltipHeight - gap;
+            left = Math.max(10, Math.min(rect.left, windowWidth - tooltipWidth - 10));
             break;
           case 'bottom':
-            top = rect.bottom + padding;
-            left = rect.left + rect.width / 2 - tooltipWidth / 2;
+            top = rect.bottom + gap;
+            left = Math.max(10, Math.min(rect.left, windowWidth - tooltipWidth - 10));
             break;
           case 'left':
-            top = rect.top + rect.height / 2 - tooltipHeight / 2;
-            left = rect.left - tooltipWidth - padding;
+            top = Math.max(10, Math.min(rect.top, windowHeight - tooltipHeight - 10));
+            left = rect.left - tooltipWidth - gap;
             break;
           case 'right':
-            top = rect.top + rect.height / 2 - tooltipHeight / 2;
-            left = rect.right + padding;
+            top = Math.max(10, Math.min(rect.top, windowHeight - tooltipHeight - 10));
+            left = rect.right + gap;
+            break;
+          case 'corner':
+            // در گوشه بالا سمت راست صفحه
+            top = 80;
+            left = windowWidth - tooltipWidth - 20;
             break;
           default:
-            top = rect.bottom + padding;
-            left = rect.left + rect.width / 2 - tooltipWidth / 2;
+            top = rect.bottom + gap;
+            left = Math.max(10, rect.left);
         }
 
-        // تنظیم برای جلوگیری از خروج از صفحه
-        if (left < padding) left = padding;
-        if (left + tooltipWidth > windowWidth - padding) {
-          left = windowWidth - tooltipWidth - padding;
-        }
-        if (top < padding) top = padding;
-        if (top + tooltipHeight > windowHeight - padding) {
-          top = windowHeight - tooltipHeight - padding;
+        // اطمینان از عدم همپوشانی با المنت
+        const tooltipRect = {
+          top,
+          left,
+          right: left + tooltipWidth,
+          bottom: top + tooltipHeight
+        };
+
+        const elementRect = {
+          top: rect.top - 10,
+          left: rect.left - 10,
+          right: rect.right + 10,
+          bottom: rect.bottom + 10
+        };
+
+        // بررسی همپوشانی
+        const isOverlapping = !(
+          tooltipRect.right < elementRect.left ||
+          tooltipRect.left > elementRect.right ||
+          tooltipRect.bottom < elementRect.top ||
+          tooltipRect.top > elementRect.bottom
+        );
+
+        if (isOverlapping && position !== 'corner') {
+          // اگر همپوشانی داشت، به گوشه ببر
+          top = 80;
+          left = windowWidth - tooltipWidth - 20;
         }
 
         setTooltipStyle({ top, left, width: tooltipWidth });
