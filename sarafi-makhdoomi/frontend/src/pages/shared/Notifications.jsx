@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   FaBell, FaCheck, FaCheckDouble, FaTimes, FaExclamationCircle,
   FaInfoCircle, FaCheckCircle, FaExclamationTriangle, FaTrash,
-  FaFilter, FaSearch, FaEye, FaEyeSlash
+  FaFilter, FaSearch, FaEye, FaEyeSlash, FaExternalLinkAlt
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jalaliMoment from 'jalali-moment';
 
 const NotificationsPage = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, unread, read
@@ -149,6 +152,29 @@ const NotificationsPage = () => {
     return jalaliMoment(date).format('jDD jMMMM');
   };
 
+  // تشخیص basePath از URL فعلی
+  const getBasePath = () => {
+    if (location.pathname.startsWith('/sarafi')) return '/sarafi';
+    if (location.pathname.startsWith('/admin')) return '/admin';
+    return '/dashboard';
+  };
+
+  const handleNotificationClick = async (notification) => {
+    // علامت‌گذاری به عنوان خوانده شده
+    if (!notification.isRead) {
+      await markAsRead(notification._id);
+    }
+
+    // ناوبری به مسیر مربوطه
+    const targetUrl = notification.link || notification.actionUrl;
+    if (targetUrl) {
+      const basePath = getBasePath();
+      // اگر مسیر با / شروع شده، مستقیم استفاده کن، وگرنه با basePath ترکیب کن
+      const fullPath = targetUrl.startsWith('/') ? targetUrl : `${basePath}/${targetUrl}`;
+      navigate(fullPath);
+    }
+  };
+
   const filteredNotifications = notifications.filter(n => {
     if (typeFilter !== 'all' && n.type !== typeFilter) return false;
     if (searchQuery) {
@@ -278,9 +304,10 @@ const NotificationsPage = () => {
           filteredNotifications.map((notification) => (
             <div
               key={notification._id}
-              className={`card p-4 border transition-all hover:border-dark-600 ${
+              onClick={() => handleNotificationClick(notification)}
+              className={`card p-4 border transition-all hover:border-dark-600 cursor-pointer ${
                 getNotificationBg(notification.type, notification.isRead)
-              }`}
+              } ${(notification.link || notification.actionUrl) ? 'hover:border-gold/50' : ''}`}
             >
               <div className="flex items-start gap-4">
                 {/* Icon */}
@@ -298,6 +325,9 @@ const NotificationsPage = () => {
                         notification.isRead ? 'text-dark-300' : 'text-white'
                       }`}>
                         {notification.title || 'اعلان جدید'}
+                        {(notification.link || notification.actionUrl) && (
+                          <FaExternalLinkAlt className="inline-block mr-2 w-3 h-3 text-gold" />
+                        )}
                       </h3>
                       <p className={`mt-1 ${
                         notification.isRead ? 'text-dark-500' : 'text-dark-300'
@@ -310,7 +340,7 @@ const NotificationsPage = () => {
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {!notification.isRead && (
                         <button
-                          onClick={() => markAsRead(notification._id)}
+                          onClick={(e) => { e.stopPropagation(); markAsRead(notification._id); }}
                           className="p-2 rounded-lg text-dark-400 hover:text-green-500 hover:bg-dark-800 transition-all"
                           title="علامت‌گذاری به عنوان خوانده شده"
                         >
@@ -318,7 +348,7 @@ const NotificationsPage = () => {
                         </button>
                       )}
                       <button
-                        onClick={() => deleteNotification(notification._id)}
+                        onClick={(e) => { e.stopPropagation(); deleteNotification(notification._id); }}
                         className="p-2 rounded-lg text-dark-400 hover:text-red-500 hover:bg-dark-800 transition-all"
                         title="حذف"
                       >

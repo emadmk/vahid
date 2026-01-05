@@ -314,7 +314,7 @@ router.put('/instant/:id/confirm-collection', protect, authorize('sarafi'), asyn
       relatedModel: 'Trade',
       relatedId: trade._id,
       severity: 'info',
-      actionUrl: '/accountant'
+      actionUrl: '/sarafi/accountant'
     });
 
     res.json({
