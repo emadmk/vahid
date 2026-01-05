@@ -5,6 +5,7 @@ import {
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import CurrencySelector from '../../components/CurrencySelector';
 
 const ProTrade = () => {
   const [currencies, setCurrencies] = useState([]);
@@ -176,31 +177,13 @@ const ProTrade = () => {
         </button>
       </div>
 
-      {/* انتخاب ارز */}
-      <div className="card p-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <span className="text-dark-400">انتخاب ارز:</span>
-          <div className="flex flex-wrap gap-2">
-            {currencies.map(currency => (
-              <button
-                key={currency._id}
-                onClick={() => setSelectedCurrency(currency)}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                  selectedCurrency?._id === currency._id
-                    ? 'bg-gold text-dark-900 font-bold'
-                    : 'bg-dark-800 text-dark-300 hover:bg-dark-700'
-                }`}
-              >
-                <span>{currency.symbol}</span>
-                <span>{currency.code}</span>
-              </button>
-            ))}
-          </div>
-          <button onClick={fetchOrderBook} className="p-2 text-gold hover:bg-dark-800 rounded-lg mr-auto">
-            <FaSync />
-          </button>
-        </div>
-      </div>
+      {/* انتخاب ارز با کامپوننت جدید */}
+      <CurrencySelector
+        currencies={currencies}
+        selectedCurrency={selectedCurrency}
+        onSelect={setSelectedCurrency}
+        showRates={true}
+      />
 
       {/* Order Book */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

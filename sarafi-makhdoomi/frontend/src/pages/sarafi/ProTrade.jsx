@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import CurrencySelector from '../../components/CurrencySelector';
 
 const ProTrade = () => {
   // State های اصلی
@@ -234,21 +235,14 @@ const ProTrade = () => {
           </h1>
 
           {/* Currency Selector */}
-          <div className="flex gap-2">
-            {currencies.slice(0, 6).map(currency => (
-              <button
-                key={currency._id}
-                onClick={() => setSelectedCurrency(currency)}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-1 text-sm transition-all ${
-                  selectedCurrency?._id === currency._id
-                    ? 'bg-gold text-dark-900 font-bold'
-                    : 'bg-dark-800 text-dark-300 hover:bg-dark-700'
-                }`}
-              >
-                <span>{currency.symbol}</span>
-                <span>{currency.code}</span>
-              </button>
-            ))}
+          <div className="w-64">
+            <CurrencySelector
+              currencies={currencies}
+              selectedCurrency={selectedCurrency}
+              onSelect={setSelectedCurrency}
+              showRates={false}
+              compact={true}
+            />
           </div>
         </div>
 

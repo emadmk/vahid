@@ -6,6 +6,7 @@ import {
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import CurrencySelector from '../../components/CurrencySelector';
 
 const InstantTrade = () => {
   // State های اصلی
@@ -238,22 +239,13 @@ const InstantTrade = () => {
             {/* انتخاب ارز */}
             <div>
               <label className="block text-dark-300 mb-2">انتخاب ارز</label>
-              <div className="flex flex-wrap gap-2">
-                {currencies.map(currency => (
-                  <button
-                    key={currency._id}
-                    onClick={() => setSelectedCurrency(currency)}
-                    className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                      selectedCurrency?._id === currency._id
-                        ? 'bg-gold text-dark-900 font-bold'
-                        : 'bg-dark-800 text-dark-300 hover:bg-dark-700'
-                    }`}
-                  >
-                    <span>{currency.symbol}</span>
-                    <span>{currency.code}</span>
-                  </button>
-                ))}
-              </div>
+              <CurrencySelector
+                currencies={currencies}
+                selectedCurrency={selectedCurrency}
+                onSelect={setSelectedCurrency}
+                showRates={false}
+                compact={true}
+              />
             </div>
 
             {/* نوع معامله */}

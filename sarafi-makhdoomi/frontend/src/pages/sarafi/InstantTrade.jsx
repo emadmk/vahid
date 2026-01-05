@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import {
   FaExchangeAlt, FaArrowUp, FaArrowDown, FaWallet, FaClock,
   FaCheck, FaTimes, FaSync, FaUser, FaMoneyBillWave, FaCreditCard,
-  FaExclamationTriangle, FaFilter, FaEye, FaHistory
+  FaExclamationTriangle, FaFilter, FaEye, FaHistory, FaReceipt,
+  FaMoneyCheckAlt, FaHandHoldingUsd
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import CurrencySelector from '../../components/CurrencySelector';
 
 const InstantTrade = () => {
   // State های اصلی
@@ -213,6 +215,32 @@ const InstantTrade = () => {
     }
   };
 
+  // ثبت وصول
+  const handleMarkCollected = async (tradeId) => {
+    if (!confirm('آیا وصول این معامله را تایید می‌کنید؟')) return;
+
+    try {
+      await api.put(`/trades/instant/${tradeId}/collect`);
+      toast.success('وصول ثبت شد');
+      fetchTrades();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'خطا در ثبت وصول');
+    }
+  };
+
+  // تکمیل حسابداری
+  const handleCompleteTrade = async (tradeId) => {
+    if (!confirm('آیا حسابداری این معامله را تکمیل می‌کنید؟')) return;
+
+    try {
+      await api.put(`/trades/instant/${tradeId}/complete`);
+      toast.success('معامله تکمیل شد');
+      fetchTrades();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'خطا در تکمیل');
+    }
+  };
+
   const formatNumber = (num) => new Intl.NumberFormat('fa-IR').format(num || 0);
   const formatDate = (date) => new Date(date).toLocaleDateString('fa-IR');
 
@@ -262,50 +290,13 @@ const InstantTrade = () => {
         </button>
       </div>
 
-      {/* انتخاب ارز و قیمت‌ها */}
-      <div className="card p-4">
-        <div className="flex flex-wrap items-center gap-4 mb-4">
-          <span className="text-dark-400">انتخاب ارز:</span>
-          <div className="flex flex-wrap gap-2">
-            {currencies.map(currency => (
-              <button
-                key={currency._id}
-                onClick={() => setSelectedCurrency(currency)}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                  selectedCurrency?._id === currency._id
-                    ? 'bg-gold text-dark-900 font-bold'
-                    : 'bg-dark-800 text-dark-300 hover:bg-dark-700'
-                }`}
-              >
-                <span>{currency.symbol}</span>
-                <span>{currency.code}</span>
-              </button>
-            ))}
-          </div>
-          <button onClick={fetchTrades} className="p-2 text-gold hover:bg-dark-800 rounded-lg mr-auto">
-            <FaSync />
-          </button>
-        </div>
-
-        {selectedCurrency && (
-          <div className="flex flex-wrap items-center justify-center gap-8 pt-4 border-t border-dark-800">
-            <div className="text-center">
-              <p className="text-dark-400 text-sm mb-1">قیمت خرید (از مشتری)</p>
-              <p className="text-green-500 text-2xl font-bold">{formatNumber(selectedCurrency.buyRate)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-dark-400 text-sm mb-1">قیمت فروش (به مشتری)</p>
-              <p className="text-red-500 text-2xl font-bold">{formatNumber(selectedCurrency.sellRate)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-dark-400 text-sm mb-1">اسپرد</p>
-              <p className="text-gold text-xl font-bold">
-                {formatNumber((selectedCurrency.sellRate || 0) - (selectedCurrency.buyRate || 0))}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* انتخاب ارز با کامپوننت جدید */}
+      <CurrencySelector
+        currencies={currencies}
+        selectedCurrency={selectedCurrency}
+        onSelect={setSelectedCurrency}
+        showRates={true}
+      />
 
       {/* لیست معاملات */}
       <div className="card overflow-hidden">
@@ -394,13 +385,14 @@ const InstantTrade = () => {
                     </td>
                     <td className="p-3">{getStatusBadge(trade.status)}</td>
                     <td className="p-3">
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-1">
+                        {/* تایید صراف */}
                         {trade.status === 'pending' && (
                           <>
                             <button
                               onClick={() => handleApproveTrade(trade._id)}
                               className="p-2 rounded-lg bg-green-500/20 text-green-500 hover:bg-green-500/30"
-                              title="تایید"
+                              title="تایید صراف"
                             >
                               <FaCheck />
                             </button>
@@ -416,11 +408,32 @@ const InstantTrade = () => {
                             </button>
                           </>
                         )}
+
+                        {/* ثبت وصول */}
+                        {(trade.status === 'approved' || trade.status === 'pending_collection') && (
+                          <button
+                            onClick={() => handleMarkCollected(trade._id)}
+                            className="p-2 rounded-lg bg-blue-500/20 text-blue-500 hover:bg-blue-500/30"
+                            title="ثبت وصول"
+                          >
+                            <FaHandHoldingUsd />
+                          </button>
+                        )}
+
+                        {/* تکمیل معامله */}
+                        {trade.status === 'pending_accounting' && (
+                          <button
+                            onClick={() => handleCompleteTrade(trade._id)}
+                            className="p-2 rounded-lg bg-purple-500/20 text-purple-500 hover:bg-purple-500/30"
+                            title="تکمیل حسابداری"
+                          >
+                            <FaReceipt />
+                          </button>
+                        )}
+
+                        {/* جزئیات */}
                         <button
-                          onClick={() => {
-                            setSelectedTrade(trade);
-                            // نمایش جزئیات
-                          }}
+                          onClick={() => setSelectedTrade(trade)}
                           className="p-2 rounded-lg bg-dark-700 text-dark-400 hover:bg-dark-600"
                           title="جزئیات"
                         >
