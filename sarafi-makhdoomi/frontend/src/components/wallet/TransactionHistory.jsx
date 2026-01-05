@@ -88,10 +88,10 @@ const TransactionHistory = ({ limit = 10 }) => {
             </div>
             <div className="text-left">
               <p className={`font-bold ${tx.amount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {tx.amount >= 0 ? '+' : '-'}{formatNumber(tx.amount)} ریال
+                {tx.amount >= 0 ? '+' : '-'}{formatNumber(tx.amount)} {tx.currency?.code || tx.currencyCode || 'ریال'}
               </p>
               <p className="text-dark-400 text-xs">
-                مانده: {formatNumber(tx.balanceAfter)} ریال
+                مانده: {formatNumber(tx.balanceAfter)} {tx.currency?.code || tx.currencyCode || 'ریال'}
               </p>
             </div>
           </div>
