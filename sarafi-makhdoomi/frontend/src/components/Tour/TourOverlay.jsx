@@ -14,6 +14,15 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   useEffect(() => {
     if (!step) return;
 
+    // پاکسازی المنت قبلی
+    if (targetElement) {
+      targetElement.style.position = '';
+      targetElement.style.zIndex = '';
+      targetElement.style.background = '';
+      targetElement.style.borderRadius = '';
+      targetElement.style.boxShadow = '';
+    }
+
     const updatePosition = () => {
       const element = document.querySelector(step.target);
       if (element) {
@@ -23,22 +32,46 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
         // اضافه کردن استایل به المنت هایلایت شده
         element.style.position = 'relative';
         element.style.zIndex = '10000';
-        element.style.pointerEvents = 'auto';
+        element.style.background = 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)';
+        element.style.borderRadius = '16px';
+        element.style.boxShadow = '0 0 0 4px #d4af37, 0 0 30px rgba(212, 175, 55, 0.4)';
 
         const rect = element.getBoundingClientRect();
         setTargetRect(rect);
 
         // محاسبه موقعیت tooltip
         const tooltipWidth = 360;
-        const padding = 20;
+        const tooltipHeight = 220;
+        const padding = 16;
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
 
         let top, left;
+        let position = step.position || 'auto';
 
-        switch (step.position || 'bottom') {
+        // محاسبه خودکار بهترین موقعیت
+        if (position === 'auto') {
+          const spaceTop = rect.top;
+          const spaceBottom = windowHeight - rect.bottom;
+          const spaceLeft = rect.left;
+          const spaceRight = windowWidth - rect.right;
+
+          if (spaceBottom >= tooltipHeight + padding) {
+            position = 'bottom';
+          } else if (spaceTop >= tooltipHeight + padding) {
+            position = 'top';
+          } else if (spaceRight >= tooltipWidth + padding) {
+            position = 'right';
+          } else if (spaceLeft >= tooltipWidth + padding) {
+            position = 'left';
+          } else {
+            position = 'bottom';
+          }
+        }
+
+        switch (position) {
           case 'top':
-            top = rect.top - 200 - padding;
+            top = rect.top - tooltipHeight - padding;
             left = rect.left + rect.width / 2 - tooltipWidth / 2;
             break;
           case 'bottom':
@@ -46,11 +79,11 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
             left = rect.left + rect.width / 2 - tooltipWidth / 2;
             break;
           case 'left':
-            top = rect.top;
+            top = rect.top + rect.height / 2 - tooltipHeight / 2;
             left = rect.left - tooltipWidth - padding;
             break;
           case 'right':
-            top = rect.top;
+            top = rect.top + rect.height / 2 - tooltipHeight / 2;
             left = rect.right + padding;
             break;
           default:
@@ -60,14 +93,13 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
 
         // تنظیم برای جلوگیری از خروج از صفحه
         if (left < padding) left = padding;
-        if (left + tooltipWidth > windowWidth - padding) left = windowWidth - tooltipWidth - padding;
-        if (top < padding) {
-          top = rect.bottom + padding;
+        if (left + tooltipWidth > windowWidth - padding) {
+          left = windowWidth - tooltipWidth - padding;
         }
-        if (top > windowHeight - 280) {
-          top = rect.top - 240;
+        if (top < padding) top = padding;
+        if (top + tooltipHeight > windowHeight - padding) {
+          top = windowHeight - tooltipHeight - padding;
         }
-        if (top < 10) top = 10;
 
         setTooltipStyle({ top, left, width: tooltipWidth });
 
@@ -77,19 +109,14 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
     };
 
     // تاخیر کوتاه برای اطمینان از رندر شدن المنت
-    setTimeout(updatePosition, 100);
+    const timer = setTimeout(updatePosition, 150);
     window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
 
     return () => {
-      // حذف استایل از المنت قبلی
-      if (targetElement) {
-        targetElement.style.position = '';
-        targetElement.style.zIndex = '';
-        targetElement.style.pointerEvents = '';
-      }
+      clearTimeout(timer);
       window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
     };
   }, [currentStep, step]);
 
@@ -99,19 +126,25 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
       if (targetElement) {
         targetElement.style.position = '';
         targetElement.style.zIndex = '';
-        targetElement.style.pointerEvents = '';
+        targetElement.style.background = '';
+        targetElement.style.borderRadius = '';
+        targetElement.style.boxShadow = '';
       }
     };
-  }, [targetElement]);
+  }, []);
 
-  const handleNext = () => {
-    // پاکسازی المنت قبلی
+  const cleanupElement = () => {
     if (targetElement) {
       targetElement.style.position = '';
       targetElement.style.zIndex = '';
-      targetElement.style.pointerEvents = '';
+      targetElement.style.background = '';
+      targetElement.style.borderRadius = '';
+      targetElement.style.boxShadow = '';
     }
+  };
 
+  const handleNext = () => {
+    cleanupElement();
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -120,25 +153,14 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   };
 
   const handlePrev = () => {
-    // پاکسازی المنت قبلی
-    if (targetElement) {
-      targetElement.style.position = '';
-      targetElement.style.zIndex = '';
-      targetElement.style.pointerEvents = '';
-    }
-
+    cleanupElement();
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
   };
 
   const handleSkip = () => {
-    // پاکسازی المنت
-    if (targetElement) {
-      targetElement.style.position = '';
-      targetElement.style.zIndex = '';
-      targetElement.style.pointerEvents = '';
-    }
+    cleanupElement();
     onSkip();
   };
 
@@ -147,7 +169,7 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   return createPortal(
     <div className="fixed inset-0 z-[9999]" dir="rtl">
       {/* پس‌زمینه تاریک با سوراخ */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 9998 }}>
+      <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 9998 }}>
         <defs>
           <mask id="tour-mask">
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
@@ -157,7 +179,7 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
                 y={targetRect.top - 8}
                 width={targetRect.width + 16}
                 height={targetRect.height + 16}
-                rx="12"
+                rx="16"
                 fill="black"
               />
             )}
@@ -172,22 +194,6 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
           mask="url(#tour-mask)"
         />
       </svg>
-
-      {/* حاشیه طلایی دور المنت */}
-      {targetRect && (
-        <div
-          className="absolute rounded-xl pointer-events-none"
-          style={{
-            top: targetRect.top - 8,
-            left: targetRect.left - 8,
-            width: targetRect.width + 16,
-            height: targetRect.height + 16,
-            border: '3px solid #d4af37',
-            boxShadow: '0 0 20px rgba(212, 175, 55, 0.5), 0 0 40px rgba(212, 175, 55, 0.3), inset 0 0 20px rgba(212, 175, 55, 0.1)',
-            zIndex: 10001
-          }}
-        />
-      )}
 
       {/* Tooltip */}
       <div
