@@ -6,6 +6,7 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState(null);
   const [tooltipStyle, setTooltipStyle] = useState({});
+  const [targetElement, setTargetElement] = useState(null);
   const tooltipRef = useRef(null);
 
   const step = steps[currentStep];
@@ -16,11 +17,19 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
     const updatePosition = () => {
       const element = document.querySelector(step.target);
       if (element) {
+        // ذخیره المنت برای اعمال استایل
+        setTargetElement(element);
+
+        // اضافه کردن استایل به المنت هایلایت شده
+        element.style.position = 'relative';
+        element.style.zIndex = '10000';
+        element.style.pointerEvents = 'auto';
+
         const rect = element.getBoundingClientRect();
         setTargetRect(rect);
 
         // محاسبه موقعیت tooltip
-        const tooltipWidth = 340;
+        const tooltipWidth = 360;
         const padding = 20;
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
@@ -29,7 +38,7 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
 
         switch (step.position || 'bottom') {
           case 'top':
-            top = rect.top - padding;
+            top = rect.top - 200 - padding;
             left = rect.left + rect.width / 2 - tooltipWidth / 2;
             break;
           case 'bottom':
@@ -55,9 +64,10 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
         if (top < padding) {
           top = rect.bottom + padding;
         }
-        if (top > windowHeight - 250) {
-          top = rect.top - 220;
+        if (top > windowHeight - 280) {
+          top = rect.top - 240;
         }
+        if (top < 10) top = 10;
 
         setTooltipStyle({ top, left, width: tooltipWidth });
 
@@ -70,13 +80,38 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
     setTimeout(updatePosition, 100);
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition);
+
     return () => {
+      // حذف استایل از المنت قبلی
+      if (targetElement) {
+        targetElement.style.position = '';
+        targetElement.style.zIndex = '';
+        targetElement.style.pointerEvents = '';
+      }
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition);
     };
   }, [currentStep, step]);
 
+  // پاکسازی استایل هنگام unmount
+  useEffect(() => {
+    return () => {
+      if (targetElement) {
+        targetElement.style.position = '';
+        targetElement.style.zIndex = '';
+        targetElement.style.pointerEvents = '';
+      }
+    };
+  }, [targetElement]);
+
   const handleNext = () => {
+    // پاکسازی المنت قبلی
+    if (targetElement) {
+      targetElement.style.position = '';
+      targetElement.style.zIndex = '';
+      targetElement.style.pointerEvents = '';
+    }
+
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -85,9 +120,26 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   };
 
   const handlePrev = () => {
+    // پاکسازی المنت قبلی
+    if (targetElement) {
+      targetElement.style.position = '';
+      targetElement.style.zIndex = '';
+      targetElement.style.pointerEvents = '';
+    }
+
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
+  };
+
+  const handleSkip = () => {
+    // پاکسازی المنت
+    if (targetElement) {
+      targetElement.style.position = '';
+      targetElement.style.zIndex = '';
+      targetElement.style.pointerEvents = '';
+    }
+    onSkip();
   };
 
   if (!step) return null;
@@ -95,17 +147,17 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   return createPortal(
     <div className="fixed inset-0 z-[9999]" dir="rtl">
       {/* پس‌زمینه تاریک با سوراخ */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none">
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 9998 }}>
         <defs>
           <mask id="tour-mask">
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
             {targetRect && (
               <rect
-                x={targetRect.left - 12}
-                y={targetRect.top - 12}
-                width={targetRect.width + 24}
-                height={targetRect.height + 24}
-                rx="16"
+                x={targetRect.left - 8}
+                y={targetRect.top - 8}
+                width={targetRect.width + 16}
+                height={targetRect.height + 16}
+                rx="12"
                 fill="black"
               />
             )}
@@ -116,22 +168,23 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
           y="0"
           width="100%"
           height="100%"
-          fill="rgba(0, 0, 0, 0.9)"
+          fill="rgba(0, 0, 0, 0.85)"
           mask="url(#tour-mask)"
         />
       </svg>
 
-      {/* پس‌زمینه روشن برای المنت هایلایت شده */}
+      {/* حاشیه طلایی دور المنت */}
       {targetRect && (
         <div
-          className="absolute rounded-2xl pointer-events-none"
+          className="absolute rounded-xl pointer-events-none"
           style={{
-            top: targetRect.top - 12,
-            left: targetRect.left - 12,
-            width: targetRect.width + 24,
-            height: targetRect.height + 24,
-            background: 'linear-gradient(135deg, rgba(30, 41, 59, 1) 0%, rgba(15, 23, 42, 1) 100%)',
-            boxShadow: '0 0 0 4px #d4af37, 0 0 30px rgba(212, 175, 55, 0.6), 0 0 60px rgba(212, 175, 55, 0.3)',
+            top: targetRect.top - 8,
+            left: targetRect.left - 8,
+            width: targetRect.width + 16,
+            height: targetRect.height + 16,
+            border: '3px solid #d4af37',
+            boxShadow: '0 0 20px rgba(212, 175, 55, 0.5), 0 0 40px rgba(212, 175, 55, 0.3), inset 0 0 20px rgba(212, 175, 55, 0.1)',
+            zIndex: 10001
           }}
         />
       )}
@@ -140,7 +193,7 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
       <div
         ref={tooltipRef}
         className="absolute bg-white rounded-2xl shadow-2xl overflow-hidden animate-fadeIn"
-        style={tooltipStyle}
+        style={{ ...tooltipStyle, zIndex: 10002 }}
       >
         {/* هدر */}
         <div className="bg-gradient-to-l from-amber-500 to-yellow-500 px-5 py-4 flex items-center justify-between">
@@ -151,7 +204,7 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
             <span className="text-white font-bold text-lg">{step.title}</span>
           </div>
           <button
-            onClick={onSkip}
+            onClick={handleSkip}
             className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
           >
             <FaTimes />

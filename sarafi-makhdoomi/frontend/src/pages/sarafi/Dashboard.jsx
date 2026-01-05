@@ -201,7 +201,7 @@ const SarafiDashboard = () => {
       </div>
 
       {/* ========== آمار اصلی معاملات ========== */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div data-tour="stats-cards" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Link to="/sarafi/instant-trade" className="card p-4 text-center hover:border-gold/50 transition-all border-l-4 border-yellow-500">
           <FaBell className="text-yellow-500 text-xl mx-auto mb-2" />
           <p className="text-dark-400 text-xs mb-1">در انتظار تصمیم</p>
@@ -319,7 +319,7 @@ const SarafiDashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* آخرین معاملات */}
-        <div className="card-dark">
+        <div data-tour="recent-trades" className="card-dark">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <FaExchangeAlt className="text-gold" />
