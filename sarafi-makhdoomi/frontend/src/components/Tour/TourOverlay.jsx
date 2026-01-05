@@ -6,38 +6,45 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState(null);
   const [tooltipStyle, setTooltipStyle] = useState({});
-  const [targetElement, setTargetElement] = useState(null);
-  const [originalStyles, setOriginalStyles] = useState({});
   const tooltipRef = useRef(null);
+  const targetElementRef = useRef(null);
+  const originalStylesRef = useRef({});
 
   const step = steps[currentStep];
+
+  // تابع پاکسازی استایل‌ها
+  const cleanupElement = () => {
+    const el = targetElementRef.current;
+    const styles = originalStylesRef.current;
+    if (el) {
+      el.style.position = styles.position || '';
+      el.style.zIndex = styles.zIndex || '';
+      el.style.borderRadius = styles.borderRadius || '';
+      el.style.boxShadow = styles.boxShadow || '';
+      el.style.outline = styles.outline || '';
+    }
+  };
 
   useEffect(() => {
     if (!step) return;
 
     // پاکسازی المنت قبلی
-    if (targetElement && originalStyles) {
-      targetElement.style.position = originalStyles.position || '';
-      targetElement.style.zIndex = originalStyles.zIndex || '';
-      targetElement.style.borderRadius = originalStyles.borderRadius || '';
-      targetElement.style.boxShadow = originalStyles.boxShadow || '';
-      targetElement.style.outline = originalStyles.outline || '';
-    }
+    cleanupElement();
 
     const updatePosition = () => {
       const element = document.querySelector(step.target);
       if (element) {
         // ذخیره استایل‌های اصلی
-        setOriginalStyles({
+        originalStylesRef.current = {
           position: element.style.position,
           zIndex: element.style.zIndex,
           borderRadius: element.style.borderRadius,
           boxShadow: element.style.boxShadow,
           outline: element.style.outline
-        });
+        };
 
         // ذخیره المنت برای اعمال استایل
-        setTargetElement(element);
+        targetElementRef.current = element;
 
         // اضافه کردن استایل به المنت هایلایت شده - بدون تغییر background
         element.style.position = 'relative';
@@ -160,25 +167,9 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
   // پاکسازی استایل هنگام unmount
   useEffect(() => {
     return () => {
-      if (targetElement && originalStyles) {
-        targetElement.style.position = originalStyles.position || '';
-        targetElement.style.zIndex = originalStyles.zIndex || '';
-        targetElement.style.borderRadius = originalStyles.borderRadius || '';
-        targetElement.style.boxShadow = originalStyles.boxShadow || '';
-        targetElement.style.outline = originalStyles.outline || '';
-      }
+      cleanupElement();
     };
-  }, [targetElement, originalStyles]);
-
-  const cleanupElement = () => {
-    if (targetElement && originalStyles) {
-      targetElement.style.position = originalStyles.position || '';
-      targetElement.style.zIndex = originalStyles.zIndex || '';
-      targetElement.style.borderRadius = originalStyles.borderRadius || '';
-      targetElement.style.boxShadow = originalStyles.boxShadow || '';
-      targetElement.style.outline = originalStyles.outline || '';
-    }
-  };
+  }, []);
 
   const handleNext = () => {
     cleanupElement();
