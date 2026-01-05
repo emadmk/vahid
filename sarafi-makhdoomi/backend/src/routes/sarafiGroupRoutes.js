@@ -266,13 +266,14 @@ router.post('/accept-trade/:tradeId', authorize('sarafi', 'admin'), async (req, 
     }
 
     // بررسی اینکه معامله مال خود صراف نباشد
-    if (trade.sarafi._id.toString() === req.user._id.toString()) {
+    const tradeSarafiId = trade.sarafi._id ? trade.sarafi._id.toString() : trade.sarafi.toString();
+    if (tradeSarafiId === req.user._id.toString()) {
       return res.status(400).json({ success: false, message: 'نمی‌توانید معامله خودتان را قبول کنید' });
     }
 
     // بررسی اینکه صراف‌ها در یک گروه هستند
     const myGroups = await SarafiGroup.getGroupsForUser(req.user._id);
-    const originalSarafiGroups = await SarafiGroup.getGroupsForUser(trade.sarafi._id);
+    const originalSarafiGroups = await SarafiGroup.getGroupsForUser(tradeSarafiId);
 
     const myGroupIds = myGroups.map(g => g._id.toString());
     const sharedGroup = originalSarafiGroups.find(g => myGroupIds.includes(g._id.toString()));
@@ -285,24 +286,28 @@ router.post('/accept-trade/:tradeId', authorize('sarafi', 'admin'), async (req, 
     trade.acceptedBy = req.user._id;
     trade.acceptedAt = new Date();
     trade.isGroupTrade = true;
-    trade.ownerSarafi = trade.sarafi._id; // صراف اصلی
+    trade.ownerSarafi = tradeSarafiId; // صراف اصلی
     trade.executorSarafi = req.user._id; // صراف اجراکننده (قبول‌کننده)
     trade.groupId = sharedGroup._id;
 
     await trade.save();
 
-    // ثبت لاگ
-    await AuditLog.log({
-      action: 'trade.accept',
-      category: 'trade',
-      user: req.user._id,
-      userRole: 'sarafi',
-      sarafi: req.user._id,
-      targetType: 'Trade',
-      targetId: trade._id,
-      description: `قبول معامله از صراف ${trade.sarafi.sarafiInfo?.name || trade.sarafi.firstName}`,
-      ipAddress: req.ip
-    });
+    // ثبت لاگ (اختیاری - اگر خطا داد ادامه بده)
+    try {
+      await AuditLog.log({
+        action: 'trade.accept',
+        category: 'trade',
+        user: req.user._id,
+        userRole: 'sarafi',
+        sarafi: req.user._id,
+        targetType: 'Trade',
+        targetId: trade._id,
+        description: `قبول معامله از صراف ${trade.sarafi?.sarafiInfo?.name || trade.sarafi?.firstName || 'نامشخص'}`,
+        ipAddress: req.ip
+      });
+    } catch (logError) {
+      console.error('Error logging trade accept:', logError);
+    }
 
     res.json({
       success: true,
@@ -311,7 +316,7 @@ router.post('/accept-trade/:tradeId', authorize('sarafi', 'admin'), async (req, 
     });
   } catch (error) {
     console.error('Error accepting trade:', error);
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message || 'خطا در قبول معامله' });
   }
 });
 
