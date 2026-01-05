@@ -156,7 +156,8 @@ class GroupSharingService {
     }
 
     // بررسی اینکه این مشتری متعلق به این صراف است
-    if (customer.sarafi?.toString() !== sarafiId.toString()) {
+    // مشتری‌ها با فیلد selectedSarafi به صراف متصل می‌شوند
+    if (customer.selectedSarafi?.toString() !== sarafiId.toString()) {
       throw new Error('این مشتری متعلق به شما نیست');
     }
 
