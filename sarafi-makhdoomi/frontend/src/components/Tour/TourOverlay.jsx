@@ -97,13 +97,27 @@ const TourOverlay = ({ steps, onComplete, onSkip }) => {
             left = rect.right + gap;
             break;
           case 'corner':
-            // در گوشه بالا سمت راست صفحه
-            top = 80;
-            left = windowWidth - tooltipWidth - 20;
+            // در گوشه بالا سمت چپ صفحه (سمت چپ چون RTL است)
+            top = 20;
+            left = 20;
             break;
           default:
             top = rect.bottom + gap;
             left = Math.max(10, rect.left);
+        }
+
+        // اطمینان از قرار گرفتن کامل tooltip در صفحه
+        if (top + tooltipHeight > windowHeight - 20) {
+          top = windowHeight - tooltipHeight - 20;
+        }
+        if (top < 20) {
+          top = 20;
+        }
+        if (left + tooltipWidth > windowWidth - 20) {
+          left = windowWidth - tooltipWidth - 20;
+        }
+        if (left < 20) {
+          left = 20;
         }
 
         // اطمینان از عدم همپوشانی با المنت
