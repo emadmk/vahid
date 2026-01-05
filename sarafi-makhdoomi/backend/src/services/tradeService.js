@@ -135,7 +135,11 @@ class TradeService {
       throw new Error('معامله یافت نشد');
     }
 
-    if (trade.sarafi.toString() !== sarafiId.toString()) {
+    // بررسی دسترسی: صراف اصلی یا صراف اجراکننده (برای معاملات گروهی)
+    const isOriginalSarafi = trade.sarafi.toString() === sarafiId.toString();
+    const isExecutorSarafi = trade.executorSarafi && trade.executorSarafi.toString() === sarafiId.toString();
+
+    if (!isOriginalSarafi && !isExecutorSarafi) {
       throw new Error('شما مجاز به تایید این معامله نیستید');
     }
 
@@ -175,7 +179,11 @@ class TradeService {
       throw new Error('معامله یافت نشد');
     }
 
-    if (trade.sarafi.toString() !== sarafiId.toString()) {
+    // بررسی دسترسی: صراف اصلی یا صراف اجراکننده (برای معاملات گروهی)
+    const isOriginalSarafi = trade.sarafi.toString() === sarafiId.toString();
+    const isExecutorSarafi = trade.executorSarafi && trade.executorSarafi.toString() === sarafiId.toString();
+
+    if (!isOriginalSarafi && !isExecutorSarafi) {
       throw new Error('شما مجاز به رد این معامله نیستید');
     }
 
