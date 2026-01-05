@@ -65,13 +65,17 @@ const ProfitLoss = () => {
       });
 
       // پردازش داده‌های نمودار
-      const completedTrades = tradesRes.data.data || [];
-      setTrades(completedTrades);
-      setGroupTrades(groupStats.trades || []);
+      const allCompletedTrades = tradesRes.data.data || [];
+      // فیلتر کردن معاملات گروهی از لیست عادی (چون جداگانه دریافت می‌شوند)
+      const ownTrades = allCompletedTrades.filter(trade => !trade.isGroupTrade);
+      const groupTradesList = groupStats.trades || [];
 
-      // گروه‌بندی بر اساس تاریخ (همه معاملات + گروهی)
+      setTrades(ownTrades);
+      setGroupTrades(groupTradesList);
+
+      // گروه‌بندی بر اساس تاریخ (معاملات خودی + گروهی - بدون تکرار)
       const grouped = {};
-      const allTrades = [...completedTrades, ...(groupStats.trades || [])];
+      const allTrades = [...ownTrades, ...groupTradesList];
       allTrades.forEach(trade => {
         const date = new Date(trade.createdAt).toLocaleDateString('fa-IR');
         if (!grouped[date]) {

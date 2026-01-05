@@ -652,12 +652,14 @@ class TradeService {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
+    // آمار معاملات خودی (بدون گروهی - چون جداگانه شمرده می‌شوند)
     const stats = await Trade.aggregate([
       {
         $match: {
           sarafi: new mongoose.Types.ObjectId(sarafiId),
           createdAt: { $gte: dateFilter },
-          status: 'completed'
+          status: 'completed',
+          isGroupTrade: { $ne: true } // فقط معاملات خودی
         }
       },
       {
@@ -677,12 +679,13 @@ class TradeService {
       }
     ]);
 
-    // آمار امروز
+    // آمار امروز (فقط معاملات خودی)
     const todayStats = await Trade.aggregate([
       {
         $match: {
           sarafi: new mongoose.Types.ObjectId(sarafiId),
-          createdAt: { $gte: todayStart }
+          createdAt: { $gte: todayStart },
+          isGroupTrade: { $ne: true } // فقط معاملات خودی
         }
       },
       {
