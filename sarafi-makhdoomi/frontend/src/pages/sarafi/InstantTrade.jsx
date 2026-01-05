@@ -282,6 +282,7 @@ const InstantTrade = () => {
           <p className="text-dark-400 text-sm mt-1">ثبت و مدیریت معاملات فوری مشتریان</p>
         </div>
         <button
+          data-tour="new-trade-btn"
           onClick={() => setShowTradeModal(true)}
           className="btn-gold flex items-center gap-2"
         >
@@ -291,21 +292,23 @@ const InstantTrade = () => {
       </div>
 
       {/* انتخاب ارز با کامپوننت جدید */}
-      <CurrencySelector
-        currencies={currencies}
-        selectedCurrency={selectedCurrency}
-        onSelect={setSelectedCurrency}
-        showRates={true}
-      />
+      <div data-tour="currency-selector">
+        <CurrencySelector
+          currencies={currencies}
+          selectedCurrency={selectedCurrency}
+          onSelect={setSelectedCurrency}
+          showRates={true}
+        />
+      </div>
 
       {/* لیست معاملات */}
-      <div className="card overflow-hidden">
+      <div data-tour="trades-table" className="card overflow-hidden">
         <div className="p-4 border-b border-dark-800 flex flex-wrap items-center justify-between gap-4">
           <h3 className="text-white font-bold flex items-center gap-2">
             <FaHistory className="text-gold" />
             معاملات فوری
           </h3>
-          <div className="flex gap-2">
+          <div data-tour="trade-filters" className="flex gap-2">
             {[
               { value: 'all', label: 'همه' },
               { value: 'pending', label: 'در انتظار' },

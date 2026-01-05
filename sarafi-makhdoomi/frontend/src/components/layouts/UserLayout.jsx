@@ -8,12 +8,16 @@ import {
 import useAuthStore from '../../store/authStore';
 import ViewModeToggle from '../common/ViewModeToggle';
 import NotificationDropdown from '../common/NotificationDropdown';
+import { HelpButton, useTourAutoStart } from '../Tour';
 
 const UserLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // شروع خودکار تور در اولین بازدید
+  useTourAutoStart('user', 1500);
 
   const menuItems = [
     { path: '/dashboard', label: 'داشبورد', icon: FaHome },
@@ -120,6 +124,9 @@ const UserLayout = () => {
           <div className="flex items-center gap-4">
             {/* تاگل نمای ساده/حرفه‌ای */}
             <ViewModeToggle />
+
+            {/* راهنما */}
+            <HelpButton userRole="user" />
 
             {/* اعلانات */}
             <NotificationDropdown basePath="/dashboard" />

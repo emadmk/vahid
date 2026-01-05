@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useEffect } from 'react';
 import useAuthStore from './store/authStore';
+import { TourProvider } from './components/Tour';
 
 // لایوت‌ها
 import MainLayout from './components/layouts/MainLayout';
@@ -94,33 +95,34 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#1e293b',
-            color: '#fff',
-            border: '1px solid #334155',
-            borderRadius: '12px',
-            padding: '16px'
-          },
-          success: {
-            iconTheme: {
-              primary: '#d4af37',
-              secondary: '#1e293b'
+      <TourProvider>
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#1e293b',
+              color: '#fff',
+              border: '1px solid #334155',
+              borderRadius: '12px',
+              padding: '16px'
+            },
+            success: {
+              iconTheme: {
+                primary: '#d4af37',
+                secondary: '#1e293b'
+              }
+            },
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#1e293b'
+              }
             }
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#1e293b'
-            }
-          }
-        }}
-      />
+          }}
+        />
 
-      <Routes>
+        <Routes>
         {/* صفحات عمومی */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
@@ -215,7 +217,8 @@ function App() {
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        </Routes>
+      </TourProvider>
     </BrowserRouter>
   );
 }

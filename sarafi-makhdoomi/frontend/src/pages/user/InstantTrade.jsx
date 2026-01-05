@@ -237,7 +237,7 @@ const InstantTrade = () => {
           </div>
           <div className="p-4 space-y-4">
             {/* انتخاب ارز */}
-            <div>
+            <div data-tour="currency-selector">
               <label className="block text-dark-300 mb-2">انتخاب ارز</label>
               <CurrencySelector
                 currencies={currencies}
@@ -249,7 +249,7 @@ const InstantTrade = () => {
             </div>
 
             {/* نوع معامله */}
-            <div>
+            <div data-tour="trade-type">
               <label className="block text-dark-300 mb-2">نوع معامله</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -290,7 +290,7 @@ const InstantTrade = () => {
             )}
 
             {/* مقدار */}
-            <div>
+            <div data-tour="trade-amount">
               <label className="block text-dark-300 mb-2">مقدار ({selectedCurrency?.code || 'ارز'})</label>
               <input
                 type="number"
@@ -338,6 +338,7 @@ const InstantTrade = () => {
 
             {/* دکمه ثبت */}
             <button
+              data-tour="submit-trade"
               onClick={handleSubmitTrade}
               disabled={submitting || !tradeForm.amount || (tradeForm.side === 'buy' && walletCheck?.status === 'insufficient')}
               className={`w-full py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-2 ${
