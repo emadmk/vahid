@@ -220,7 +220,7 @@ const InstantTrade = () => {
     if (!confirm('آیا وصول این معامله را تایید می‌کنید؟')) return;
 
     try {
-      await api.put(`/trades/instant/${tradeId}/collect`);
+      await api.put(`/trades/instant/${tradeId}/confirm-collection`);
       toast.success('وصول ثبت شد');
       fetchTrades();
     } catch (error) {
@@ -233,7 +233,7 @@ const InstantTrade = () => {
     if (!confirm('آیا حسابداری این معامله را تکمیل می‌کنید؟')) return;
 
     try {
-      await api.put(`/trades/instant/${tradeId}/complete`);
+      await api.put(`/trades/instant/${tradeId}/accounting-approve`);
       toast.success('معامله تکمیل شد');
       fetchTrades();
     } catch (error) {
