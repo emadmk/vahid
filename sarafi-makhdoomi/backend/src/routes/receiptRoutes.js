@@ -163,8 +163,14 @@ router.post('/', authorize('sarafi'), upload.array('files', 10), async (req, res
       return res.status(400).json({ success: false, message: 'معامله مرتبط الزامی است' });
     }
 
-    // بررسی معامله
-    const trade = await Trade.findOne({ _id: finalTradeId, sarafi: req.user._id });
+    // بررسی معامله - هم صراف اصلی و هم صراف اجراکننده می‌توانند رسید ثبت کنند
+    const trade = await Trade.findOne({
+      _id: finalTradeId,
+      $or: [
+        { sarafi: req.user._id },
+        { executorSarafi: req.user._id }
+      ]
+    }).populate('sharedCustomer', 'displayName customerNickname');
     if (!trade) {
       return res.status(404).json({ success: false, message: 'معامله یافت نشد' });
     }

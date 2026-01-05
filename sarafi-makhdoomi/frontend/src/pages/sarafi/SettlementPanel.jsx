@@ -109,6 +109,14 @@ const SettlementPanel = () => {
     }
   };
 
+  // دریافت نام مشتری (با ماسک برای معاملات گروهی)
+  const getCustomerDisplayName = (settlement) => {
+    if (settlement.trade?.isGroupTrade || settlement.trade?.executorSarafi) {
+      return settlement.trade?.sharedCustomer?.displayName || 'مشتری گروهی';
+    }
+    return `${settlement.customer?.firstName || ''} ${settlement.customer?.lastName || ''}`.trim();
+  };
+
   // باز کردن مودال رسید اجباری
   const openReceiptModal = (settlement) => {
     setSelectedSettlement(settlement);
@@ -116,7 +124,7 @@ const SettlementPanel = () => {
       type: settlement.type || 'rial',
       amount: settlement.amount?.toString() || '',
       paymentMethod: 'bank_transfer',
-      accountHolder: `${settlement.customer?.firstName || ''} ${settlement.customer?.lastName || ''}`.trim(),
+      accountHolder: getCustomerDisplayName(settlement),
       bankTrackingNumber: '',
       transactionDate: new Date().toISOString().split('T')[0],
       notes: '',
@@ -662,8 +670,8 @@ const SettlementPanel = () => {
                 </div>
                 <div>
                   <span className="text-dark-500">مشتری:</span>
-                  <p className="text-white">
-                    {selectedSettlement.customer?.firstName} {selectedSettlement.customer?.lastName}
+                  <p className={selectedSettlement.trade?.isGroupTrade || selectedSettlement.trade?.executorSarafi ? 'text-purple-400' : 'text-white'}>
+                    {getCustomerDisplayName(selectedSettlement)}
                   </p>
                 </div>
                 <div>

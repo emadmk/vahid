@@ -18,8 +18,12 @@ router.get('/list', authorize('sarafi', 'admin'), async (req, res) => {
   try {
     const { status, type, customerId, dateFrom, dateTo, limit = 50, page = 1 } = req.query;
 
+    // هم معاملات خودی و هم معاملات قبول شده از گروه
     const query = {
-      sarafi: req.user._id,
+      $or: [
+        { sarafi: req.user._id },
+        { executorSarafi: req.user._id }
+      ],
       status: { $nin: ['cancelled'] }
     };
 
@@ -52,28 +56,47 @@ router.get('/list', authorize('sarafi', 'admin'), async (req, res) => {
     const trades = await Trade.find(query)
       .populate('customer', 'firstName lastName phone email tier')
       .populate('currency', 'code nameFa symbol')
+      .populate('ownerSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
+      .populate('executorSarafi', 'firstName lastName sarafiInfo.name sarafiInfo.alias')
+      .populate('sharedCustomer', 'displayName customerNickname')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
-    // تبدیل به فرمت Settlement
-    const settlements = trades.map(trade => ({
-      _id: trade._id,
-      tradeNumber: trade.tradeNumber,
-      customer: trade.customer,
-      type: trade.type === 'buy' ? 'rial' : 'currency',
-      currency: trade.currency,
-      amount: trade.type === 'buy' ? trade.totalAmount : trade.amount,
-      totalAmount: trade.totalAmount,
-      currencyAmount: trade.amount,
-      rate: trade.rate,
-      dueDate: trade.settlementDueDate || trade.createdAt,
-      status: trade.settlementStatus || 'pending',
-      paidAmount: trade.paidAmount || 0,
-      remainingAmount: (trade.type === 'buy' ? trade.totalAmount : trade.amount) - (trade.paidAmount || 0),
-      trade: trade,
-      createdAt: trade.createdAt
-    }));
+    // تبدیل به فرمت Settlement - برای معاملات گروهی اسم مشتری مخفی شود
+    const settlements = trades.map(trade => {
+      // برای معاملات گروهی، اطلاعات مشتری مخفی شود
+      let customerInfo = trade.customer;
+      if (trade.isGroupTrade || trade.executorSarafi) {
+        customerInfo = {
+          _id: trade.customer?._id,
+          firstName: trade.sharedCustomer?.displayName || 'مشتری',
+          lastName: 'گروهی',
+          phone: '***',
+          email: '***'
+        };
+      }
+
+      return {
+        _id: trade._id,
+        tradeNumber: trade.tradeNumber,
+        customer: customerInfo,
+        isGroupTrade: trade.isGroupTrade || !!trade.executorSarafi,
+        ownerSarafi: trade.ownerSarafi,
+        type: trade.type === 'buy' ? 'rial' : 'currency',
+        currency: trade.currency,
+        amount: trade.type === 'buy' ? trade.totalAmount : trade.amount,
+        totalAmount: trade.totalAmount,
+        currencyAmount: trade.amount,
+        rate: trade.rate,
+        dueDate: trade.settlementDueDate || trade.createdAt,
+        status: trade.settlementStatus || 'pending',
+        paidAmount: trade.paidAmount || 0,
+        remainingAmount: (trade.type === 'buy' ? trade.totalAmount : trade.amount) - (trade.paidAmount || 0),
+        trade: trade,
+        createdAt: trade.createdAt
+      };
+    });
 
     const total = await Trade.countDocuments(query);
 
@@ -161,10 +184,15 @@ router.post('/:tradeId/confirm', authorize('sarafi', 'admin'), async (req, res) 
   try {
     const { amount, paymentMethod, referenceNumber, notes } = req.body;
 
+    // هم صراف اصلی و هم صراف اجراکننده می‌توانند تایید کنند
     const trade = await Trade.findOne({
       _id: req.params.tradeId,
-      sarafi: req.user._id
-    }).populate('customer', 'firstName lastName');
+      $or: [
+        { sarafi: req.user._id },
+        { executorSarafi: req.user._id }
+      ]
+    }).populate('customer', 'firstName lastName')
+      .populate('sharedCustomer', 'displayName');
 
     if (!trade) {
       return res.status(404).json({ success: false, message: 'معامله یافت نشد' });
@@ -277,10 +305,14 @@ router.post('/:tradeId/confirm', authorize('sarafi', 'admin'), async (req, res) 
  */
 router.put('/:tradeId/overdue', authorize('sarafi', 'admin'), async (req, res) => {
   try {
+    // هم صراف اصلی و هم صراف اجراکننده می‌توانند تاخیر ثبت کنند
     const trade = await Trade.findOneAndUpdate(
       {
         _id: req.params.tradeId,
-        sarafi: req.user._id
+        $or: [
+          { sarafi: req.user._id },
+          { executorSarafi: req.user._id }
+        ]
       },
       {
         settlementStatus: 'overdue'
