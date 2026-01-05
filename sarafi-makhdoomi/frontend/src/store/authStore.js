@@ -11,6 +11,14 @@ const useAuthStore = create(
       isLoading: false,
       error: null,
 
+      // بازیابی وضعیت احراز هویت (بعد از hydration)
+      rehydrate: () => {
+        const { token, user } = get();
+        if (token && user) {
+          set({ isAuthenticated: true });
+        }
+      },
+
       // ورود
       login: async (email, password) => {
         set({ isLoading: true, error: null });
@@ -127,7 +135,17 @@ const useAuthStore = create(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ token: state.token, user: state.user })
+      partialize: (state) => ({
+        token: state.token,
+        user: state.user,
+        isAuthenticated: state.isAuthenticated
+      }),
+      onRehydrateStorage: () => (state) => {
+        // بعد از بازیابی از localStorage، وضعیت احراز هویت را بررسی کن
+        if (state?.token && state?.user) {
+          state.isAuthenticated = true;
+        }
+      }
     }
   )
 );

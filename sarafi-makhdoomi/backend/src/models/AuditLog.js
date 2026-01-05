@@ -89,6 +89,15 @@ const auditLogSchema = new mongoose.Schema({
       'system.rate_update',
       'system.circuit_breaker',
 
+      // عملیات گروه
+      'group.create',
+      'group.update',
+      'group.delete',
+      'group.join',
+      'group.leave',
+      'group.member_add',
+      'group.member_remove',
+
       // سایر
       'other'
     ]
@@ -109,7 +118,8 @@ const auditLogSchema = new mongoose.Schema({
       'currency',         // ارز
       'permission',       // دسترسی
       'staff',            // کارکنان
-      'system'            // سیستم
+      'system',           // سیستم
+      'group'             // گروه صراف
     ],
     required: true
   },
@@ -153,7 +163,7 @@ const auditLogSchema = new mongoose.Schema({
   // نوع موجودیت
   targetType: {
     type: String,
-    enum: ['User', 'Trade', 'Order', 'Receipt', 'Wallet', 'Spread', 'MarketOffer', 'Currency', 'SarafiStaff', 'Settings']
+    enum: ['User', 'Trade', 'Order', 'Receipt', 'Wallet', 'Spread', 'MarketOffer', 'Currency', 'SarafiStaff', 'Settings', 'SarafiGroup']
   },
 
   // شناسه موجودیت
