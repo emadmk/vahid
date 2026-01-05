@@ -250,11 +250,13 @@ router.post('/accept-trade/:tradeId', authorize('sarafi', 'admin'), async (req, 
   try {
     const Trade = require('../models/Trade');
     const { tradeId } = req.params;
+    const { ownerSpreadPercent = 1, executorSpreadPercent = 1 } = req.body; // اسپرد پیش‌فرض 1%
 
     // یافتن معامله
     const trade = await Trade.findById(tradeId)
       .populate('sarafi', 'firstName lastName sarafiInfo.name')
-      .populate('customer', 'firstName lastName phone');
+      .populate('customer', 'firstName lastName phone')
+      .populate('currency', 'code nameFa');
 
     if (!trade) {
       return res.status(404).json({ success: false, message: 'معامله یافت نشد' });
@@ -282,6 +284,27 @@ router.post('/accept-trade/:tradeId', authorize('sarafi', 'admin'), async (req, 
       return res.status(403).json({ success: false, message: 'شما در گروه مشترک با این صراف نیستید' });
     }
 
+    // بررسی حداکثر اسپرد مجاز
+    const maxExecutorSpread = sharedGroup.customerSharing?.spreadSettings?.maxExecutorSpread || 5;
+    if (executorSpreadPercent > maxExecutorSpread) {
+      return res.status(400).json({
+        success: false,
+        message: `اسپرد شما نباید بیشتر از ${maxExecutorSpread}% باشد`
+      });
+    }
+
+    // محاسبه سود اسپرد برای هر دو صراف
+    const baseRate = trade.rate || 0;
+    const tradeAmount = trade.amount || 0;
+    const totalAmount = trade.totalAmount || (tradeAmount * baseRate);
+
+    // محاسبه سود بر اساس درصد اسپرد
+    const ownerSpreadAmount = Math.round(totalAmount * (ownerSpreadPercent / 100));
+    const executorSpreadAmount = Math.round(totalAmount * (executorSpreadPercent / 100));
+
+    // نرخ بین صراف‌ها (نرخ پایه + اسپرد مالک)
+    const interSarafiRate = baseRate + Math.round(baseRate * (ownerSpreadPercent / 100));
+
     // علامت‌گذاری معامله به عنوان قبول شده توسط این صراف
     trade.acceptedBy = req.user._id;
     trade.acceptedAt = new Date();
@@ -289,6 +312,18 @@ router.post('/accept-trade/:tradeId', authorize('sarafi', 'admin'), async (req, 
     trade.ownerSarafi = tradeSarafiId; // صراف اصلی
     trade.executorSarafi = req.user._id; // صراف اجراکننده (قبول‌کننده)
     trade.groupId = sharedGroup._id;
+
+    // ذخیره جزئیات سود اسپرد
+    trade.groupTradeDetails = {
+      baseRate: baseRate,
+      ownerSpreadPercent: ownerSpreadPercent,
+      ownerSpreadAmount: ownerSpreadAmount,
+      executorSpreadPercent: executorSpreadPercent,
+      executorSpreadAmount: executorSpreadAmount,
+      interSarafiRate: interSarafiRate,
+      ownerProfit: ownerSpreadAmount,
+      executorProfit: executorSpreadAmount
+    };
 
     await trade.save();
 

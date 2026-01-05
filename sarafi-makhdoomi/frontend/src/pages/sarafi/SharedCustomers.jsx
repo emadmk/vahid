@@ -212,11 +212,24 @@ const SharedCustomers = () => {
 
   // قبول معامله و انتقال به پنل خودم
   const handleAcceptTrade = async (tradeId) => {
-    if (!confirm('آیا می‌خواهید این معامله را قبول کنید و به پنل خود منتقل کنید؟')) return;
+    // دریافت درصد اسپرد از کاربر
+    const ownerSpread = prompt('درصد سود صراف مالک (پیش‌فرض: 1%):', '1');
+    if (ownerSpread === null) return; // کاربر Cancel زد
+
+    const executorSpread = prompt('درصد سود شما (پیش‌فرض: 1%):', '1');
+    if (executorSpread === null) return; // کاربر Cancel زد
+
+    const ownerSpreadPercent = parseFloat(ownerSpread) || 1;
+    const executorSpreadPercent = parseFloat(executorSpread) || 1;
+
+    if (!confirm(`آیا می‌خواهید این معامله را قبول کنید؟\n\nسود صراف مالک: ${ownerSpreadPercent}%\nسود شما: ${executorSpreadPercent}%`)) return;
 
     setAcceptingTrade(tradeId);
     try {
-      await api.post(`/sarafi-groups/accept-trade/${tradeId}`);
+      await api.post(`/sarafi-groups/accept-trade/${tradeId}`, {
+        ownerSpreadPercent,
+        executorSpreadPercent
+      });
       toast.success('معامله با موفقیت قبول شد و به پنل شما منتقل شد');
       fetchData();
     } catch (e) {
