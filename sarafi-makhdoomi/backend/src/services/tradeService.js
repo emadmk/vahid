@@ -644,6 +644,10 @@ class TradeService {
   async getTradeStats(sarafiId, period = '30d') {
     const dateFilter = this.getDateFilter(period);
 
+    // شروع امروز
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
     const stats = await Trade.aggregate([
       {
         $match: {
@@ -669,9 +673,42 @@ class TradeService {
       }
     ]);
 
+    // آمار امروز
+    const todayStats = await Trade.aggregate([
+      {
+        $match: {
+          sarafi: new mongoose.Types.ObjectId(sarafiId),
+          createdAt: { $gte: todayStart }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          todayTrades: { $sum: 1 },
+          completedToday: {
+            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+          },
+          todayCommission: {
+            $sum: {
+              $cond: [
+                { $eq: ['$status', 'completed'] },
+                '$commission.amount',
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]);
+
     const pendingCount = await Trade.countDocuments({
       sarafi: sarafiId,
       status: 'pending'
+    });
+
+    const pendingAccounting = await Trade.countDocuments({
+      sarafi: sarafiId,
+      status: 'pending_accounting'
     });
 
     const awaitingCurrency = await Trade.countDocuments({
@@ -688,7 +725,9 @@ class TradeService {
 
     return {
       ...stats[0],
+      ...todayStats[0],
       pendingCount,
+      pendingAccounting,
       awaitingCurrency,
       awaitingRial
     };
