@@ -196,9 +196,11 @@ const ProTrade = () => {
     } else {
       // برای فروش: موجودی ارز
       const currencyBalance = wallet.currencyBalances?.find(
-        cb => cb.currency?.code === selectedCurrency.code || cb.currency?._id === selectedCurrency._id
+        cb => cb.currencyCode === selectedCurrency.code ||
+              cb.currency === selectedCurrency._id ||
+              cb.currency?.toString() === selectedCurrency._id
       );
-      balance = currencyBalance?.balance || 0;
+      balance = currencyBalance?.amount || 0;
     }
 
     const amount = (balance * percentage / 100).toFixed(selectedCurrency.decimalPlaces || 2);
@@ -214,11 +216,13 @@ const ProTrade = () => {
   // Get wallet balance for selected currency
   const getCurrencyBalance = () => {
     if (!wallet || !selectedCurrency) return 0;
-    // currencyBalances آرایه‌ای از آبجکت‌ها با فرمت {currency: {...}, balance: number}
+    // currencyBalances آرایه‌ای با فرمت {currency: ID, currencyCode: string, amount: number}
     const currencyBalance = wallet.currencyBalances?.find(
-      cb => cb.currency?.code === selectedCurrency.code || cb.currency?._id === selectedCurrency._id
+      cb => cb.currencyCode === selectedCurrency.code ||
+            cb.currency === selectedCurrency._id ||
+            cb.currency?.toString() === selectedCurrency._id
     );
-    return currencyBalance?.balance || 0;
+    return currencyBalance?.amount || 0;
   };
 
   const getRialBalance = () => {
