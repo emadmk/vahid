@@ -15,7 +15,7 @@ import api from '../../services/api';
 const SarafiLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [pendingGroupTrades, setPendingGroupTrades] = useState(0);
-  const [expandedSections, setExpandedSections] = useState(['trading', 'financial', 'settlement', 'customers', 'system']);
+  const [expandedSections, setExpandedSections] = useState(['trading', 'groups', 'financial', 'settlement', 'customers', 'system']);
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -51,8 +51,20 @@ const SarafiLayout = () => {
       items: [
         { path: '/sarafi', label: 'داشبورد', icon: FaHome },
         { path: '/sarafi/instant-trade', label: 'خرید و فروش فوری', icon: FaExchangeAlt },
-        { path: '/sarafi/pro-trade', label: 'خرید و فروش حرفه‌ای', icon: FaChartLine },
-        { path: '/sarafi/groups', label: 'گروه‌های صراف', icon: FaUserFriends, badge: pendingGroupTrades }
+        { path: '/sarafi/pro-trade', label: 'خرید و فروش حرفه‌ای', icon: FaChartLine }
+      ]
+    },
+    {
+      id: 'groups',
+      title: 'گروه‌های صراف',
+      icon: FaUserFriends,
+      color: 'from-indigo-500 to-indigo-600',
+      textColor: 'text-indigo-400',
+      bgColor: 'bg-indigo-500/10',
+      items: [
+        { path: '/sarafi/groups', label: 'مدیریت گروه‌ها', icon: FaUserFriends, badge: pendingGroupTrades },
+        { path: '/sarafi/group-trades', label: 'معاملات گروهی', icon: FaExchangeAlt, isNew: true },
+        { path: '/sarafi/group-settlements', label: 'تسویه گروهی', icon: FaHandshake }
       ]
     },
     {
@@ -65,7 +77,7 @@ const SarafiLayout = () => {
       items: [
         { path: '/sarafi/rates', label: 'مدیریت نرخ‌ها', icon: FaDollarSign },
         { path: '/sarafi/spreads', label: 'مدیریت اسپرد', icon: FaPercent },
-        { path: '/sarafi/profit-loss', label: 'سود و زیان', icon: FaCoins, isNew: true }
+        { path: '/sarafi/profit-loss', label: 'سود و زیان', icon: FaCoins }
       ]
     },
     {

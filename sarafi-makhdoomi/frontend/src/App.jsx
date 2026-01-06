@@ -52,6 +52,7 @@ import NotificationsPage from './pages/shared/Notifications';
 import SarafiGroups from './pages/sarafi/Groups';
 import SharedCustomers from './pages/sarafi/SharedCustomers';
 import GroupSettlements from './pages/sarafi/GroupSettlements';
+import GroupTrades from './pages/sarafi/GroupTrades';
 import SarafiProfitLoss from './pages/sarafi/ProfitLoss';
 
 // صفحات ادمین
@@ -78,7 +79,18 @@ const ProtectedRoute = ({ children, roles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (roles.length > 0 && !roles.includes(user?.role)) {
+  // گروه‌بندی نقش‌ها: کارکنان صرافی می‌توانند به پنل صراف دسترسی داشته باشند
+  const roleGroups = {
+    sarafi: ['sarafi', 'staff_rial', 'staff_currency', 'accountant', 'staff']
+  };
+
+  const hasAccess = roles.length === 0 || roles.some(role => {
+    if (role === user?.role) return true;
+    if (roleGroups[role] && roleGroups[role].includes(user?.role)) return true;
+    return false;
+  });
+
+  if (!hasAccess) {
     return <Navigate to="/" replace />;
   }
 
@@ -185,6 +197,7 @@ function App() {
           <Route path="rates" element={<SarafiRates />} />
           <Route path="groups" element={<SarafiGroups />} />
           <Route path="groups/:groupId/shared-customers" element={<SharedCustomers />} />
+          <Route path="group-trades" element={<GroupTrades />} />
           <Route path="group-settlements" element={<GroupSettlements />} />
           <Route path="profit-loss" element={<SarafiProfitLoss />} />
           <Route path="messages" element={<MessagesPage />} />
