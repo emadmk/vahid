@@ -4,7 +4,8 @@ import {
   FaCalendarAlt, FaClock, FaSync, FaDownload, FaEye, FaCheck,
   FaTimes, FaChartLine, FaUserFriends, FaCoins, FaMoneyBillWave,
   FaSortAmountDown, FaSortAmountUp, FaChevronDown, FaFileExcel,
-  FaFilePdf, FaListUl, FaThLarge, FaHandshake, FaPercent
+  FaFilePdf, FaListUl, FaThLarge, FaHandshake, FaPercent,
+  FaSpinner, FaBell
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -18,6 +19,9 @@ const GroupTrades = () => {
   const [selectedTrade, setSelectedTrade] = useState(null);
   const [currencies, setCurrencies] = useState([]);
   const [sarafis, setSarafis] = useState([]);
+  const [pendingTrades, setPendingTrades] = useState({ groupTrades: [], memberTrades: [], total: 0 });
+  const [acceptingTrade, setAcceptingTrade] = useState(null);
+  const [showPendingSection, setShowPendingSection] = useState(true);
 
   // Statistics
   const [stats, setStats] = useState({
@@ -61,14 +65,16 @@ const GroupTrades = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [tradesRes, currenciesRes] = await Promise.all([
+      const [tradesRes, currenciesRes, pendingRes] = await Promise.all([
         api.get('/sarafi-groups/my-trades'),
-        api.get('/public/currencies')
+        api.get('/public/currencies'),
+        api.get('/sarafi-groups/pending-group-trades').catch(() => ({ data: { data: { groupTrades: [], memberTrades: [], total: 0 } } }))
       ]);
 
       const tradesData = tradesRes.data.data || [];
       setTrades(tradesData);
       setCurrencies(currenciesRes.data.data || []);
+      setPendingTrades(pendingRes.data.data || { groupTrades: [], memberTrades: [], total: 0 });
 
       // استخراج لیست صراف‌ها از معاملات
       const uniqueSarafis = [];
@@ -105,6 +111,43 @@ const GroupTrades = () => {
       }, 0)
     };
     setStats(stats);
+  };
+
+  // قبول معامله و انتقال به پنل خودم
+  const handleAcceptTrade = async (tradeId) => {
+    const ownerSpread = prompt('درصد سود صراف مالک (پیش‌فرض: 1%):', '1');
+    if (ownerSpread === null) return;
+
+    const executorSpread = prompt('درصد سود شما (پیش‌فرض: 1%):', '1');
+    if (executorSpread === null) return;
+
+    const ownerSpreadPercent = parseFloat(ownerSpread) || 1;
+    const executorSpreadPercent = parseFloat(executorSpread) || 1;
+
+    if (!confirm(`آیا می‌خواهید این معامله را قبول کنید؟\n\nسود صراف مالک: ${ownerSpreadPercent}%\nسود شما: ${executorSpreadPercent}%`)) return;
+
+    setAcceptingTrade(tradeId);
+    try {
+      await api.post(`/sarafi-groups/accept-trade/${tradeId}`, {
+        ownerSpreadPercent,
+        executorSpreadPercent
+      });
+      toast.success('معامله با موفقیت قبول شد و به پنل شما منتقل شد');
+      fetchData();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'خطا در قبول معامله');
+    } finally {
+      setAcceptingTrade(null);
+    }
+  };
+
+  // تولید نام مستعار برای مشتری
+  const getMaskedCustomerName = (trade, index) => {
+    if (trade.sharedCustomer?.displayName) {
+      return trade.sharedCustomer.displayName;
+    }
+    const sarafiName = trade.sarafi?.sarafiInfo?.name || trade.sarafi?.sarafiInfo?.alias || `${trade.sarafi?.firstName || ''}`;
+    return `مشتری ${sarafiName} #${index + 1}`;
   };
 
   // فیلتر کردن داده‌ها
@@ -304,6 +347,107 @@ const GroupTrades = () => {
           <p className="text-xs text-dark-500">ریال</p>
         </div>
       </div>
+
+      {/* درخواست‌های معامله در انتظار */}
+      {pendingTrades.total > 0 && (
+        <div className="card border border-purple-500/30 overflow-hidden">
+          <div
+            className="p-4 bg-purple-500/10 flex items-center justify-between cursor-pointer"
+            onClick={() => setShowPendingSection(!showPendingSection)}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <FaBell className="text-purple-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold flex items-center gap-2">
+                  درخواست‌های معامله از اعضای گروه
+                  <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                    {pendingTrades.total}
+                  </span>
+                </h3>
+                <p className="text-dark-400 text-sm">معاملاتی که منتظر قبول شدن هستند</p>
+              </div>
+            </div>
+            <FaChevronDown className={`text-dark-400 transition-transform ${showPendingSection ? 'rotate-180' : ''}`} />
+          </div>
+
+          {showPendingSection && (
+            <div className="p-4 space-y-4">
+              {/* معاملات اعضای گروه */}
+              {pendingTrades.memberTrades?.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pendingTrades.memberTrades.map((trade, index) => (
+                    <div key={trade._id} className="bg-dark-800 rounded-xl p-4 border border-gold/20">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <FaExchangeAlt className="text-gold" />
+                          <span className="text-white font-bold">{getMaskedCustomerName(trade, index)}</span>
+                        </div>
+                        <span className={`px-2 py-1 rounded-lg text-xs ${trade.type === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {trade.type === 'buy' ? 'خرید' : 'فروش'}
+                        </span>
+                      </div>
+
+                      <p className="text-gold text-xs mb-3">
+                        صراف: {trade.sarafi?.sarafiInfo?.name || trade.sarafi?.sarafiInfo?.alias || `${trade.sarafi?.firstName || ''} ${trade.sarafi?.lastName || ''}`}
+                      </p>
+
+                      <div className="space-y-2 text-sm bg-dark-900 p-3 rounded-lg mb-3">
+                        <div className="flex justify-between">
+                          <span className="text-dark-400">ارز:</span>
+                          <span className="text-white">{trade.currency?.nameFa} ({trade.currency?.code})</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-dark-400">مقدار:</span>
+                          <span className="text-gold font-bold">{formatNumber(trade.amount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-dark-400">نرخ:</span>
+                          <span className="text-white">{formatNumber(trade.rate)} ریال</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-dark-400">مبلغ کل:</span>
+                          <span className="text-gold font-bold">{formatNumber(trade.totalAmount)} ریال</span>
+                        </div>
+                      </div>
+
+                      <p className="text-dark-500 text-xs mb-3">
+                        {new Date(trade.createdAt).toLocaleDateString('fa-IR')} - {new Date(trade.createdAt).toLocaleTimeString('fa-IR')}
+                      </p>
+
+                      <button
+                        onClick={() => handleAcceptTrade(trade._id)}
+                        disabled={acceptingTrade === trade._id}
+                        className="w-full btn-gold text-sm py-2 flex items-center justify-center gap-2"
+                      >
+                        {acceptingTrade === trade._id ? (
+                          <>
+                            <FaSpinner className="animate-spin" />
+                            در حال انتقال...
+                          </>
+                        ) : (
+                          <>
+                            <FaHandshake />
+                            قبول و انتقال به پنل من
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* اگر فقط معاملات گروهی بدون memberTrades وجود دارد */}
+              {pendingTrades.groupTrades?.length > 0 && pendingTrades.memberTrades?.length === 0 && (
+                <p className="text-dark-400 text-center py-4">
+                  درخواست‌های معامله از مشتریان اشتراکی شما موجود است
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* فیلترها */}
       {showFilters && (
