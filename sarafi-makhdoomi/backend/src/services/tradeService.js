@@ -89,7 +89,7 @@ class TradeService {
     let notifMessage = `یک درخواست ${side === 'buy' ? 'خرید' : 'فروش'} ${amount} ${currency.code} ثبت شد`;
 
     if (walletStatus === 'insufficient') {
-      severity = 'error';
+      severity = 'danger';
       notifMessage = `⛔ سفارش ${side === 'buy' ? 'خرید' : 'فروش'} ${amount} ${currency.code} - کسری اعتبار: ${deficit?.toLocaleString()} ریال - ابتدا اعتبار مشتری را افزایش دهید!`;
     } else if (walletStatus === 'mixed') {
       severity = 'warning';
@@ -99,7 +99,7 @@ class TradeService {
     // ارسال نوتیفیکیشن به صراف
     await notificationService.create({
       user: sarafiId,
-      type: walletStatus === 'insufficient' ? 'trade_warning' : 'trade_new',
+      type: walletStatus === 'insufficient' ? 'credit_limit' : 'trade_new',
       title: walletStatus === 'insufficient' ? '⚠️ معامله با کسری اعتبار' : walletStatus === 'mixed' ? '⚠️ معامله با استفاده از اعتبار' : 'معامله فوری جدید',
       message: notifMessage,
       relatedModel: 'Trade',
