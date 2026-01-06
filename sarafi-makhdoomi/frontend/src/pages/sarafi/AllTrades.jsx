@@ -5,7 +5,7 @@ import {
   FaTimes, FaChartLine, FaUserFriends, FaCoins, FaMoneyBillWave,
   FaSortAmountDown, FaSortAmountUp, FaChevronDown, FaFileExcel,
   FaFilePdf, FaListUl, FaThLarge, FaHandshake, FaPercent, FaUser,
-  FaBolt, FaStore, FaWallet
+  FaBolt, FaStore, FaWallet, FaExclamationTriangle, FaHandHoldingUsd, FaReceipt
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -19,6 +19,8 @@ const AllTrades = () => {
   const [selectedTrade, setSelectedTrade] = useState(null);
   const [currencies, setCurrencies] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   // Statistics
   const [stats, setStats] = useState({
@@ -223,6 +225,83 @@ const AllTrades = () => {
 
   const exportToExcel = () => {
     toast.success('در حال آماده‌سازی فایل اکسل...');
+  };
+
+  // تایید معامله فوری
+  const handleApproveTrade = async (trade) => {
+    if (trade.tradeType !== 'instant') return;
+
+    const walletStatus = trade.walletStatus?.status;
+    if (walletStatus === 'insufficient') {
+      const confirmed = confirm(
+        `⛔ هشدار: موجودی و اعتبار مشتری کافی نیست!\n\n` +
+        `کسری: ${formatNumber(trade.walletStatus?.shortage)} ریال\n\n` +
+        `آیا با این حال ادامه می‌دهید؟`
+      );
+      if (!confirmed) return;
+    } else if (walletStatus === 'mixed') {
+      const confirmed = confirm(
+        `⚠️ توجه: بخشی از مبلغ از اعتبار مشتری کسر می‌شود.\n\n` +
+        `مبلغ اعتباری: ${formatNumber(trade.walletStatus?.creditAmount)} ریال\n\n` +
+        `آیا ادامه می‌دهید؟`
+      );
+      if (!confirmed) return;
+    }
+
+    try {
+      await api.put(`/trades/instant/${trade._id}/approve`);
+      toast.success('معامله تایید شد');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'خطا در تایید');
+    }
+  };
+
+  // رد معامله فوری
+  const handleRejectTrade = async () => {
+    if (!rejectReason.trim()) {
+      toast.error('لطفا دلیل رد را وارد کنید');
+      return;
+    }
+
+    try {
+      await api.put(`/trades/instant/${selectedTrade._id}/reject`, {
+        reason: rejectReason
+      });
+      toast.success('معامله رد شد');
+      setShowRejectModal(false);
+      setSelectedTrade(null);
+      setRejectReason('');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'خطا در رد');
+    }
+  };
+
+  // ثبت وصول
+  const handleMarkCollected = async (tradeId) => {
+    if (!confirm('آیا وصول این معامله را تایید می‌کنید؟')) return;
+
+    try {
+      await api.put(`/trades/instant/${tradeId}/confirm-collection`);
+      toast.success('وصول ثبت شد');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'خطا در ثبت وصول');
+    }
+  };
+
+  // تکمیل حسابداری
+  const handleCompleteTrade = async (tradeId) => {
+    if (!confirm('آیا حسابداری این معامله را تکمیل می‌کنید؟')) return;
+
+    try {
+      await api.put(`/trades/instant/${tradeId}/accounting-approve`);
+      toast.success('معامله تکمیل شد');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'خطا در تکمیل');
+    }
   };
 
   const formatNumber = (num) => new Intl.NumberFormat('fa-IR').format(num || 0);
@@ -605,12 +684,82 @@ const AllTrades = () => {
                           </span>
                         </td>
                         <td className="p-3">
-                          <button
-                            onClick={() => setSelectedTrade(trade)}
-                            className="p-2 rounded-lg bg-dark-700 text-dark-400 hover:text-white hover:bg-dark-600"
-                          >
-                            <FaEye />
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            {/* دکمه‌های عملیاتی فقط برای معاملات فوری */}
+                            {trade.tradeType === 'instant' && (
+                              <>
+                                {/* تایید صراف */}
+                                {trade.status === 'pending' && (
+                                  <>
+                                    <button
+                                      onClick={() => handleApproveTrade(trade)}
+                                      className={`p-2 rounded-lg ${
+                                        trade.walletStatus?.status === 'insufficient'
+                                          ? 'bg-orange-500/20 text-orange-500 hover:bg-orange-500/30'
+                                          : trade.walletStatus?.status === 'mixed'
+                                            ? 'bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30'
+                                            : 'bg-green-500/20 text-green-500 hover:bg-green-500/30'
+                                      }`}
+                                      title={
+                                        trade.walletStatus?.status === 'insufficient'
+                                          ? '⚠️ تایید - کسری موجودی!'
+                                          : trade.walletStatus?.status === 'mixed'
+                                            ? '⚠️ تایید - استفاده از اعتبار'
+                                            : 'تایید صراف'
+                                      }
+                                    >
+                                      {trade.walletStatus?.status === 'insufficient' || trade.walletStatus?.status === 'mixed' ? (
+                                        <FaExclamationTriangle />
+                                      ) : (
+                                        <FaCheck />
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedTrade(trade);
+                                        setShowRejectModal(true);
+                                      }}
+                                      className="p-2 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500/30"
+                                      title="رد"
+                                    >
+                                      <FaTimes />
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* ثبت وصول */}
+                                {trade.status === 'pending_collection' && (
+                                  <button
+                                    onClick={() => handleMarkCollected(trade._id)}
+                                    className="p-2 rounded-lg bg-blue-500/20 text-blue-500 hover:bg-blue-500/30"
+                                    title="ثبت وصول"
+                                  >
+                                    <FaHandHoldingUsd />
+                                  </button>
+                                )}
+
+                                {/* تکمیل حسابداری */}
+                                {trade.status === 'pending_accounting' && (
+                                  <button
+                                    onClick={() => handleCompleteTrade(trade._id)}
+                                    className="p-2 rounded-lg bg-purple-500/20 text-purple-500 hover:bg-purple-500/30"
+                                    title="تکمیل حسابداری"
+                                  >
+                                    <FaReceipt />
+                                  </button>
+                                )}
+                              </>
+                            )}
+
+                            {/* جزئیات */}
+                            <button
+                              onClick={() => setSelectedTrade(trade)}
+                              className="p-2 rounded-lg bg-dark-700 text-dark-400 hover:text-white hover:bg-dark-600"
+                              title="جزئیات"
+                            >
+                              <FaEye />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -709,7 +858,7 @@ const AllTrades = () => {
       )}
 
       {/* مودال جزئیات */}
-      {selectedTrade && (
+      {selectedTrade && !showRejectModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setSelectedTrade(null)}>
           <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-dark-800 sticky top-0 bg-dark-900">
@@ -834,6 +983,50 @@ const AllTrades = () => {
             <div className="p-4 border-t border-dark-800">
               <button onClick={() => setSelectedTrade(null)} className="btn-outline w-full">
                 بستن
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* مودال رد معامله */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowRejectModal(false)}>
+          <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-dark-800">
+              <h2 className="text-xl font-bold text-white">رد معامله</h2>
+              <button onClick={() => setShowRejectModal(false)} className="text-dark-400 hover:text-white">
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <p className="text-dark-400">
+                در حال رد معامله شماره <span className="text-gold">{selectedTrade?.tradeNumber}</span>
+              </p>
+
+              <div>
+                <label className="block text-dark-300 mb-2">دلیل رد (الزامی)</label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  className="input w-full"
+                  rows="3"
+                  placeholder="لطفا دلیل رد معامله را وارد کنید..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4 p-4 border-t border-dark-800">
+              <button
+                onClick={handleRejectTrade}
+                disabled={!rejectReason.trim()}
+                className="flex-1 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-bold disabled:bg-red-500/50"
+              >
+                رد معامله
+              </button>
+              <button onClick={() => setShowRejectModal(false)} className="btn-outline flex-1">
+                انصراف
               </button>
             </div>
           </div>
