@@ -22,6 +22,8 @@ class TradeService {
       notes,
       paymentMethod,
       walletStatus,
+      creditUsage,
+      deficit,
       customerId,
       sarafiId,
       createdBy
@@ -52,6 +54,13 @@ class TradeService {
       ? totalAmount + commission.amount
       : totalAmount - commission.amount;
 
+    // ساختار walletStatus کامل
+    const walletStatusData = {
+      status: walletStatus || 'ok',
+      creditAmount: creditUsage || 0,
+      shortage: deficit || 0
+    };
+
     const trade = await Trade.create({
       tradeNumber: Trade.generateTradeNumber(),
       type: side,
@@ -69,21 +78,33 @@ class TradeService {
       customer: customerId,
       sarafi: sarafiId,
       validUntil: validUntil ? new Date(validUntil) : null,
-      walletStatus,
+      walletStatus: walletStatusData,
       paymentMethod: finalPaymentMethod,
       status: 'pending',
       notes: notes ? [{ content: notes, addedBy: createdBy, addedAt: new Date() }] : []
     });
 
+    // تعیین شدت و پیام نوتیفیکیشن بر اساس وضعیت کیف پول
+    let severity = 'info';
+    let notifMessage = `یک درخواست ${side === 'buy' ? 'خرید' : 'فروش'} ${amount} ${currency.code} ثبت شد`;
+
+    if (walletStatus === 'insufficient') {
+      severity = 'error';
+      notifMessage = `⛔ سفارش ${side === 'buy' ? 'خرید' : 'فروش'} ${amount} ${currency.code} - کسری اعتبار: ${deficit?.toLocaleString()} ریال - ابتدا اعتبار مشتری را افزایش دهید!`;
+    } else if (walletStatus === 'mixed') {
+      severity = 'warning';
+      notifMessage = `⚠️ سفارش ${side === 'buy' ? 'خرید' : 'فروش'} ${amount} ${currency.code} - ${creditUsage?.toLocaleString()} ریال از اعتبار مصرف می‌شود`;
+    }
+
     // ارسال نوتیفیکیشن به صراف
     await notificationService.create({
       user: sarafiId,
-      type: 'trade_new',
-      title: 'معامله فوری جدید',
-      message: `یک درخواست ${side === 'buy' ? 'خرید' : 'فروش'} ${amount} ${currency.code} ثبت شد`,
+      type: walletStatus === 'insufficient' ? 'trade_warning' : 'trade_new',
+      title: walletStatus === 'insufficient' ? '⚠️ معامله با کسری اعتبار' : walletStatus === 'mixed' ? '⚠️ معامله با استفاده از اعتبار' : 'معامله فوری جدید',
+      message: notifMessage,
       relatedModel: 'Trade',
       relatedId: trade._id,
-      severity: 'info',
+      severity: severity,
       actionUrl: '/sarafi/instant-trade'
     });
 

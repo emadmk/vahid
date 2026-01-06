@@ -79,29 +79,42 @@ const InstantTrade = () => {
     const creditLimit = wallet.creditLimit || 0;
     const creditUsed = wallet.creditUsed || 0;
     const availableCredit = creditLimit - creditUsed;
+    const totalAvailable = cashBalance + availableCredit;
 
     if (tradeForm.side === 'buy') {
       // برای خرید: باید ریال داشته باشد
       if (cashBalance >= total) {
-        return { status: 'ok', message: 'موجودی نقدی کافی است', icon: FaCheck, color: 'green' };
-      } else if (cashBalance + availableCredit >= total) {
+        return {
+          status: 'ok',
+          message: 'موجودی نقدی کافی است',
+          icon: FaCheck,
+          color: 'green',
+          canSubmit: true
+        };
+      } else if (totalAvailable >= total) {
+        const creditNeeded = total - cashBalance;
         return {
           status: 'mixed',
-          message: `${formatNumber(cashBalance)} نقدی + ${formatNumber(total - cashBalance)} اعتباری`,
+          message: `⚠️ کیف پول نقدی کافی نیست! ${formatNumber(creditNeeded)} ریال از اعتبار مصرف می‌شود`,
           icon: FaExclamationTriangle,
-          color: 'yellow'
+          color: 'yellow',
+          canSubmit: true,
+          creditUsage: creditNeeded
         };
       } else {
+        const deficit = total - totalAvailable;
         return {
           status: 'insufficient',
-          message: `موجودی کافی نیست. کسری: ${formatNumber(total - cashBalance - availableCredit)} ریال`,
+          message: `⛔ موجودی کافی نیست! کسری: ${formatNumber(deficit)} ریال - برای ثبت سفارش، صراف باید اعتبار شما را افزایش دهد`,
           icon: FaTimes,
-          color: 'red'
+          color: 'red',
+          canSubmit: true, // اجازه ثبت سفارش با هشدار
+          deficit: deficit
         };
       }
     } else {
       // برای فروش ارز
-      return { status: 'ok', message: 'پس از تایید صراف، به پنل وصول منتقل می‌شود', icon: FaInfoCircle, color: 'blue' };
+      return { status: 'ok', message: 'پس از تایید صراف، به پنل وصول منتقل می‌شود', icon: FaInfoCircle, color: 'blue', canSubmit: true };
     }
   };
 
@@ -113,9 +126,25 @@ const InstantTrade = () => {
     }
 
     const walletCheck = checkWalletBalance();
-    if (tradeForm.side === 'buy' && walletCheck?.status === 'insufficient') {
-      toast.error('موجودی کیف پول کافی نیست');
-      return;
+
+    // نمایش هشدار برای وضعیت‌های خاص
+    if (tradeForm.side === 'buy') {
+      if (walletCheck?.status === 'insufficient') {
+        const confirmed = confirm(
+          `⚠️ توجه: موجودی کیف پول و اعتبار شما کافی نیست!\n\n` +
+          `کسری: ${formatNumber(walletCheck.deficit)} ریال\n\n` +
+          `سفارش شما ثبت می‌شود اما صراف باید ابتدا اعتبار شما را افزایش دهد.\n\n` +
+          `آیا ادامه می‌دهید؟`
+        );
+        if (!confirmed) return;
+      } else if (walletCheck?.status === 'mixed') {
+        const confirmed = confirm(
+          `⚠️ توجه: موجودی نقدی شما کافی نیست!\n\n` +
+          `مبلغ ${formatNumber(walletCheck.creditUsage)} ریال از اعتبار شما مصرف خواهد شد.\n\n` +
+          `آیا ادامه می‌دهید؟`
+        );
+        if (!confirmed) return;
+      }
     }
 
     setSubmitting(true);
@@ -126,11 +155,22 @@ const InstantTrade = () => {
         amount: parseFloat(tradeForm.amount),
         rate: tradeForm.side === 'buy' ? selectedCurrency.sellRate : selectedCurrency.buyRate,
         validUntil: tradeForm.validUntil || null,
-        notes: tradeForm.notes
+        notes: tradeForm.notes,
+        // اضافه کردن اطلاعات وضعیت کیف پول
+        walletStatus: walletCheck?.status,
+        creditUsage: walletCheck?.creditUsage || 0,
+        deficit: walletCheck?.deficit || 0
       };
 
       await api.post('/trades/instant', payload);
-      toast.success('سفارش شما ثبت شد و منتظر تایید صراف است');
+
+      if (walletCheck?.status === 'insufficient') {
+        toast.success('سفارش ثبت شد. صراف باید اعتبار شما را افزایش دهد', { duration: 5000 });
+      } else if (walletCheck?.status === 'mixed') {
+        toast.success('سفارش ثبت شد. بخشی از اعتبار استفاده خواهد شد', { duration: 4000 });
+      } else {
+        toast.success('سفارش شما ثبت شد و منتظر تایید صراف است');
+      }
 
       // ریست فرم
       setTradeForm({
@@ -340,10 +380,12 @@ const InstantTrade = () => {
             <button
               data-tour="submit-trade"
               onClick={handleSubmitTrade}
-              disabled={submitting || !tradeForm.amount || (tradeForm.side === 'buy' && walletCheck?.status === 'insufficient')}
+              disabled={submitting || !tradeForm.amount}
               className={`w-full py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-2 ${
                 tradeForm.side === 'buy'
-                  ? 'bg-green-500 hover:bg-green-600 text-white disabled:bg-green-500/50'
+                  ? walletCheck?.status === 'insufficient'
+                    ? 'bg-orange-500 hover:bg-orange-600 text-white disabled:bg-orange-500/50'
+                    : 'bg-green-500 hover:bg-green-600 text-white disabled:bg-green-500/50'
                   : 'bg-red-500 hover:bg-red-600 text-white disabled:bg-red-500/50'
               }`}
             >

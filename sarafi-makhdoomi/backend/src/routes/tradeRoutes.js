@@ -9,7 +9,7 @@ const { protect, authorize } = require('../middlewares/auth');
 // ایجاد معامله فوری
 router.post('/instant', protect, async (req, res) => {
   try {
-    const { currencyId, side, amount, rate, validUntil, notes, paymentMethod, walletStatus, customerId } = req.body;
+    const { currencyId, side, amount, rate, validUntil, notes, paymentMethod, walletStatus, creditUsage, deficit, customerId } = req.body;
 
     // اعتبارسنجی
     if (!currencyId) {
@@ -40,6 +40,8 @@ router.post('/instant', protect, async (req, res) => {
       notes,
       paymentMethod,
       walletStatus,
+      creditUsage: parseFloat(creditUsage) || 0,
+      deficit: parseFloat(deficit) || 0,
       customerId: customerId || req.user._id,
       sarafiId,
       createdBy: req.user._id
