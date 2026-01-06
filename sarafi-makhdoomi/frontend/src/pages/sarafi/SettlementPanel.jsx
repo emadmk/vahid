@@ -8,11 +8,23 @@ import {
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import useAuthStore from '../../store/authStore';
 
 const SettlementPanel = () => {
+  // دریافت اطلاعات کاربر
+  const { user } = useAuthStore();
+  const userRole = user?.role || 'sarafi';
+
+  // تعیین نوع پیش‌فرض بر اساس نقش کارمند
+  const getDefaultType = () => {
+    if (userRole === 'staff_rial') return 'rial';
+    if (userRole === 'staff_currency') return 'currency';
+    return 'all';
+  };
+
   // State
   const [activeTab, setActiveTab] = useState('pending');
-  const [settlementType, setSettlementType] = useState('all');
+  const [settlementType, setSettlementType] = useState(getDefaultType());
   const [settlements, setSettlements] = useState([]);
   const [stats, setStats] = useState({
     pendingRial: 0,
@@ -53,7 +65,16 @@ const SettlementPanel = () => {
 
   useEffect(() => {
     fetchData();
-  }, [activeTab, settlementType]);
+  }, [activeTab, settlementType, filter.search, filter.dateFrom, filter.dateTo]);
+
+  // Debounce برای جستجو
+  const [searchDebounce, setSearchDebounce] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchDebounce(filter.search);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [filter.search]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -69,7 +90,10 @@ const SettlementPanel = () => {
         api.get('/trades/sarafi/instant-trades', {
           params: {
             status: statusMap[activeTab],
-            type: settlementType !== 'all' ? settlementType : undefined
+            type: settlementType !== 'all' ? settlementType : undefined,
+            search: filter.search || undefined,
+            dateFrom: filter.dateFrom || undefined,
+            dateTo: filter.dateTo || undefined
           }
         }).catch(() => ({ data: { data: [] } })),
         api.get('/trades/sarafi/settlement-stats').catch(() => ({ data: { data: {} } }))
@@ -430,27 +454,43 @@ const SettlementPanel = () => {
             ))}
           </div>
 
-          {/* Type Filter */}
-          <div className="flex rounded-lg bg-dark-800 p-1">
-            {[
-              { value: 'all', label: 'همه' },
-              { value: 'rial', label: 'ریالی', icon: FaMoneyBillWave },
-              { value: 'currency', label: 'ارزی', icon: FaCoins }
-            ].map(type => (
-              <button
-                key={type.value}
-                onClick={() => setSettlementType(type.value)}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-1 text-sm ${
-                  settlementType === type.value
-                    ? 'bg-dark-700 text-white'
-                    : 'text-dark-400'
-                }`}
-              >
-                {type.icon && <type.icon className="text-xs" />}
-                {type.label}
-              </button>
-            ))}
-          </div>
+          {/* Type Filter - فقط برای صراف نمایش داده می‌شود */}
+          {!['staff_rial', 'staff_currency'].includes(userRole) ? (
+            <div className="flex rounded-lg bg-dark-800 p-1">
+              {[
+                { value: 'all', label: 'همه' },
+                { value: 'rial', label: 'ریالی', icon: FaMoneyBillWave },
+                { value: 'currency', label: 'ارزی', icon: FaCoins }
+              ].map(type => (
+                <button
+                  key={type.value}
+                  onClick={() => setSettlementType(type.value)}
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1 text-sm ${
+                    settlementType === type.value
+                      ? 'bg-dark-700 text-white'
+                      : 'text-dark-400'
+                  }`}
+                >
+                  {type.icon && <type.icon className="text-xs" />}
+                  {type.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-dark-800">
+              {userRole === 'staff_rial' ? (
+                <>
+                  <FaMoneyBillWave className="text-yellow-500" />
+                  <span className="text-yellow-500 text-sm font-bold">کارمند وصول ریالی</span>
+                </>
+              ) : (
+                <>
+                  <FaCoins className="text-blue-500" />
+                  <span className="text-blue-500 text-sm font-bold">کارمند وصول ارزی</span>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Search */}
           <div className="flex-1 min-w-[200px]">

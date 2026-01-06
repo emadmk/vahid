@@ -151,20 +151,87 @@ router.put('/instant/:id/cancel', protect, async (req, res) => {
 // دریافت معاملات فوری صراف
 router.get('/sarafi/instant-trades', protect, authorize('sarafi'), async (req, res) => {
   try {
-    const { status, limit, skip } = req.query;
+    const { status, limit, skip, type, search, dateFrom, dateTo } = req.query;
+    const Trade = require('../models/Trade');
+    const { getSarafiId } = require('../middlewares/auth');
 
-    const result = await tradeService.getInstantTrades({
-      sarafiId: req.user._id,
-      status,
-      limit: parseInt(limit) || 20,
-      skip: parseInt(skip) || 0
-    });
+    // دریافت ID صراف (برای کارکنان، صراف والد)
+    const sarafiId = getSarafiId(req.user);
+
+    // Build query
+    const query = {
+      sarafi: sarafiId,
+      tradeType: 'instant'
+    };
+
+    // اعمال فیلتر اجباری بر اساس نقش کارمند
+    // کارمند ریالی فقط معاملات ریالی می‌بینه
+    // کارمند ارزی فقط معاملات ارزی می‌بینه
+    if (req.user.role === 'staff_rial') {
+      query.type = 'buy'; // خرید ارز = وصول ریال
+    } else if (req.user.role === 'staff_currency') {
+      query.type = 'sell'; // فروش ارز = وصول ارز
+    }
+
+    // فیلتر وضعیت
+    if (status) {
+      query.status = status;
+    }
+
+    // فیلتر نوع (ریالی/ارزی) - فقط اگر قبلاً توسط نقش تنظیم نشده
+    // type === 'rial' یعنی مشتری خرید کرده (buy) و صراف باید ریال وصول کند
+    // type === 'currency' یعنی مشتری فروخته (sell) و صراف باید ارز وصول کند
+    if (!query.type) {
+      if (type === 'rial') {
+        query.type = 'buy';
+      } else if (type === 'currency') {
+        query.type = 'sell';
+      }
+    }
+
+    // فیلتر تاریخ
+    if (dateFrom || dateTo) {
+      query.createdAt = {};
+      if (dateFrom) {
+        query.createdAt.$gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = endDate;
+      }
+    }
+
+    // اجرای کوئری اصلی
+    let trades = await Trade.find(query)
+      .populate('currency', 'code nameFa symbol')
+      .populate('customer', 'firstName lastName phone')
+      .populate('ownerSarafi', 'firstName lastName sarafiInfo')
+      .populate('sharedCustomer', 'displayName')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit) || 100)
+      .skip(parseInt(skip) || 0);
+
+    // فیلتر جستجو (سمت سرور بعد از populate)
+    if (search && search.trim()) {
+      const searchTerm = search.trim().toLowerCase();
+      trades = trades.filter(trade => {
+        const customerName = `${trade.customer?.firstName || ''} ${trade.customer?.lastName || ''}`.toLowerCase();
+        const tradeNumber = (trade.tradeNumber || '').toLowerCase();
+        const phone = (trade.customer?.phone || '').toLowerCase();
+        return customerName.includes(searchTerm) ||
+               tradeNumber.includes(searchTerm) ||
+               phone.includes(searchTerm);
+      });
+    }
+
+    const total = await Trade.countDocuments(query);
 
     res.json({
       success: true,
-      trades: result.trades,
-      data: result.trades,
-      total: result.total
+      trades: trades,
+      data: trades,
+      total: total
     });
   } catch (error) {
     res.status(400).json({
@@ -178,15 +245,21 @@ router.get('/sarafi/instant-trades', protect, authorize('sarafi'), async (req, r
 router.get('/sarafi/settlement-stats', protect, authorize('sarafi'), async (req, res) => {
   try {
     const Trade = require('../models/Trade');
+    const { getSarafiId } = require('../middlewares/auth');
+    const mongoose = require('mongoose');
+
+    // دریافت ID صراف (برای کارکنان، صراف والد)
+    const sarafiId = getSarafiId(req.user);
+    const sarafiObjectId = new mongoose.Types.ObjectId(sarafiId);
 
     const pendingCollection = await Trade.countDocuments({
-      sarafi: req.user._id,
+      sarafi: sarafiId,
       tradeType: 'instant',
       status: 'pending_collection'
     });
 
     const pendingAccounting = await Trade.countDocuments({
-      sarafi: req.user._id,
+      sarafi: sarafiId,
       tradeType: 'instant',
       status: 'pending_accounting'
     });
@@ -195,7 +268,7 @@ router.get('/sarafi/settlement-stats', protect, authorize('sarafi'), async (req,
     const rialPending = await Trade.aggregate([
       {
         $match: {
-          sarafi: req.user._id,
+          sarafi: sarafiObjectId,
           tradeType: 'instant',
           status: 'pending_collection',
           type: 'buy' // خرید ارز = وصول ریال
@@ -211,7 +284,7 @@ router.get('/sarafi/settlement-stats', protect, authorize('sarafi'), async (req,
     ]);
 
     const currencyPending = await Trade.countDocuments({
-      sarafi: req.user._id,
+      sarafi: sarafiId,
       tradeType: 'instant',
       status: 'pending_collection',
       type: 'sell' // فروش ارز = وصول ارز
@@ -221,7 +294,7 @@ router.get('/sarafi/settlement-stats', protect, authorize('sarafi'), async (req,
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const completedToday = await Trade.countDocuments({
-      sarafi: req.user._id,
+      sarafi: sarafiId,
       tradeType: 'instant',
       status: 'completed',
       completedAt: { $gte: today }
@@ -230,7 +303,7 @@ router.get('/sarafi/settlement-stats', protect, authorize('sarafi'), async (req,
     // موارد عقب‌افتاده (بیش از 24 ساعت)
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const overdueCount = await Trade.countDocuments({
-      sarafi: req.user._id,
+      sarafi: sarafiId,
       tradeType: 'instant',
       status: 'pending_collection',
       createdAt: { $lt: yesterday }

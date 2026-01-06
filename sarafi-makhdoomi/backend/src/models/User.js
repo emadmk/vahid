@@ -56,8 +56,14 @@ const userSchema = new mongoose.Schema({
   // نقش کاربر
   role: {
     type: String,
-    enum: ['user', 'sarafi', 'admin', 'staff'],
+    enum: ['user', 'sarafi', 'admin', 'staff', 'staff_rial', 'staff_currency', 'accountant'],
     default: 'user'
+  },
+
+  // صراف والد (برای کارکنان)
+  parentSarafi: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
 
   // وضعیت تایید

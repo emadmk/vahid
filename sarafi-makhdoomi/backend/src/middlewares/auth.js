@@ -39,7 +39,27 @@ exports.protect = async (req, res, next) => {
 // بررسی نقش
 exports.authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    // گروه‌بندی نقش‌ها: کارکنان صرافی شامل staff_rial, staff_currency, accountant
+    const roleGroups = {
+      sarafi: ['sarafi', 'staff_rial', 'staff_currency', 'accountant', 'staff'],
+      admin: ['admin'],
+      user: ['user']
+    };
+
+    // اگر نقش فعلی در لیست مجاز باشد
+    let hasAccess = roles.includes(req.user.role);
+
+    // یا اگر گروه نقش در لیست مجاز باشد
+    if (!hasAccess) {
+      for (const role of roles) {
+        if (roleGroups[role] && roleGroups[role].includes(req.user.role)) {
+          hasAccess = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: 'شما اجازه دسترسی به این بخش را ندارید'
@@ -47,6 +67,18 @@ exports.authorize = (...roles) => {
     }
     next();
   };
+};
+
+// دریافت صراف والد (برای کارکنان)
+exports.getSarafiId = (user) => {
+  if (user.role === 'sarafi') {
+    return user._id;
+  }
+  // برای کارکنان، صراف والد را برگردان
+  if (['staff_rial', 'staff_currency', 'accountant', 'staff'].includes(user.role)) {
+    return user.parentSarafi || user._id;
+  }
+  return user._id;
 };
 
 // بررسی تایید شدن کاربر
