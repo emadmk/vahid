@@ -283,38 +283,39 @@ const AllTrades = () => {
       </div>
 
       {/* آمار کلی */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-        <div className="card p-3 border-r-4 border-blue-500">
-          <p className="text-dark-400 text-xs">کل</p>
-          <p className="text-xl font-bold text-blue-500">{formatNumber(stats.total)}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="card p-4 border-r-4 border-blue-500">
+          <p className="text-dark-400 text-sm">کل معاملات</p>
+          <p className="text-2xl font-bold text-blue-500">{formatNumber(stats.total)}</p>
         </div>
-        <div className="card p-3 border-r-4 border-cyan-500">
-          <p className="text-dark-400 text-xs">فوری</p>
-          <p className="text-xl font-bold text-cyan-500">{formatNumber(stats.instant)}</p>
+        <div className="card p-4 border-r-4 border-cyan-500">
+          <p className="text-dark-400 text-sm">فوری</p>
+          <p className="text-2xl font-bold text-cyan-500">{formatNumber(stats.instant)}</p>
         </div>
-        <div className="card p-3 border-r-4 border-purple-500">
-          <p className="text-dark-400 text-xs">حرفه‌ای</p>
-          <p className="text-xl font-bold text-purple-500">{formatNumber(stats.pro)}</p>
+        <div className="card p-4 border-r-4 border-purple-500">
+          <p className="text-dark-400 text-sm">حرفه‌ای</p>
+          <p className="text-2xl font-bold text-purple-500">{formatNumber(stats.pro)}</p>
         </div>
-        <div className="card p-3 border-r-4 border-yellow-500">
-          <p className="text-dark-400 text-xs">در انتظار</p>
-          <p className="text-xl font-bold text-yellow-500">{formatNumber(stats.pending)}</p>
+        <div className="card p-4 border-r-4 border-yellow-500">
+          <p className="text-dark-400 text-sm">در انتظار</p>
+          <p className="text-2xl font-bold text-yellow-500">{formatNumber(stats.pending)}</p>
         </div>
-        <div className="card p-3 border-r-4 border-green-500">
-          <p className="text-dark-400 text-xs">تکمیل</p>
-          <p className="text-xl font-bold text-green-500">{formatNumber(stats.completed)}</p>
+        <div className="card p-4 border-r-4 border-green-500">
+          <p className="text-dark-400 text-sm">تکمیل شده</p>
+          <p className="text-2xl font-bold text-green-500">{formatNumber(stats.completed)}</p>
         </div>
-        <div className="card p-3 border-r-4 border-emerald-500">
-          <p className="text-dark-400 text-xs">خرید</p>
-          <p className="text-xl font-bold text-emerald-500">{formatNumber(stats.buyCount)}</p>
+        <div className="card p-4 border-r-4 border-emerald-500">
+          <p className="text-dark-400 text-sm">خرید</p>
+          <p className="text-2xl font-bold text-emerald-500">{formatNumber(stats.buyCount)}</p>
         </div>
-        <div className="card p-3 border-r-4 border-red-500">
-          <p className="text-dark-400 text-xs">فروش</p>
-          <p className="text-xl font-bold text-red-500">{formatNumber(stats.sellCount)}</p>
+        <div className="card p-4 border-r-4 border-red-500">
+          <p className="text-dark-400 text-sm">فروش</p>
+          <p className="text-2xl font-bold text-red-500">{formatNumber(stats.sellCount)}</p>
         </div>
-        <div className="card p-3 border-r-4 border-gold">
-          <p className="text-dark-400 text-xs">حجم کل</p>
-          <p className="text-lg font-bold text-gold">{formatNumber(Math.round(stats.totalVolume / 1000000))}M</p>
+        <div className="card p-4 border-r-4 border-gold">
+          <p className="text-dark-400 text-sm">حجم کل</p>
+          <p className="text-2xl font-bold text-gold">{formatNumber(stats.totalVolume)}</p>
+          <p className="text-xs text-dark-500">ریال</p>
         </div>
       </div>
 
