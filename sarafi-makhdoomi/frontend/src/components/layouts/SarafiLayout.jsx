@@ -89,8 +89,7 @@ const SarafiLayout = () => {
       bgColor: 'bg-amber-500/10',
       items: [
         { path: '/sarafi/settlements', label: 'پنل وصول', icon: FaHandshake },
-        { path: '/sarafi/receipts', label: 'رسیدها', icon: FaReceipt },
-        { path: '/sarafi/accountant', label: 'حسابداری', icon: FaCalculator }
+        { path: '/sarafi/accountant', label: 'حسابداری', icon: FaCalculator, isNew: true }
       ]
     },
     {
