@@ -184,9 +184,29 @@ const InstantTrade = () => {
   };
 
   // تایید معامله توسط صراف
-  const handleApproveTrade = async (tradeId) => {
+  const handleApproveTrade = async (trade) => {
+    // بررسی وضعیت کیف پول و نمایش هشدار
+    const walletStatus = trade.walletStatus?.status;
+
+    if (walletStatus === 'insufficient') {
+      const confirmed = confirm(
+        `⛔ هشدار: موجودی و اعتبار مشتری کافی نیست!\n\n` +
+        `کسری: ${formatNumber(trade.walletStatus?.shortage)} ریال\n\n` +
+        `⚠️ قبل از تایید، اعتبار مشتری را افزایش دهید.\n\n` +
+        `آیا با این حال ادامه می‌دهید؟`
+      );
+      if (!confirmed) return;
+    } else if (walletStatus === 'mixed') {
+      const confirmed = confirm(
+        `⚠️ توجه: بخشی از مبلغ از اعتبار مشتری کسر می‌شود.\n\n` +
+        `مبلغ اعتباری: ${formatNumber(trade.walletStatus?.creditAmount)} ریال\n\n` +
+        `آیا ادامه می‌دهید؟`
+      );
+      if (!confirmed) return;
+    }
+
     try {
-      await api.put(`/trades/instant/${tradeId}/approve`);
+      await api.put(`/trades/instant/${trade._id}/approve`);
       toast.success('معامله تایید شد');
       fetchTrades();
     } catch (error) {
@@ -407,11 +427,27 @@ const InstantTrade = () => {
                         {trade.status === 'pending' && (
                           <>
                             <button
-                              onClick={() => handleApproveTrade(trade._id)}
-                              className="p-2 rounded-lg bg-green-500/20 text-green-500 hover:bg-green-500/30"
-                              title="تایید صراف"
+                              onClick={() => handleApproveTrade(trade)}
+                              className={`p-2 rounded-lg ${
+                                trade.walletStatus?.status === 'insufficient'
+                                  ? 'bg-orange-500/20 text-orange-500 hover:bg-orange-500/30'
+                                  : trade.walletStatus?.status === 'mixed'
+                                    ? 'bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30'
+                                    : 'bg-green-500/20 text-green-500 hover:bg-green-500/30'
+                              }`}
+                              title={
+                                trade.walletStatus?.status === 'insufficient'
+                                  ? '⚠️ تایید - کسری موجودی!'
+                                  : trade.walletStatus?.status === 'mixed'
+                                    ? '⚠️ تایید - استفاده از اعتبار'
+                                    : 'تایید صراف'
+                              }
                             >
-                              <FaCheck />
+                              {trade.walletStatus?.status === 'insufficient' || trade.walletStatus?.status === 'mixed' ? (
+                                <FaExclamationTriangle />
+                              ) : (
+                                <FaCheck />
+                              )}
                             </button>
                             <button
                               onClick={() => {
