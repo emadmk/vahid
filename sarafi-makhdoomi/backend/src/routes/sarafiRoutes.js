@@ -253,6 +253,17 @@ router.post('/staff', async (req, res) => {
     let user = await User.findOne({ email });
     let temporaryPassword = null;
 
+    // تعیین نقش کاربر بر اساس نقش کارمندی
+    const roleMapping = {
+      rial_collector: 'staff_rial',
+      currency_collector: 'staff_currency',
+      accountant: 'accountant',
+      manager: 'staff',
+      operator: 'staff',
+      sales_manager: 'staff'
+    };
+    const userRole = roleMapping[role] || 'staff';
+
     if (!user) {
       // استفاده از رمز ارسالی یا تولید رمز موقت
       temporaryPassword = password || generateTemporaryPassword();
@@ -264,12 +275,18 @@ router.post('/staff', async (req, res) => {
         lastName,
         phone,
         password: temporaryPassword,
-        role: 'staff',
+        role: userRole,
+        parentSarafi: req.user._id, // صراف والد
         status: 'approved',
         isEmailVerified: true,
         mustChangePassword: mustChangePassword,
         isTemporaryPassword: !password // اگر رمز ارسال نشده، موقتی است
       });
+    } else {
+      // اگر کاربر وجود داشت، نقش و parentSarafi رو تنظیم کن
+      user.role = userRole;
+      user.parentSarafi = req.user._id;
+      await user.save();
     }
 
     // بررسی تکراری نبودن
@@ -326,13 +343,25 @@ router.put('/staff/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'کارمند یافت نشد' });
     }
 
+    // تعیین نقش کاربر بر اساس نقش کارمندی
+    const roleMapping = {
+      rial_collector: 'staff_rial',
+      currency_collector: 'staff_currency',
+      accountant: 'accountant',
+      manager: 'staff',
+      operator: 'staff',
+      sales_manager: 'staff'
+    };
+
     // به‌روزرسانی اطلاعات کاربر
-    if (firstName || lastName || phone) {
-      await User.findByIdAndUpdate(staff.user._id, {
-        ...(firstName && { firstName }),
-        ...(lastName && { lastName }),
-        ...(phone && { phone })
-      });
+    const userUpdates = {};
+    if (firstName) userUpdates.firstName = firstName;
+    if (lastName) userUpdates.lastName = lastName;
+    if (phone) userUpdates.phone = phone;
+    if (role) userUpdates.role = roleMapping[role] || 'staff'; // sync نقش کاربر
+
+    if (Object.keys(userUpdates).length > 0) {
+      await User.findByIdAndUpdate(staff.user._id, userUpdates);
     }
 
     // به‌روزرسانی نقش و دسترسی‌ها
