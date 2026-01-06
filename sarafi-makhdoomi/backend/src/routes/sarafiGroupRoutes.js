@@ -61,6 +61,94 @@ router.get('/my-groups', authorize('sarafi', 'admin'), async (req, res) => {
   }
 });
 
+// ==================== معاملات گروهی من ====================
+
+// دریافت تمام معاملات گروهی من (هم به عنوان صاحب و هم اجراکننده)
+router.get('/my-trades', authorize('sarafi', 'admin'), async (req, res) => {
+  try {
+    const Trade = require('../models/Trade');
+    const { status, type, currency, dateFrom, dateTo, search, limit, skip } = req.query;
+
+    // ساخت query برای معاملاتی که این صراف یا صاحب یا اجراکننده است
+    const query = {
+      $or: [
+        { ownerSarafi: req.user._id },
+        { executorSarafi: req.user._id }
+      ],
+      isGroupTrade: true
+    };
+
+    // فیلتر وضعیت
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    // فیلتر نوع
+    if (type && type !== 'all') {
+      query.type = type;
+    }
+
+    // فیلتر ارز
+    if (currency && currency !== 'all') {
+      query.currency = currency;
+    }
+
+    // فیلتر تاریخ
+    if (dateFrom || dateTo) {
+      query.createdAt = {};
+      if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = endDate;
+      }
+    }
+
+    let trades = await Trade.find(query)
+      .populate('currency', 'code nameFa symbol')
+      .populate('customer', 'firstName lastName phone')
+      .populate('sharedCustomer', 'displayName customerNickname')
+      .populate('ownerSarafi', 'firstName lastName sarafiInfo')
+      .populate('executorSarafi', 'firstName lastName sarafiInfo')
+      .populate('sarafi', 'firstName lastName sarafiInfo')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit) || 100)
+      .skip(parseInt(skip) || 0);
+
+    // جستجو (بعد از populate)
+    if (search && search.trim()) {
+      const searchLower = search.trim().toLowerCase();
+      trades = trades.filter(trade => {
+        const tradeNumber = (trade.tradeNumber || '').toLowerCase();
+        const customerName = (trade.sharedCustomer?.displayName || '').toLowerCase();
+        const ownerName = `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`.toLowerCase();
+        return tradeNumber.includes(searchLower) ||
+               customerName.includes(searchLower) ||
+               ownerName.includes(searchLower);
+      });
+    }
+
+    // اضافه کردن فلگ‌های isOwner و isExecutor
+    const userId = req.user._id.toString();
+    trades = trades.map(trade => {
+      const tradeObj = trade.toObject();
+      tradeObj.isOwner = trade.ownerSarafi?._id?.toString() === userId;
+      tradeObj.isExecutor = trade.executorSarafi?._id?.toString() === userId;
+      return tradeObj;
+    });
+
+    const total = await Trade.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: trades,
+      total
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 // ==================== روت‌های تسویه گروهی (باید قبل از /:id باشند) ====================
 
 // دریافت تسویه‌های من
