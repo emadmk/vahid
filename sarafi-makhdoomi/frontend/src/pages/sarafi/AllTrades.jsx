@@ -4,28 +4,32 @@ import {
   FaCalendarAlt, FaClock, FaSync, FaDownload, FaEye, FaCheck,
   FaTimes, FaChartLine, FaUserFriends, FaCoins, FaMoneyBillWave,
   FaSortAmountDown, FaSortAmountUp, FaChevronDown, FaFileExcel,
-  FaFilePdf, FaListUl, FaThLarge, FaHandshake, FaPercent
+  FaFilePdf, FaListUl, FaThLarge, FaHandshake, FaPercent, FaUser,
+  FaBolt, FaStore, FaWallet
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
-const GroupTrades = () => {
+const AllTrades = () => {
   // States
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('table'); // table | cards
+  const [viewMode, setViewMode] = useState('table');
   const [showFilters, setShowFilters] = useState(true);
   const [selectedTrade, setSelectedTrade] = useState(null);
   const [currencies, setCurrencies] = useState([]);
-  const [sarafis, setSarafis] = useState([]);
+  const [customers, setCustomers] = useState([]);
 
   // Statistics
   const [stats, setStats] = useState({
     total: 0,
+    instant: 0,
+    pro: 0,
     pending: 0,
     completed: 0,
     totalVolume: 0,
-    totalProfit: 0
+    buyCount: 0,
+    sellCount: 0
   });
 
   // Filters
@@ -33,15 +37,13 @@ const GroupTrades = () => {
     search: '',
     status: 'all',
     type: 'all', // buy | sell | all
+    tradeType: 'all', // instant | pro | all
     currency: 'all',
-    sarafi: 'all',
+    customer: 'all',
     dateFrom: '',
     dateTo: '',
-    timeFrom: '',
-    timeTo: '',
     minAmount: '',
-    maxAmount: '',
-    role: 'all' // owner | executor | all
+    maxAmount: ''
   });
 
   // Sorting
@@ -61,29 +63,41 @@ const GroupTrades = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [tradesRes, currenciesRes] = await Promise.all([
-        api.get('/sarafi-groups/my-trades'),
+      const [instantRes, proRes, currenciesRes] = await Promise.all([
+        api.get('/trades/sarafi/instant-trades', { params: { limit: 500 } }),
+        api.get('/trades/my-trades', { params: { limit: 500 } }),
         api.get('/public/currencies')
       ]);
 
-      const tradesData = tradesRes.data.data || [];
-      setTrades(tradesData);
+      // ترکیب معاملات فوری و حرفه‌ای
+      const instantTrades = (instantRes.data.trades || instantRes.data.data || []).map(t => ({
+        ...t,
+        tradeType: 'instant',
+        tradeTypeLabel: 'فوری'
+      }));
+
+      const proTrades = (proRes.data.data || []).map(t => ({
+        ...t,
+        tradeType: 'pro',
+        tradeTypeLabel: 'حرفه‌ای'
+      }));
+
+      const allTrades = [...instantTrades, ...proTrades];
+      setTrades(allTrades);
       setCurrencies(currenciesRes.data.data || []);
 
-      // استخراج لیست صراف‌ها از معاملات
-      const uniqueSarafis = [];
-      tradesData.forEach(trade => {
-        if (trade.ownerSarafi && !uniqueSarafis.find(s => s._id === trade.ownerSarafi._id)) {
-          uniqueSarafis.push(trade.ownerSarafi);
-        }
-        if (trade.executorSarafi && !uniqueSarafis.find(s => s._id === trade.executorSarafi._id)) {
-          uniqueSarafis.push(trade.executorSarafi);
+      // استخراج لیست مشتریان یکتا
+      const uniqueCustomers = [];
+      allTrades.forEach(trade => {
+        const customer = trade.customer;
+        if (customer && !uniqueCustomers.find(c => c._id === customer._id)) {
+          uniqueCustomers.push(customer);
         }
       });
-      setSarafis(uniqueSarafis);
+      setCustomers(uniqueCustomers);
 
       // محاسبه آمار
-      calculateStats(tradesData);
+      calculateStats(allTrades);
     } catch (error) {
       console.error(error);
       toast.error('خطا در دریافت اطلاعات');
@@ -93,18 +107,16 @@ const GroupTrades = () => {
   };
 
   const calculateStats = (data) => {
-    const stats = {
+    setStats({
       total: data.length,
-      pending: data.filter(t => t.status === 'pending' || t.status === 'approved').length,
+      instant: data.filter(t => t.tradeType === 'instant').length,
+      pro: data.filter(t => t.tradeType === 'pro').length,
+      pending: data.filter(t => ['pending', 'approved', 'pending_collection'].includes(t.status)).length,
       completed: data.filter(t => t.status === 'completed').length,
       totalVolume: data.reduce((sum, t) => sum + (t.totalAmount || 0), 0),
-      totalProfit: data.reduce((sum, t) => {
-        const ownerProfit = t.groupTradeDetails?.ownerProfit || 0;
-        const executorProfit = t.groupTradeDetails?.executorProfit || 0;
-        return sum + ownerProfit + executorProfit;
-      }, 0)
-    };
-    setStats(stats);
+      buyCount: data.filter(t => t.type === 'buy').length,
+      sellCount: data.filter(t => t.type === 'sell').length
+    });
   };
 
   // فیلتر کردن داده‌ها
@@ -114,9 +126,9 @@ const GroupTrades = () => {
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         const tradeNumber = (trade.tradeNumber || '').toLowerCase();
-        const customerName = (trade.sharedCustomer?.displayName || '').toLowerCase();
-        const ownerName = `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`.toLowerCase();
-        if (!tradeNumber.includes(searchLower) && !customerName.includes(searchLower) && !ownerName.includes(searchLower)) {
+        const customerName = `${trade.customer?.firstName || ''} ${trade.customer?.lastName || ''}`.toLowerCase();
+        const phone = (trade.customer?.phone || '').toLowerCase();
+        if (!tradeNumber.includes(searchLower) && !customerName.includes(searchLower) && !phone.includes(searchLower)) {
           return false;
         }
       }
@@ -124,22 +136,17 @@ const GroupTrades = () => {
       // فیلتر وضعیت
       if (filters.status !== 'all' && trade.status !== filters.status) return false;
 
-      // فیلتر نوع
+      // فیلتر نوع معامله (خرید/فروش)
       if (filters.type !== 'all' && trade.type !== filters.type) return false;
+
+      // فیلتر نوع (فوری/حرفه‌ای)
+      if (filters.tradeType !== 'all' && trade.tradeType !== filters.tradeType) return false;
 
       // فیلتر ارز
       if (filters.currency !== 'all' && trade.currency?._id !== filters.currency) return false;
 
-      // فیلتر صراف
-      if (filters.sarafi !== 'all') {
-        if (trade.ownerSarafi?._id !== filters.sarafi && trade.executorSarafi?._id !== filters.sarafi) {
-          return false;
-        }
-      }
-
-      // فیلتر نقش
-      if (filters.role === 'owner' && !trade.isOwner) return false;
-      if (filters.role === 'executor' && !trade.isExecutor) return false;
+      // فیلتر مشتری
+      if (filters.customer !== 'all' && trade.customer?._id !== filters.customer) return false;
 
       // فیلتر تاریخ
       if (filters.dateFrom) {
@@ -168,13 +175,12 @@ const GroupTrades = () => {
       let aVal = a[sortConfig.key];
       let bVal = b[sortConfig.key];
 
-      // مقادیر تو در تو
       if (sortConfig.key === 'currency') {
         aVal = a.currency?.code || '';
         bVal = b.currency?.code || '';
-      } else if (sortConfig.key === 'ownerSarafi') {
-        aVal = a.ownerSarafi?.firstName || '';
-        bVal = b.ownerSarafi?.firstName || '';
+      } else if (sortConfig.key === 'customer') {
+        aVal = a.customer?.firstName || '';
+        bVal = b.customer?.firstName || '';
       }
 
       if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -204,22 +210,19 @@ const GroupTrades = () => {
       search: '',
       status: 'all',
       type: 'all',
+      tradeType: 'all',
       currency: 'all',
-      sarafi: 'all',
+      customer: 'all',
       dateFrom: '',
       dateTo: '',
-      timeFrom: '',
-      timeTo: '',
       minAmount: '',
-      maxAmount: '',
-      role: 'all'
+      maxAmount: ''
     });
     setCurrentPage(1);
   };
 
   const exportToExcel = () => {
     toast.success('در حال آماده‌سازی فایل اکسل...');
-    // TODO: پیاده‌سازی export
   };
 
   const formatNumber = (num) => new Intl.NumberFormat('fa-IR').format(num || 0);
@@ -253,12 +256,12 @@ const GroupTrades = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
               <FaExchangeAlt className="text-white" />
             </div>
-            معاملات گروهی
+            معاملات
           </h1>
-          <p className="text-dark-400 text-sm mt-1">مدیریت و پیگیری تمام معاملات بین‌صرافی</p>
+          <p className="text-dark-400 text-sm mt-1">مشاهده و مدیریت تمام معاملات فوری و حرفه‌ای</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -269,7 +272,7 @@ const GroupTrades = () => {
             فیلترها
           </button>
           <button onClick={fetchData} className="btn-outline flex items-center gap-2">
-            <FaSync />
+            <FaSync className={loading ? 'animate-spin' : ''} />
             بروزرسانی
           </button>
           <button onClick={exportToExcel} className="btn-gold flex items-center gap-2">
@@ -280,28 +283,38 @@ const GroupTrades = () => {
       </div>
 
       {/* آمار کلی */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="card p-4 border-r-4 border-indigo-500">
-          <p className="text-dark-400 text-sm">کل معاملات</p>
-          <p className="text-2xl font-bold text-indigo-500">{formatNumber(stats.total)}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="card p-3 border-r-4 border-blue-500">
+          <p className="text-dark-400 text-xs">کل</p>
+          <p className="text-xl font-bold text-blue-500">{formatNumber(stats.total)}</p>
         </div>
-        <div className="card p-4 border-r-4 border-yellow-500">
-          <p className="text-dark-400 text-sm">در انتظار</p>
-          <p className="text-2xl font-bold text-yellow-500">{formatNumber(stats.pending)}</p>
+        <div className="card p-3 border-r-4 border-cyan-500">
+          <p className="text-dark-400 text-xs">فوری</p>
+          <p className="text-xl font-bold text-cyan-500">{formatNumber(stats.instant)}</p>
         </div>
-        <div className="card p-4 border-r-4 border-green-500">
-          <p className="text-dark-400 text-sm">تکمیل شده</p>
-          <p className="text-2xl font-bold text-green-500">{formatNumber(stats.completed)}</p>
+        <div className="card p-3 border-r-4 border-purple-500">
+          <p className="text-dark-400 text-xs">حرفه‌ای</p>
+          <p className="text-xl font-bold text-purple-500">{formatNumber(stats.pro)}</p>
         </div>
-        <div className="card p-4 border-r-4 border-blue-500">
-          <p className="text-dark-400 text-sm">حجم کل</p>
-          <p className="text-xl font-bold text-blue-500">{formatNumber(stats.totalVolume)}</p>
-          <p className="text-xs text-dark-500">ریال</p>
+        <div className="card p-3 border-r-4 border-yellow-500">
+          <p className="text-dark-400 text-xs">در انتظار</p>
+          <p className="text-xl font-bold text-yellow-500">{formatNumber(stats.pending)}</p>
         </div>
-        <div className="card p-4 border-r-4 border-gold">
-          <p className="text-dark-400 text-sm">سود کل</p>
-          <p className="text-xl font-bold text-gold">{formatNumber(stats.totalProfit)}</p>
-          <p className="text-xs text-dark-500">ریال</p>
+        <div className="card p-3 border-r-4 border-green-500">
+          <p className="text-dark-400 text-xs">تکمیل</p>
+          <p className="text-xl font-bold text-green-500">{formatNumber(stats.completed)}</p>
+        </div>
+        <div className="card p-3 border-r-4 border-emerald-500">
+          <p className="text-dark-400 text-xs">خرید</p>
+          <p className="text-xl font-bold text-emerald-500">{formatNumber(stats.buyCount)}</p>
+        </div>
+        <div className="card p-3 border-r-4 border-red-500">
+          <p className="text-dark-400 text-xs">فروش</p>
+          <p className="text-xl font-bold text-red-500">{formatNumber(stats.sellCount)}</p>
+        </div>
+        <div className="card p-3 border-r-4 border-gold">
+          <p className="text-dark-400 text-xs">حجم کل</p>
+          <p className="text-lg font-bold text-gold">{formatNumber(Math.round(stats.totalVolume / 1000000))}M</p>
         </div>
       </div>
 
@@ -328,7 +341,7 @@ const GroupTrades = () => {
                   type="text"
                   value={filters.search}
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  placeholder="شماره معامله، نام صراف، نام مشتری..."
+                  placeholder="شماره معامله، نام مشتری، تلفن..."
                   className="input w-full pr-10"
                 />
               </div>
@@ -349,12 +362,27 @@ const GroupTrades = () => {
                 <option value="pending_accounting">در انتظار حسابداری</option>
                 <option value="completed">تکمیل شده</option>
                 <option value="rejected">رد شده</option>
+                <option value="cancelled">لغو شده</option>
               </select>
             </div>
 
-            {/* نوع */}
+            {/* نوع معامله (فوری/حرفه‌ای) */}
             <div>
-              <label className="block text-dark-400 text-sm mb-1">نوع معامله</label>
+              <label className="block text-dark-400 text-sm mb-1">نوع</label>
+              <select
+                value={filters.tradeType}
+                onChange={(e) => setFilters({ ...filters, tradeType: e.target.value })}
+                className="input w-full"
+              >
+                <option value="all">همه</option>
+                <option value="instant">فوری</option>
+                <option value="pro">حرفه‌ای</option>
+              </select>
+            </div>
+
+            {/* خرید/فروش */}
+            <div>
+              <label className="block text-dark-400 text-sm mb-1">خرید/فروش</label>
               <select
                 value={filters.type}
                 onChange={(e) => setFilters({ ...filters, type: e.target.value })}
@@ -381,17 +409,18 @@ const GroupTrades = () => {
               </select>
             </div>
 
-            {/* نقش */}
+            {/* مشتری */}
             <div>
-              <label className="block text-dark-400 text-sm mb-1">نقش من</label>
+              <label className="block text-dark-400 text-sm mb-1">مشتری</label>
               <select
-                value={filters.role}
-                onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+                value={filters.customer}
+                onChange={(e) => setFilters({ ...filters, customer: e.target.value })}
                 className="input w-full"
               >
-                <option value="all">همه</option>
-                <option value="owner">صاحب معامله</option>
-                <option value="executor">اجراکننده</option>
+                <option value="all">همه مشتریان</option>
+                {customers.map(c => (
+                  <option key={c._id} value={c._id}>{c.firstName} {c.lastName}</option>
+                ))}
               </select>
             </div>
 
@@ -493,13 +522,13 @@ const GroupTrades = () => {
                       {sortConfig.key === 'tradeNumber' && (sortConfig.direction === 'desc' ? <FaSortAmountDown className="text-xs" /> : <FaSortAmountUp className="text-xs" />)}
                     </div>
                   </th>
-                  <th className="text-right p-3 text-dark-400 text-sm">صراف</th>
+                  <th className="text-right p-3 text-dark-400 text-sm">نوع</th>
                   <th className="text-right p-3 text-dark-400 text-sm">مشتری</th>
-                  <th className="text-right p-3 text-dark-400 text-sm cursor-pointer hover:text-white" onClick={() => handleSort('type')}>نوع</th>
+                  <th className="text-right p-3 text-dark-400 text-sm cursor-pointer hover:text-white" onClick={() => handleSort('type')}>خرید/فروش</th>
                   <th className="text-right p-3 text-dark-400 text-sm cursor-pointer hover:text-white" onClick={() => handleSort('currency')}>ارز</th>
                   <th className="text-right p-3 text-dark-400 text-sm cursor-pointer hover:text-white" onClick={() => handleSort('amount')}>مقدار</th>
                   <th className="text-right p-3 text-dark-400 text-sm cursor-pointer hover:text-white" onClick={() => handleSort('rate')}>نرخ</th>
-                  <th className="text-right p-3 text-dark-400 text-sm">اسپرد</th>
+                  <th className="text-right p-3 text-dark-400 text-sm cursor-pointer hover:text-white" onClick={() => handleSort('totalAmount')}>مبلغ کل</th>
                   <th className="text-right p-3 text-dark-400 text-sm cursor-pointer hover:text-white" onClick={() => handleSort('createdAt')}>
                     <div className="flex items-center gap-1">
                       تاریخ
@@ -527,22 +556,22 @@ const GroupTrades = () => {
                           <span className="text-gold font-mono text-sm">{trade.tradeNumber}</span>
                         </td>
                         <td className="p-3">
+                          <span className={`px-2 py-1 rounded text-xs ${trade.tradeType === 'instant' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                            {trade.tradeType === 'instant' ? <><FaBolt className="inline ml-1" />فوری</> : <><FaChartLine className="inline ml-1" />حرفه‌ای</>}
+                          </span>
+                        </td>
+                        <td className="p-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                              <FaUserFriends className="text-indigo-400 text-xs" />
+                            <div className="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center">
+                              <FaUser className="text-dark-400 text-xs" />
                             </div>
                             <div>
                               <p className="text-white text-sm">
-                                {trade.ownerSarafi?.sarafiInfo?.name || `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`}
+                                {trade.customer?.firstName} {trade.customer?.lastName}
                               </p>
-                              <p className="text-dark-500 text-xs">
-                                {trade.isOwner ? 'صاحب' : 'اجراکننده'}
-                              </p>
+                              <p className="text-dark-500 text-xs">{trade.customer?.phone}</p>
                             </div>
                           </div>
-                        </td>
-                        <td className="p-3">
-                          <span className="text-purple-400 text-sm">{trade.sharedCustomer?.displayName || '-'}</span>
                         </td>
                         <td className="p-3">
                           <span className={`flex items-center gap-1 text-sm ${trade.type === 'buy' ? 'text-green-500' : 'text-red-500'}`}>
@@ -560,13 +589,7 @@ const GroupTrades = () => {
                           <span className="text-white text-sm">{formatNumber(trade.rate)}</span>
                         </td>
                         <td className="p-3">
-                          {trade.groupTradeDetails ? (
-                            <div className="text-xs">
-                              <span className="text-green-500">{trade.groupTradeDetails.ownerSpreadPercent || 0}%</span>
-                              <span className="text-dark-500 mx-1">/</span>
-                              <span className="text-blue-500">{trade.groupTradeDetails.executorSpreadPercent || 0}%</span>
-                            </div>
-                          ) : '-'}
+                          <span className="text-gold font-medium">{formatNumber(trade.totalAmount)}</span>
                         </td>
                         <td className="p-3">
                           <div>
@@ -603,47 +626,19 @@ const GroupTrades = () => {
                 صفحه {currentPage} از {totalPages}
               </span>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 rounded bg-dark-800 text-dark-400 disabled:opacity-50"
-                >
-                  اول
-                </button>
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 rounded bg-dark-800 text-dark-400 disabled:opacity-50"
-                >
-                  قبلی
-                </button>
+                <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-3 py-1 rounded bg-dark-800 text-dark-400 disabled:opacity-50">اول</button>
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 rounded bg-dark-800 text-dark-400 disabled:opacity-50">قبلی</button>
                 {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                  const pageNum = currentPage - 2 + i;
-                  if (pageNum < 1 || pageNum > totalPages) return null;
+                  const pageNum = Math.max(1, currentPage - 2) + i;
+                  if (pageNum > totalPages) return null;
                   return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-1 rounded ${pageNum === currentPage ? 'bg-gold text-dark-900' : 'bg-dark-800 text-dark-400'}`}
-                    >
+                    <button key={pageNum} onClick={() => setCurrentPage(pageNum)} className={`px-3 py-1 rounded ${pageNum === currentPage ? 'bg-gold text-dark-900' : 'bg-dark-800 text-dark-400'}`}>
                       {pageNum}
                     </button>
                   );
                 })}
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 rounded bg-dark-800 text-dark-400 disabled:opacity-50"
-                >
-                  بعدی
-                </button>
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 rounded bg-dark-800 text-dark-400 disabled:opacity-50"
-                >
-                  آخر
-                </button>
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 rounded bg-dark-800 text-dark-400 disabled:opacity-50">بعدی</button>
+                <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-3 py-1 rounded bg-dark-800 text-dark-400 disabled:opacity-50">آخر</button>
               </div>
             </div>
           )}
@@ -657,7 +652,12 @@ const GroupTrades = () => {
             return (
               <div key={trade._id} className="card p-4 hover:border-gold/30 transition-all">
                 <div className="flex items-start justify-between mb-3">
-                  <span className="text-gold font-mono text-sm">{trade.tradeNumber}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gold font-mono text-sm">{trade.tradeNumber}</span>
+                    <span className={`px-2 py-0.5 rounded text-xs ${trade.tradeType === 'instant' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                      {trade.tradeTypeLabel}
+                    </span>
+                  </div>
                   <span className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 ${statusConfig.class}`}>
                     <StatusIcon className="text-xs" />
                     {statusConfig.label}
@@ -665,14 +665,12 @@ const GroupTrades = () => {
                 </div>
 
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                    <FaUserFriends className="text-indigo-400" />
+                  <div className="w-10 h-10 rounded-full bg-dark-700 flex items-center justify-center">
+                    <FaUser className="text-dark-400" />
                   </div>
                   <div>
-                    <p className="text-white text-sm">
-                      {trade.ownerSarafi?.sarafiInfo?.name || `${trade.ownerSarafi?.firstName || ''} ${trade.ownerSarafi?.lastName || ''}`}
-                    </p>
-                    <p className="text-purple-400 text-xs">{trade.sharedCustomer?.displayName || '-'}</p>
+                    <p className="text-white text-sm">{trade.customer?.firstName} {trade.customer?.lastName}</p>
+                    <p className="text-dark-500 text-xs">{trade.customer?.phone}</p>
                   </div>
                 </div>
 
@@ -699,10 +697,7 @@ const GroupTrades = () => {
 
                 <div className="flex items-center justify-between text-xs text-dark-400 pt-3 border-t border-dark-800">
                   <span>{formatDate(trade.createdAt)} - {formatTime(trade.createdAt)}</span>
-                  <button
-                    onClick={() => setSelectedTrade(trade)}
-                    className="text-gold hover:text-gold/80"
-                  >
+                  <button onClick={() => setSelectedTrade(trade)} className="text-gold hover:text-gold/80">
                     جزئیات
                   </button>
                 </div>
@@ -727,34 +722,31 @@ const GroupTrades = () => {
             </div>
 
             <div className="p-4 space-y-4">
-              {/* شماره معامله */}
+              {/* شماره و نوع معامله */}
               <div className="bg-dark-800 rounded-xl p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-dark-400">شماره معامله:</span>
-                  <span className="text-gold font-mono text-lg">{selectedTrade.tradeNumber}</span>
-                </div>
-              </div>
-
-              {/* صراف‌ها */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-dark-800 rounded-xl p-4">
-                  <p className="text-dark-400 text-sm mb-2">صاحب معامله:</p>
-                  <p className="text-white font-medium">
-                    {selectedTrade.ownerSarafi?.sarafiInfo?.name || `${selectedTrade.ownerSarafi?.firstName || ''} ${selectedTrade.ownerSarafi?.lastName || ''}`}
-                  </p>
-                </div>
-                <div className="bg-dark-800 rounded-xl p-4">
-                  <p className="text-dark-400 text-sm mb-2">اجراکننده:</p>
-                  <p className="text-white font-medium">
-                    {selectedTrade.executorSarafi?.sarafiInfo?.name || `${selectedTrade.executorSarafi?.firstName || ''} ${selectedTrade.executorSarafi?.lastName || ''}`}
-                  </p>
+                  <div>
+                    <span className="text-dark-400 text-sm">شماره معامله:</span>
+                    <p className="text-gold font-mono text-lg">{selectedTrade.tradeNumber}</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-lg text-sm ${selectedTrade.tradeType === 'instant' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                    {selectedTrade.tradeType === 'instant' ? 'معامله فوری' : 'معامله حرفه‌ای'}
+                  </span>
                 </div>
               </div>
 
               {/* مشتری */}
-              <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
-                <p className="text-dark-400 text-sm mb-1">مشتری گروهی:</p>
-                <p className="text-purple-400 font-bold">{selectedTrade.sharedCustomer?.displayName || '-'}</p>
+              <div className="bg-dark-800 rounded-xl p-4">
+                <p className="text-dark-400 text-sm mb-2">مشتری:</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-dark-700 flex items-center justify-center">
+                    <FaUser className="text-dark-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">{selectedTrade.customer?.firstName} {selectedTrade.customer?.lastName}</p>
+                    <p className="text-dark-500 text-sm">{selectedTrade.customer?.phone}</p>
+                  </div>
+                </div>
               </div>
 
               {/* جزئیات معامله */}
@@ -786,31 +778,32 @@ const GroupTrades = () => {
                 <span className="text-gold text-2xl font-bold">{formatNumber(selectedTrade.totalAmount)} ریال</span>
               </div>
 
-              {/* اسپرد و سود */}
-              {selectedTrade.groupTradeDetails && (
-                <div className="bg-dark-800 rounded-xl p-4 space-y-3">
-                  <h4 className="text-white font-bold flex items-center gap-2">
-                    <FaPercent className="text-gold" />
-                    جزئیات اسپرد و سود
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="p-3 bg-dark-900 rounded-lg">
-                      <p className="text-dark-400 mb-1">اسپرد صاحب:</p>
-                      <p className="text-green-500 font-bold">
-                        {selectedTrade.groupTradeDetails.ownerSpreadPercent || 0}% = {formatNumber(selectedTrade.groupTradeDetails.ownerProfit || 0)} ریال
-                      </p>
-                    </div>
-                    <div className="p-3 bg-dark-900 rounded-lg">
-                      <p className="text-dark-400 mb-1">اسپرد اجراکننده:</p>
-                      <p className="text-blue-500 font-bold">
-                        {selectedTrade.groupTradeDetails.executorSpreadPercent || 0}% = {formatNumber(selectedTrade.groupTradeDetails.executorProfit || 0)} ریال
-                      </p>
-                    </div>
-                    <div className="p-3 bg-dark-900 rounded-lg col-span-2">
-                      <p className="text-dark-400 mb-1">نرخ بین‌صرافی:</p>
-                      <p className="text-white font-bold">{formatNumber(selectedTrade.groupTradeDetails.interSarafiRate || 0)} ریال</p>
-                    </div>
+              {/* کارمزد */}
+              {selectedTrade.commission?.amount > 0 && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-dark-800 rounded-lg">
+                    <span className="text-dark-400 text-sm">کارمزد:</span>
+                    <p className="text-white font-medium">{formatNumber(selectedTrade.commission?.amount)} ریال</p>
                   </div>
+                  <div className="p-3 bg-dark-800 rounded-lg">
+                    <span className="text-dark-400 text-sm">مبلغ خالص:</span>
+                    <p className="text-green-500 font-medium">{formatNumber(selectedTrade.netAmount)} ریال</p>
+                  </div>
+                </div>
+              )}
+
+              {/* وضعیت کیف پول */}
+              {selectedTrade.walletStatus && (
+                <div className={`p-4 rounded-xl ${selectedTrade.walletStatus.status === 'insufficient' ? 'bg-red-500/10 border border-red-500/30' : selectedTrade.walletStatus.status === 'mixed' ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-green-500/10 border border-green-500/30'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <FaWallet className={selectedTrade.walletStatus.status === 'insufficient' ? 'text-red-500' : selectedTrade.walletStatus.status === 'mixed' ? 'text-yellow-500' : 'text-green-500'} />
+                    <span className="text-white font-bold">وضعیت کیف پول</span>
+                  </div>
+                  <p className="text-dark-300 text-sm">
+                    {selectedTrade.walletStatus.status === 'ok' && 'موجودی کافی'}
+                    {selectedTrade.walletStatus.status === 'mixed' && `استفاده از ${formatNumber(selectedTrade.walletStatus.creditAmount)} ریال اعتبار`}
+                    {selectedTrade.walletStatus.status === 'insufficient' && `کسری: ${formatNumber(selectedTrade.walletStatus.shortage)} ریال`}
+                  </p>
                 </div>
               )}
 
@@ -822,7 +815,7 @@ const GroupTrades = () => {
                 </div>
                 <div className="p-3 bg-dark-800 rounded-lg">
                   <span className="text-dark-400 text-sm">وضعیت:</span>
-                  <p className={getStatusConfig(selectedTrade.status).class.replace('bg-', 'text-').split(' ')[1]}>
+                  <p className={getStatusConfig(selectedTrade.status).class.split(' ')[1]}>
                     {getStatusConfig(selectedTrade.status).label}
                   </p>
                 </div>
@@ -849,4 +842,4 @@ const GroupTrades = () => {
   );
 };
 
-export default GroupTrades;
+export default AllTrades;

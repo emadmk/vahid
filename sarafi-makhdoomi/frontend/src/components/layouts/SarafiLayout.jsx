@@ -51,7 +51,8 @@ const SarafiLayout = () => {
       items: [
         { path: '/sarafi', label: 'داشبورد', icon: FaHome },
         { path: '/sarafi/instant-trade', label: 'خرید و فروش فوری', icon: FaExchangeAlt },
-        { path: '/sarafi/pro-trade', label: 'خرید و فروش حرفه‌ای', icon: FaChartLine }
+        { path: '/sarafi/pro-trade', label: 'خرید و فروش حرفه‌ای', icon: FaChartLine },
+        { path: '/sarafi/all-trades', label: 'معاملات', icon: FaHistory, isNew: true }
       ]
     },
     {
@@ -63,8 +64,7 @@ const SarafiLayout = () => {
       bgColor: 'bg-indigo-500/10',
       items: [
         { path: '/sarafi/groups', label: 'مدیریت گروه‌ها', icon: FaUserFriends, badge: pendingGroupTrades },
-        { path: '/sarafi/group-trades', label: 'معاملات گروهی', icon: FaExchangeAlt, isNew: true },
-        { path: '/sarafi/group-settlements', label: 'تسویه گروهی', icon: FaHandshake }
+        { path: '/sarafi/group-trades', label: 'معاملات گروهی', icon: FaExchangeAlt }
       ]
     },
     {
