@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   FaUserTie, FaPlus, FaEdit, FaTrash, FaTimes, FaToggleOn, FaToggleOff,
   FaCalculator, FaCoins, FaMoneyBillWave, FaUsers, FaChartLine, FaShieldAlt,
-  FaKey, FaEye, FaEyeSlash, FaSync, FaCopy, FaCheck
+  FaKey, FaEye, FaEyeSlash, FaSync, FaCopy, FaCheck, FaHeadset
 } from 'react-icons/fa';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -24,7 +24,8 @@ const SarafiStaff = () => {
     rial_collector: { label: 'وصول ریالی', icon: FaMoneyBillWave, color: 'text-green-500' },
     manager: { label: 'مدیر', icon: FaUserTie, color: 'text-purple-500' },
     operator: { label: 'اپراتور', icon: FaUsers, color: 'text-cyan-500' },
-    sales_manager: { label: 'مدیر فروش', icon: FaChartLine, color: 'text-gold' }
+    sales_manager: { label: 'مدیر فروش', icon: FaChartLine, color: 'text-gold' },
+    crm: { label: 'کارشناس CRM', icon: FaHeadset, color: 'text-pink-500' }
   };
 
   const allPermissions = [
@@ -52,7 +53,12 @@ const SarafiStaff = () => {
     { key: 'canManageSpread', label: 'مدیریت اسپرد' },
     { key: 'canSuspendCustomer', label: 'تعلیق مشتری' },
     { key: 'canChangeTier', label: 'تغییر سطح مشتری' },
-    { key: 'canViewAuditLogs', label: 'مشاهده لاگ‌ها' }
+    { key: 'canViewAuditLogs', label: 'مشاهده لاگ‌ها' },
+    { key: 'canAccessCRM', label: 'دسترسی به CRM' },
+    { key: 'canManageFollowUps', label: 'مدیریت پیگیری‌ها' },
+    { key: 'canManageComplaints', label: 'مدیریت شکایات' },
+    { key: 'canViewCRMReports', label: 'گزارشات CRM' },
+    { key: 'canManageReminders', label: 'مدیریت یادآورها' }
   ];
 
   const [formData, setFormData] = useState({
@@ -268,6 +274,17 @@ const SarafiStaff = () => {
         canManageSpread: true,
         canSuspendCustomer: true,
         canChangeTier: true
+      },
+      crm: {
+        canViewCustomers: true,
+        canManageCustomers: true,
+        canViewTrades: true,
+        canViewReports: true,
+        canAccessCRM: true,
+        canManageFollowUps: true,
+        canManageComplaints: true,
+        canViewCRMReports: true,
+        canManageReminders: true
       }
     };
 

@@ -5,7 +5,7 @@ import {
   FaBars, FaTimes, FaCalculator, FaCoins, FaWallet,
   FaPercent, FaUserTie, FaHistory, FaReceipt, FaChartLine, FaComments,
   FaHandshake, FaDollarSign, FaUserFriends, FaChevronDown, FaChevronLeft,
-  FaBriefcase, FaChartPie, FaClipboardList, FaCog, FaStore
+  FaBriefcase, FaChartPie, FaClipboardList, FaCog, FaStore, FaHeadset
 } from 'react-icons/fa';
 import useAuthStore from '../../store/authStore';
 import NotificationDropdown from '../common/NotificationDropdown';
@@ -15,7 +15,7 @@ import api from '../../services/api';
 const SarafiLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [pendingGroupTrades, setPendingGroupTrades] = useState(0);
-  const [expandedSections, setExpandedSections] = useState(['trading', 'groups', 'financial', 'settlement', 'customers', 'system']);
+  const [expandedSections, setExpandedSections] = useState(['trading', 'groups', 'financial', 'settlement', 'crm', 'customers', 'system']);
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -90,6 +90,17 @@ const SarafiLayout = () => {
       items: [
         { path: '/sarafi/settlements', label: 'پنل وصول', icon: FaHandshake },
         { path: '/sarafi/accountant', label: 'حسابداری', icon: FaCalculator, isNew: true }
+      ]
+    },
+    {
+      id: 'crm',
+      title: 'پنل CRM',
+      icon: FaHeadset,
+      color: 'from-pink-500 to-rose-600',
+      textColor: 'text-pink-400',
+      bgColor: 'bg-pink-500/10',
+      items: [
+        { path: '/sarafi/crm', label: 'مدیریت ارتباط مشتری', icon: FaHeadset, isNew: true }
       ]
     },
     {

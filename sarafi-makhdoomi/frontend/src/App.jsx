@@ -55,6 +55,7 @@ import GroupSettlements from './pages/sarafi/GroupSettlements';
 import GroupTrades from './pages/sarafi/GroupTrades';
 import AllTrades from './pages/sarafi/AllTrades';
 import SarafiProfitLoss from './pages/sarafi/ProfitLoss';
+import SarafiCRM from './pages/sarafi/CRM';
 
 // صفحات ادمین
 import AdminDashboard from './pages/admin/Dashboard';
@@ -82,7 +83,7 @@ const ProtectedRoute = ({ children, roles = [] }) => {
 
   // گروه‌بندی نقش‌ها: کارکنان صرافی می‌توانند به پنل صراف دسترسی داشته باشند
   const roleGroups = {
-    sarafi: ['sarafi', 'staff_rial', 'staff_currency', 'accountant', 'staff']
+    sarafi: ['sarafi', 'staff_rial', 'staff_currency', 'accountant', 'staff', 'crm']
   };
 
   const hasAccess = roles.length === 0 || roles.some(role => {
@@ -202,6 +203,7 @@ function App() {
           <Route path="group-settlements" element={<GroupSettlements />} />
           <Route path="all-trades" element={<AllTrades />} />
           <Route path="profit-loss" element={<SarafiProfitLoss />} />
+          <Route path="crm" element={<SarafiCRM />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
         </Route>
